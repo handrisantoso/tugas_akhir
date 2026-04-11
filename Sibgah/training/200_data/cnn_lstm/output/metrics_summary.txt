@@ -1,0 +1,9 @@
+model: CNN_LSTM
+val_accuracy: 0.9899
+test_accuracy: 0.9876
+test_macro_f1: 0.9875
+test_weighted_f1: 0.9876
+epochs_trained: 24
+train_windows: 1418
+val_windows: 398
+test_windows: 161
