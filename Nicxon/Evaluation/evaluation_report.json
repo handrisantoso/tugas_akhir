@@ -1,0 +1,210 @@
+{
+  "evaluation_summary": {
+    "total_questions": 10,
+    "average_relevance_scores": {
+      "RAG_to_question": 0.8112462687545452,
+      "Gemini_to_question": 0.792419634697902,
+      "DeepSeek_to_question": 0.7910864857175806
+    },
+    "average_inter_model_similarities": {
+      "RAG_vs_Gemini": 0.7982145051665253,
+      "RAG_vs_DeepSeek": 0.7819090424471976,
+      "Gemini_vs_DeepSeek": 0.8586021462236906
+    }
+  },
+  "detailed_analysis": {
+    "best_question_relevance": {
+      "RAG": 0.9076748929271218,
+      "Gemini": 0.8607500122420495,
+      "DeepSeek": 0.8710424950476165
+    },
+    "worst_question_relevance": {
+      "RAG": 0.7345757476611903,
+      "Gemini": 0.7245090737382096,
+      "DeepSeek": 0.6936124216757416
+    },
+    "consistency_analysis": {
+      "RAG_consistency": 0.055300876158909475,
+      "Gemini_consistency": 0.04348359608291205,
+      "DeepSeek_consistency": 0.05591659541724235
+    }
+  },
+  "category_performance": {
+    "temporal_search": {
+      "count": 1,
+      "RAG_avg": 0.8750515406387354,
+      "Gemini_avg": 0.7714124083052254,
+      "DeepSeek_avg": 0.7422240950702076
+    },
+    "genre_search": {
+      "count": 1,
+      "RAG_avg": 0.7689908339344116,
+      "Gemini_avg": 0.749821230449027,
+      "DeepSeek_avg": 0.7667408003054663
+    },
+    "author_search": {
+      "count": 1,
+      "RAG_avg": 0.8383894099443636,
+      "Gemini_avg": 0.847144373447453,
+      "DeepSeek_avg": 0.8710424950476165
+    },
+    "author_format": {
+      "count": 1,
+      "RAG_avg": 0.8133498465906829,
+      "Gemini_avg": 0.8288397682881159,
+      "DeepSeek_avg": 0.8294342972387979
+    },
+    "recommendation": {
+      "count": 1,
+      "RAG_avg": 0.7676976716675706,
+      "Gemini_avg": 0.807265505753564,
+      "DeepSeek_avg": 0.817125225686347
+    },
+    "subject_search": {
+      "count": 1,
+      "RAG_avg": 0.8193104152789865,
+      "Gemini_avg": 0.8162926674403963,
+      "DeepSeek_avg": 0.8314312405728417
+    },
+    "language_filter": {
+      "count": 2,
+      "RAG_avg": 0.7920512069871632,
+      "Gemini_avg": 0.7396472243751944,
+      "DeepSeek_avg": 0.7067286402768547
+    },
+    "audience_search": {
+      "count": 1,
+      "RAG_avg": 0.7378956625892541,
+      "Gemini_avg": 0.7633759323027999,
+      "DeepSeek_avg": 0.7888614845386803
+    },
+    "filtered_search": {
+      "count": 1,
+      "RAG_avg": 0.9076748929271218,
+      "Gemini_avg": 0.8607500122420495,
+      "DeepSeek_avg": 0.8505479381621392
+    }
+  },
+  "individual_results": [
+    {
+      "id": 1,
+      "category": "author_search",
+      "difficulty": "easy",
+      "question_text": "What books by Thomas Aquinas are available in the collection?",
+      "question_vs_rag": 0.8383894099443636,
+      "question_vs_gemini": 0.847144373447453,
+      "question_vs_deepseek": 0.8710424950476165,
+      "rag_vs_gemini": 0.857446105937836,
+      "rag_vs_deepseek": 0.8454161392435252,
+      "gemini_vs_deepseek": 0.8867491509976635
+    },
+    {
+      "id": 2,
+      "category": "filtered_search",
+      "difficulty": "medium",
+      "question_text": "Find science fiction books published in the 1980s",
+      "question_vs_rag": 0.9076748929271218,
+      "question_vs_gemini": 0.8607500122420495,
+      "question_vs_deepseek": 0.8505479381621392,
+      "rag_vs_gemini": 0.8423413130187921,
+      "rag_vs_deepseek": 0.8345990284070138,
+      "gemini_vs_deepseek": 0.922293540969548
+    },
+    {
+      "id": 3,
+      "category": "language_filter",
+      "difficulty": "easy",
+      "question_text": "What French language books are in the library?",
+      "question_vs_rag": 0.8495266663131361,
+      "question_vs_gemini": 0.754785375012179,
+      "question_vs_deepseek": 0.6936124216757416,
+      "rag_vs_gemini": 0.8197397450556971,
+      "rag_vs_deepseek": 0.6894871607659956,
+      "gemini_vs_deepseek": 0.6660470077802557
+    },
+    {
+      "id": 4,
+      "category": "genre_search",
+      "difficulty": "easy",
+      "question_text": "Show me romance novels available for reading",
+      "question_vs_rag": 0.7689908339344116,
+      "question_vs_gemini": 0.749821230449027,
+      "question_vs_deepseek": 0.7667408003054663,
+      "rag_vs_gemini": 0.7867292110008397,
+      "rag_vs_deepseek": 0.7812410835923245,
+      "gemini_vs_deepseek": 0.8969548866204657
+    },
+    {
+      "id": 5,
+      "category": "subject_search",
+      "difficulty": "medium",
+      "question_text": "What are some books about religion or theology?",
+      "question_vs_rag": 0.8193104152789865,
+      "question_vs_gemini": 0.8162926674403963,
+      "question_vs_deepseek": 0.8314312405728417,
+      "rag_vs_gemini": 0.7955454515059884,
+      "rag_vs_deepseek": 0.7849832496673057,
+      "gemini_vs_deepseek": 0.8787631362776513
+    },
+    {
+      "id": 6,
+      "category": "author_format",
+      "difficulty": "medium",
+      "question_text": "Find books by William Shakespeare and tell me about their formats",
+      "question_vs_rag": 0.8133498465906829,
+      "question_vs_gemini": 0.8288397682881159,
+      "question_vs_deepseek": 0.8294342972387979,
+      "rag_vs_gemini": 0.8379247597217998,
+      "rag_vs_deepseek": 0.8257284109330106,
+      "gemini_vs_deepseek": 0.8794824077061141
+    },
+    {
+      "id": 7,
+      "category": "language_filter",
+      "difficulty": "easy",
+      "question_text": "What German language publications are available?",
+      "question_vs_rag": 0.7345757476611903,
+      "question_vs_gemini": 0.7245090737382096,
+      "question_vs_deepseek": 0.7198448588779677,
+      "rag_vs_gemini": 0.6981518726557328,
+      "rag_vs_deepseek": 0.7459221439992023,
+      "gemini_vs_deepseek": 0.8574859665191323
+    },
+    {
+      "id": 8,
+      "category": "recommendation",
+      "difficulty": "medium",
+      "question_text": "Recommend books for someone interested in art and painting",
+      "question_vs_rag": 0.7676976716675706,
+      "question_vs_gemini": 0.807265505753564,
+      "question_vs_deepseek": 0.817125225686347,
+      "rag_vs_gemini": 0.7694502307148394,
+      "rag_vs_deepseek": 0.7707943921305671,
+      "gemini_vs_deepseek": 0.8329425376442314
+    },
+    {
+      "id": 9,
+      "category": "temporal_search",
+      "difficulty": "hard",
+      "question_text": "What are the oldest books in the collection from the early 1900s?",
+      "question_vs_rag": 0.8750515406387354,
+      "question_vs_gemini": 0.7714124083052254,
+      "question_vs_deepseek": 0.7422240950702076,
+      "rag_vs_gemini": 0.8306579073880099,
+      "rag_vs_deepseek": 0.808656345271023,
+      "gemini_vs_deepseek": 0.8966812415537255
+    },
+    {
+      "id": 10,
+      "category": "audience_search",
+      "difficulty": "medium",
+      "question_text": "Find children's books or educational materials for kids",
+      "question_vs_rag": 0.7378956625892541,
+      "question_vs_gemini": 0.7633759323027999,
+      "question_vs_deepseek": 0.7888614845386803,
+      "rag_vs_gemini": 0.7441584546657183,
+      "rag_vs_deepseek": 0.7322624704620075,
+      "gemini_vs_deepseek": 0.868621586168118
+    }
+  ]
+}

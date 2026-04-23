@@ -1,0 +1,18 @@
+# Library Chatbot RAG System Environment Variables
+# Copy this file to .env and add your actual values
+
+# Google AI API Key (required)
+# Get this from: https://makersuite.google.com/app/apikey
+GOOGLE_API_KEY=your_google_api_key_here
+
+# Optional: Override default model names
+# EMBEDDING_MODEL=models/text-embedding-004
+# LLM_MODEL=gemini-2.0-flash-exp
+
+# Optional: Override database path
+# VECTOR_DB_PATH=../vector_db/chroma_db
+
+# Optional: Chainlit configuration
+# CHAINLIT_HOST=localhost
+# CHAINLIT_PORT=8000
+# CHAINLIT_DEBUG=true 

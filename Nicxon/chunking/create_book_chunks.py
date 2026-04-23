@@ -1,0 +1,425 @@
+#!/usr/bin/env python3
+"""
+Library Chatbot Chunking Script
+Creates optimized text chunks from cleaned book catalog data for RAG retrieval
+"""
+import json
+import time
+from collections import defaultdict
+from datetime import datetime
+
+class BookChunker:
+    def __init__(self):
+        self.stats = {
+            'total_books': 0,
+            'chunks_created': 0,
+            'field_inclusion_counts': defaultdict(int),
+            'chunk_lengths': [],
+            'processing_start': None,
+            'processing_end': None
+        }
+    
+    def safe_get_text(self, value):
+        """Safely extract text from various field formats"""
+        if not value:
+            return ""
+        
+        if isinstance(value, str):
+            return value.strip()
+        elif isinstance(value, list):
+            if not value:
+                return ""
+            # Handle list of strings
+            if all(isinstance(item, str) for item in value):
+                return ", ".join(value)
+            # Handle list of objects (like authors)
+            elif all(isinstance(item, dict) for item in value):
+                texts = []
+                for item in value:
+                    if 'name' in item:
+                        texts.append(item['name'])
+                    elif 'value' in item:
+                        texts.append(str(item['value']))
+                    else:
+                        texts.append(str(item))
+                return ", ".join(texts)
+            else:
+                return ", ".join(str(item) for item in value)
+        elif isinstance(value, dict):
+            if 'value' in value:
+                return str(value['value'])
+            elif 'name' in value:
+                return str(value['name'])
+            elif 'key' in value:
+                # Handle language keys
+                key = value['key']
+                if key == 'english':
+                    return 'English'
+                elif key == 'spanish':
+                    return 'Spanish'
+                elif key == 'french':
+                    return 'French'
+                elif key == 'german':
+                    return 'German'
+                else:
+                    return key.replace('_', ' ').title()
+            else:
+                return str(value)
+        else:
+            return str(value)
+    
+    def format_table_of_contents(self, toc_list):
+        """Format table of contents into readable text"""
+        if not toc_list:
+            return ""
+        
+        contents = []
+        for item in toc_list:
+            if isinstance(item, dict) and 'title' in item:
+                title = item['title']
+                if 'pagenum' in item:
+                    contents.append(f"{title} (p. {item['pagenum']})")
+                else:
+                    contents.append(title)
+        
+        return "; ".join(contents) if contents else ""
+    
+    def create_chunk(self, book):
+        """Create a comprehensive text chunk for a single book"""
+        chunk_parts = []
+        metadata = {
+            'book_id': book.get('key', ''),
+            'has_description': bool(book.get('description')),
+            'has_subjects': bool(book.get('subjects')),
+            'has_toc': bool(book.get('table_of_contents')),
+            'field_count': len(book.keys())
+        }
+        
+        # TITLE SECTION
+        title = self.safe_get_text(book.get('title', ''))
+        subtitle = self.safe_get_text(book.get('subtitle', ''))
+        full_title = self.safe_get_text(book.get('full_title', ''))
+        
+        if full_title and full_title != title:
+            title_text = f"TITLE: {full_title}"
+        elif subtitle:
+            title_text = f"TITLE: {title}: {subtitle}"
+        else:
+            title_text = f"TITLE: {title}"
+        
+        chunk_parts.append(title_text)
+        self.stats['field_inclusion_counts']['title'] += 1
+        
+        # AUTHOR SECTION
+        authors = self.safe_get_text(book.get('authors', ''))
+        if authors:
+            chunk_parts.append(f"AUTHOR(S): {authors}")
+            self.stats['field_inclusion_counts']['authors'] += 1
+        
+        # DESCRIPTION SECTION (very valuable for RAG)
+        description = self.safe_get_text(book.get('description', ''))
+        if description:
+            chunk_parts.append(f"DESCRIPTION: {description}")
+            self.stats['field_inclusion_counts']['description'] += 1
+        
+        # SUBJECTS & TOPICS SECTION
+        topics = []
+        
+        subjects = self.safe_get_text(book.get('subjects', ''))
+        if subjects:
+            topics.append(f"Subjects: {subjects}")
+            self.stats['field_inclusion_counts']['subjects'] += 1
+        
+        genres = self.safe_get_text(book.get('genres', ''))
+        if genres:
+            topics.append(f"Genres: {genres}")
+            self.stats['field_inclusion_counts']['genres'] += 1
+        
+        subject_people = self.safe_get_text(book.get('subject_people', ''))
+        if subject_people:
+            topics.append(f"People: {subject_people}")
+            self.stats['field_inclusion_counts']['subject_people'] += 1
+        
+        subject_places = self.safe_get_text(book.get('subject_places', '') or book.get('subject_place', ''))
+        if subject_places:
+            topics.append(f"Places: {subject_places}")
+            self.stats['field_inclusion_counts']['subject_places'] += 1
+        
+        subject_times = self.safe_get_text(book.get('subject_times', '') or book.get('subject_time', ''))
+        if subject_times:
+            topics.append(f"Time periods: {subject_times}")
+            self.stats['field_inclusion_counts']['subject_times'] += 1
+        
+        if topics:
+            chunk_parts.append(f"SUBJECTS & TOPICS: {'; '.join(topics)}")
+        
+        # PUBLICATION SECTION
+        pub_parts = []
+        
+        publishers = self.safe_get_text(book.get('publishers', ''))
+        if publishers:
+            pub_parts.append(f"Publisher: {publishers}")
+            self.stats['field_inclusion_counts']['publishers'] += 1
+        
+        publish_date = self.safe_get_text(book.get('publish_date', ''))
+        if publish_date:
+            pub_parts.append(f"Published: {publish_date}")
+            self.stats['field_inclusion_counts']['publish_date'] += 1
+        
+        publish_places = self.safe_get_text(book.get('publish_places', ''))
+        if publish_places:
+            pub_parts.append(f"Place: {publish_places}")
+            self.stats['field_inclusion_counts']['publish_places'] += 1
+        
+        publish_country = self.safe_get_text(book.get('publish_country', ''))
+        if publish_country:
+            pub_parts.append(f"Country: {publish_country}")
+            self.stats['field_inclusion_counts']['publish_country'] += 1
+        
+        copyright_date = self.safe_get_text(book.get('copyright_date', ''))
+        if copyright_date and copyright_date != publish_date:
+            pub_parts.append(f"Copyright: {copyright_date}")
+            self.stats['field_inclusion_counts']['copyright_date'] += 1
+        
+        if pub_parts:
+            chunk_parts.append(f"PUBLICATION: {'; '.join(pub_parts)}")
+        
+        # FORMAT & DETAILS SECTION
+        format_parts = []
+        
+        physical_format = self.safe_get_text(book.get('physical_format', ''))
+        if physical_format:
+            format_parts.append(f"Format: {physical_format}")
+            self.stats['field_inclusion_counts']['physical_format'] += 1
+        
+        pages = self.safe_get_text(book.get('number_of_pages', ''))
+        if pages:
+            format_parts.append(f"Pages: {pages}")
+            self.stats['field_inclusion_counts']['number_of_pages'] += 1
+        
+        dimensions = self.safe_get_text(book.get('physical_dimensions', ''))
+        if dimensions:
+            format_parts.append(f"Dimensions: {dimensions}")
+            self.stats['field_inclusion_counts']['physical_dimensions'] += 1
+        
+        weight = self.safe_get_text(book.get('weight', ''))
+        if weight:
+            format_parts.append(f"Weight: {weight}")
+            self.stats['field_inclusion_counts']['weight'] += 1
+        
+        if format_parts:
+            chunk_parts.append(f"FORMAT & DETAILS: {'; '.join(format_parts)}")
+        
+        # LANGUAGE SECTION
+        languages = self.safe_get_text(book.get('languages', ''))
+        if languages:
+            chunk_parts.append(f"LANGUAGE: {languages}")
+            self.stats['field_inclusion_counts']['languages'] += 1
+        
+        # SERIES SECTION
+        series = self.safe_get_text(book.get('series', ''))
+        if series:
+            chunk_parts.append(f"SERIES: {series}")
+            self.stats['field_inclusion_counts']['series'] += 1
+        
+        # CONTENT PREVIEW SECTION
+        content_parts = []
+        
+        first_sentence = self.safe_get_text(book.get('first_sentence', ''))
+        if first_sentence:
+            content_parts.append(f"Opening: {first_sentence}")
+            self.stats['field_inclusion_counts']['first_sentence'] += 1
+        
+        toc = book.get('table_of_contents', [])
+        if toc:
+            toc_text = self.format_table_of_contents(toc)
+            if toc_text:
+                content_parts.append(f"Contents: {toc_text}")
+                self.stats['field_inclusion_counts']['table_of_contents'] += 1
+        
+        if content_parts:
+            chunk_parts.append(f"CONTENT PREVIEW: {'; '.join(content_parts)}")
+        
+        # CLASSIFICATION SECTION
+        class_parts = []
+        
+        dewey = self.safe_get_text(book.get('dewey_decimal_class', ''))
+        if dewey:
+            class_parts.append(f"Dewey Decimal: {dewey}")
+            self.stats['field_inclusion_counts']['dewey_decimal_class'] += 1
+        
+        lexile = self.safe_get_text(book.get('lexile', ''))
+        if lexile:
+            class_parts.append(f"Reading Level: {lexile}")
+            self.stats['field_inclusion_counts']['lexile'] += 1
+        
+        if class_parts:
+            chunk_parts.append(f"CLASSIFICATION: {'; '.join(class_parts)}")
+        
+        # IDENTIFIERS SECTION (important for acquisition)
+        id_parts = []
+        
+        isbn_13 = self.safe_get_text(book.get('isbn_13', ''))
+        if isbn_13:
+            id_parts.append(f"ISBN-13: {isbn_13}")
+            self.stats['field_inclusion_counts']['isbn_13'] += 1
+        
+        isbn_10 = self.safe_get_text(book.get('isbn_10', ''))
+        if isbn_10:
+            id_parts.append(f"ISBN-10: {isbn_10}")
+            self.stats['field_inclusion_counts']['isbn_10'] += 1
+        
+        oclc = self.safe_get_text(book.get('oclc_numbers', '') or book.get('oclc_number', ''))
+        if oclc:
+            id_parts.append(f"OCLC: {oclc}")
+            self.stats['field_inclusion_counts']['oclc_numbers'] += 1
+        
+        if id_parts:
+            chunk_parts.append(f"IDENTIFIERS: {'; '.join(id_parts)}")
+        
+        # NOTES SECTION
+        notes = self.safe_get_text(book.get('notes', ''))
+        if notes:
+            chunk_parts.append(f"NOTES: {notes}")
+            self.stats['field_inclusion_counts']['notes'] += 1
+        
+        # Create final chunk
+        chunk_text = "\n\n".join(chunk_parts)
+        self.stats['chunk_lengths'].append(len(chunk_text))
+        
+        return {
+            'text': chunk_text,
+            'metadata': metadata,
+            'original_book': book  # Keep for reference
+        }
+    
+    def process_all_books(self, input_file, output_file):
+        """Process all books and create chunks"""
+        print(f"Starting chunking process...")
+        print(f"Input: {input_file}")
+        print(f"Output: {output_file}")
+        
+        self.stats['processing_start'] = datetime.now()
+        
+        # Load data
+        print("Loading book data...")
+        with open(input_file, 'r', encoding='utf-8') as f:
+            books = json.load(f)
+        
+        self.stats['total_books'] = len(books)
+        print(f"Loaded {len(books)} books")
+        
+        # Process books
+        print("Creating chunks...")
+        chunks = []
+        
+        for i, book in enumerate(books):
+            if i % 1000 == 0:
+                print(f"Processed {i}/{len(books)} books...")
+            
+            chunk = self.create_chunk(book)
+            chunks.append(chunk)
+            self.stats['chunks_created'] += 1
+        
+        self.stats['processing_end'] = datetime.now()
+        
+        # Save chunks
+        print(f"Saving {len(chunks)} chunks...")
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(chunks, f, indent=2, ensure_ascii=False)
+        
+        print(f"Chunks saved to {output_file}")
+        return chunks
+    
+    def generate_statistics_report(self, output_file):
+        """Generate detailed statistics report"""
+        report = []
+        report.append("LIBRARY CHATBOT CHUNKING STATISTICS")
+        report.append("=" * 50)
+        report.append(f"Processing Date: {self.stats['processing_start'].strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        duration = self.stats['processing_end'] - self.stats['processing_start']
+        report.append(f"Processing Time: {duration}")
+        report.append("")
+        
+        report.append("PROCESSING SUMMARY:")
+        report.append(f"Total books processed: {self.stats['total_books']:,}")
+        report.append(f"Chunks created: {self.stats['chunks_created']:,}")
+        report.append("")
+        
+        report.append("CHUNK LENGTH STATISTICS:")
+        if self.stats['chunk_lengths']:
+            avg_length = sum(self.stats['chunk_lengths']) / len(self.stats['chunk_lengths'])
+            min_length = min(self.stats['chunk_lengths'])
+            max_length = max(self.stats['chunk_lengths'])
+            
+            report.append(f"Average chunk length: {avg_length:.0f} characters")
+            report.append(f"Minimum chunk length: {min_length:,} characters")
+            report.append(f"Maximum chunk length: {max_length:,} characters")
+        report.append("")
+        
+        report.append("FIELD INCLUSION STATISTICS:")
+        report.append("(How many chunks included each field)")
+        total_chunks = self.stats['chunks_created']
+        
+        for field, count in sorted(self.stats['field_inclusion_counts'].items(), 
+                                 key=lambda x: x[1], reverse=True):
+            percentage = (count / total_chunks) * 100
+            report.append(f"{field:25s}: {count:5d} chunks ({percentage:5.1f}%)")
+        
+        report.append("")
+        report.append("CHUNKING PROCESS COMPLETE ✅")
+        
+        # Save report
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(report))
+        
+        print('\n'.join(report))
+    
+    def create_sample_chunks(self, chunks, output_file, num_samples=10):
+        """Create human-readable sample chunks for review"""
+        samples = []
+        samples.append("LIBRARY CHATBOT CHUNK SAMPLES")
+        samples.append("=" * 50)
+        samples.append(f"Showing {num_samples} sample chunks for quality review")
+        samples.append("")
+        
+        for i in range(min(num_samples, len(chunks))):
+            chunk = chunks[i]
+            samples.append(f"SAMPLE CHUNK #{i+1}")
+            samples.append("-" * 30)
+            samples.append(chunk['text'])
+            samples.append("")
+            samples.append(f"Metadata: {chunk['metadata']}")
+            samples.append("")
+            samples.append("=" * 80)
+            samples.append("")
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(samples))
+        
+        print(f"Sample chunks saved to {output_file}")
+
+def main():
+    chunker = BookChunker()
+    
+    # Process books
+    chunks = chunker.process_all_books(
+        'cleaned_data/books_updated_cleaned.json',
+        'chunking/book_chunks.json'
+    )
+    
+    # Generate statistics
+    chunker.generate_statistics_report('chunking/chunk_statistics.txt')
+    
+    # Create samples
+    chunker.create_sample_chunks(chunks, 'chunking/sample_chunks.txt')
+    
+    print("\n✅ Chunking process completed successfully!")
+    print("\nOutput files created:")
+    print("- chunking/book_chunks.json (main output)")
+    print("- chunking/chunk_statistics.txt (statistics)")
+    print("- chunking/sample_chunks.txt (quality review)")
+
+if __name__ == "__main__":
+    main() 

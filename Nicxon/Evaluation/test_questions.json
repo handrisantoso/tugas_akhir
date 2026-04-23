@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "question": "What books by Thomas Aquinas are available in the collection?",
+    "category": "author_search",
+    "difficulty": "easy",
+    "expected_elements": ["Thomas Aquinas", "Commento alla Metafisica di Aristotele"]
+  },
+  {
+    "id": 2,
+    "question": "Find science fiction books published in the 1980s",
+    "category": "filtered_search",
+    "difficulty": "medium",
+    "expected_elements": ["science fiction", "1980s", "publication year"]
+  },
+  {
+    "id": 3,
+    "question": "What French language books are in the library?",
+    "category": "language_filter",
+    "difficulty": "easy",
+    "expected_elements": ["French", "language", "Le chat proverbial", "Double jeu"]
+  },
+  {
+    "id": 4,
+    "question": "Show me romance novels available for reading",
+    "category": "genre_search",
+    "difficulty": "easy",
+    "expected_elements": ["romance", "Her Unexpected Catch", "How to Love a Cowboy"]
+  },
+  {
+    "id": 5,
+    "question": "What are some books about religion or theology?",
+    "category": "subject_search",
+    "difficulty": "medium",
+    "expected_elements": ["religion", "theology", "Confessions", "Augustine", "Healing Secrets"]
+  },
+  {
+    "id": 6,
+    "question": "Find books by William Shakespeare and tell me about their formats",
+    "category": "author_format",
+    "difficulty": "medium",
+    "expected_elements": ["William Shakespeare", "Comedies", "format", "paperback", "372 pages"]
+  },
+  {
+    "id": 7,
+    "question": "What German language publications are available?",
+    "category": "language_filter",
+    "difficulty": "easy",
+    "expected_elements": ["German", "Römerradweg", "german language", "Rechtsvergleicher"]
+  },
+  {
+    "id": 8,
+    "question": "Recommend books for someone interested in art and painting",
+    "category": "recommendation",
+    "difficulty": "medium",
+    "expected_elements": ["art", "painting", "Colour: a workshop", "12-Hour Art Expert"]
+  },
+  {
+    "id": 9,
+    "question": "What are the oldest books in the collection from the early 1900s?",
+    "category": "temporal_search",
+    "difficulty": "hard",
+    "expected_elements": ["early 1900s", "1909", "A new philosophy of life", "oldest"]
+  },
+  {
+    "id": 10,
+    "question": "Find children's books or educational materials for kids",
+    "category": "audience_search",
+    "difficulty": "medium",
+    "expected_elements": ["children", "kids", "coloring book", "Dinosaur Coloring Book", "Scooby Doo"]
+  }
+] 

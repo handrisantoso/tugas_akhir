@@ -1,0 +1,16 @@
+# Environment Variables Template
+# Copy this content to a file named ".env" in the Evaluation folder
+
+# Google API Key (for Gemini and embeddings)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# OpenRouter API Key (for DeepSeek R1 Zero)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Instructions:
+# 1. Create a file named ".env" (with the dot) in the Evaluation folder
+# 2. Copy the two lines above with your actual API keys
+# 3. Replace "your_google_api_key_here" with your actual Google API key
+# 4. Replace "your_openrouter_api_key_here" with your actual OpenRouter API key
+# 5. Save the file
+# 6. The evaluation scripts will automatically load these variables 

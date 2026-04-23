@@ -1,0 +1,221 @@
+LIBRARY CHATBOT CHUNK SAMPLES
+==================================================
+Showing 10 sample chunks for quality review
+
+SAMPLE CHUNK #1
+------------------------------
+TITLE: Andrea's Complete Wine Course for Everyone
+
+FORMAT & DETAILS: Format: CD-ROM
+
+IDENTIFIERS: ISBN-13: 9780977103218; ISBN-10: 0977103218; OCLC: 71042518
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 6}
+
+================================================================================
+
+SAMPLE CHUNK #2
+------------------------------
+TITLE: One Flesh: God's Gift of Passion: Love, Sex and Romance in Marriage
+
+PUBLICATION: Publisher: Pillar Books & Publishing Co; Published: 1993
+
+FORMAT & DETAILS: Format: Hardcover
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9781880089101; ISBN-10: 1880089106
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 9}
+
+================================================================================
+
+SAMPLE CHUNK #3
+------------------------------
+TITLE: Rājar̥shi Purushottamadāsa Ṭaṇḍana
+
+DESCRIPTION: Festschrift honoring Purushottamadāsa Ṭaṇḍana, 1882-1962, Hindi author and freedom fighter, on his birth centenary; comprises articles on his life and works.
+
+SUBJECTS & TOPICS: Subjects: Ṭaṇḍana, Purushottamadāsa, 1882-1962 -- Criticism and interpretation.
+
+PUBLICATION: Publisher: Uttara Pradeśa Hindī Saṃsthāna; Published: 1992; Place: Lakhanaū; Country: ii
+
+FORMAT & DETAILS: Pages: 188
+
+LANGUAGE: {'key': 'hindi'}
+
+SERIES: Hindī Samiti Prabhāga ;, granthāṅka 276, Hindī Samiti Prabhāga (Series) ;, granthāṅka 276.
+
+IDENTIFIERS: OCLC: 30668266
+
+NOTES: In Hindi.
+
+Metadata: {'book_id': '', 'has_description': True, 'has_subjects': True, 'has_toc': False, 'field_count': 12}
+
+================================================================================
+
+SAMPLE CHUNK #4
+------------------------------
+TITLE: Cyclic tests of P-bulb end-seal designs for a shuttle-type wing-elevon cove membrane seal
+
+AUTHOR(S): L. Roane Hunt
+
+SUBJECTS & TOPICS: Subjects: Reusable space vehicles -- Design and construction
+
+PUBLICATION: Publisher: National Aeronautics and Space Administration, Scientific and Technical Information Branch, For sale by the National Technical Information Service]; Published: 1979; Place: Washington, D.C, [Spingfield, Va; Country: dcu
+
+FORMAT & DETAILS: Pages: 27
+
+LANGUAGE: {'key': 'english'}
+
+SERIES: NASA technical memorandum -- 80093
+
+NOTES: "July 1979"--Cover
+
+Bibliography: p. 8
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 11}
+
+================================================================================
+
+SAMPLE CHUNK #5
+------------------------------
+TITLE: Census of population, 1960.
+
+SUBJECTS & TOPICS: Subjects: United States -- Census, 18th, 1960, Florida -- Population, Florida -- Census, 1960; Genres: Census, 18th, 1960., Census, 1960.
+
+PUBLICATION: Publisher: U.S. Dept. of Commerce, Bureau of the Census, For sale by the Supt. of Docs., U.S. Govt. Print. Off.; Published: 1963; Place: Washington; Country: dcu
+
+FORMAT & DETAILS: Pages: 678
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: OCLC: 43868708
+
+NOTES: "May 1963"--P. iii.
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 13}
+
+================================================================================
+
+SAMPLE CHUNK #6
+------------------------------
+TITLE: Commento alla Metafisica di Aristotele e testo integrale di Aristotele
+
+AUTHOR(S): Thomas Aquinas
+
+PUBLICATION: Publisher: ESD; Published: 2004; Place: Bologna; Country: it
+
+LANGUAGE: {'key': 'italian'}
+
+CONTENT PREVIEW: Contents: v. 1. Libri 1-4; v. 2. Libri 5-8; v. 3. Libri 9-12 /; a cura di Lorenzo Perotto
+
+CLASSIFICATION: Dewey Decimal: 110
+
+IDENTIFIERS: ISBN-10: 887094526X, 8870945340, 8870945359; OCLC: 57184097
+
+NOTES: Includes introduction (p. 5-29) by the editor, bibliography, bibl. references and notes.
+
+With facing Latin text.
+
+Aristoteles (384-322 B.C.).
+
+Includes bibliographical references.
+
+Italian, Latin.
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': True, 'field_count': 12}
+
+================================================================================
+
+SAMPLE CHUNK #7
+------------------------------
+TITLE: Le chat proverbial
+
+AUTHOR(S): Hans-Jürgen Greif
+
+SUBJECTS & TOPICS: Subjects: Cats -- Fiction; Genres: Fiction
+
+PUBLICATION: Publisher: L'Instant même; Published: 2009; Place: Québec, Québec; Country: quc
+
+FORMAT & DETAILS: Pages: 290
+
+LANGUAGE: {'key': 'french'}
+
+CONTENT PREVIEW: Contents: Bon chat n'a pas besoin de collier d'or; Dans un pays sans chien on ferait aboyer le chat; À chat repu le derrière de la souris pue; Un chat perd ses poils, mais pas ses manières; Deux femmes dans la même maison, deux chats dans le même sac; À bon chat bon rat; Propriétaire heureux, chat heureux; Propriétaire indifférent, chat reclus; Le chat est son meilleur conseiller; Le lait couvert n'est pas lapé par le chat; N'appelle pas le chat pour mettre d'accord deux oiseaux; Aucun chat ne prend de souris pour l'amour de Dieu.
+
+CLASSIFICATION: Dewey Decimal: 843/.914
+
+IDENTIFIERS: ISBN-13: 9782895022794; OCLC: 319691762
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': True, 'field_count': 14}
+
+================================================================================
+
+SAMPLE CHUNK #8
+------------------------------
+TITLE: Confessions
+
+AUTHOR(S): Augustine of Hippo
+
+PUBLICATION: Publisher: Penguin USA, Inc.; Published: 2009; Place: New York; Country: nyu
+
+FORMAT & DETAILS: Format: Electronic resource
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9781101110898, 9781101117736, 9781101116029
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 10}
+
+================================================================================
+
+SAMPLE CHUNK #9
+------------------------------
+TITLE: Selbstverwirklichung: Chancen, Grenzen, Wege
+
+SUBJECTS & TOPICS: Subjects: Self-acceptance -- Religious aspects -- Christianity., Self-realization -- Religious aspects -- Christianity.
+
+PUBLICATION: Publisher: Matthias-Grünewald-Verlag; Published: 1987; Place: Mainz; Country: gw
+
+FORMAT & DETAILS: Pages: 177
+
+LANGUAGE: {'key': 'german'}
+
+SERIES: Moraltheologie interdisziplinär
+
+CLASSIFICATION: Dewey Decimal: 233
+
+IDENTIFIERS: ISBN-10: 3786712832; OCLC: 16863777
+
+NOTES: Includes bibliographical references.
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 14}
+
+================================================================================
+
+SAMPLE CHUNK #10
+------------------------------
+TITLE: A new philosophy of life
+
+AUTHOR(S): John Herman Randall Sr.
+
+SUBJECTS & TOPICS: Subjects: New Thought
+
+PUBLICATION: Publisher: Dodge Pub. Co.; Published: 1909; Place: New York; Country: nyu
+
+FORMAT & DETAILS: Pages: 563
+
+LANGUAGE: {'key': 'english'}
+
+CONTENT PREVIEW: Contents: Foreword.; The universal mind.; The divinity of man.; The powers and possibilities of the subconscious mind.; Faith as a vital force.; The law of suggestion.; Auto-suggestion.; Mind and medicine.; Physical wholeness.; Awakening latent mental powers.; The achievement of character.; The conquest of fear and worry.; The psychology of prayer.; Spiritual consciousness.; The rediscovery of Jesus.
+
+CLASSIFICATION: Dewey Decimal: 289.9
+
+IDENTIFIERS: OCLC: 12791898
+
+NOTES: Various pagings.
+
+Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': True, 'field_count': 15}
+
+================================================================================

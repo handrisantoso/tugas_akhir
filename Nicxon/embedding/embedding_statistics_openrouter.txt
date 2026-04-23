@@ -1,0 +1,23 @@
+LIBRARY CHATBOT EMBEDDING STATISTICS (OpenRouter)
+==================================================
+Processing Date: 2026-04-18 01:12:57
+Processing Time: 1:44:13.603715
+
+PROCESSING SUMMARY:
+Total chunks: 8,992
+Successfully processed: 8,992
+Failed: 0
+Success rate: 100.0%
+
+API USAGE STATISTICS:
+Total API calls: 8,992
+Rate limit hits: 0
+Total tokens processed: 978,432
+Average tokens per call: 108.8
+
+EMBEDDING DETAILS:
+Model used: google/gemini-embedding-001
+Embedding dimensions: 3072
+Average chunk length: 395 characters
+
+EMBEDDING GENERATION COMPLETE ✅
