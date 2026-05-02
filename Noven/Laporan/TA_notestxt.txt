@@ -1,0 +1,41 @@
+Contextual Embeddings
+Retrieval Methods
+Model Comparison
+IndoBERT
+
+
+
+=== Bimbingan 1 ===
+~Latar Belakang~
+Carikan data Shopee menjadi leading marketplace dan perkembangannya
+Carikan data mengenai orang susah mengambil keputusan dalam pembelian produk
+
+~Penelitian Terkait/Studi Preseden~
+20 dalam bentuk paragraph flowing
+
+
+1. Rumusan Masalah point 1 dikembangkan untuk memasukkan arsitektur system
+2. Embedding, Retrieval dan generation comparison
+3. Metode Penelitian buatkan grafik untuk semua metode yang dilakukan penelitian terkait, lalu pilih salah satu metode 
+
+=== Sempro Kel 1 ===
+1. Flowchart digabungkan menjadi 1 flow saja untuk seluruh system.
+
+
+=== Bimbingan 2 ===
+Ganti Rumusan masalah no 2 menjadi retrieval
+Ganti Rumusahn masalah no 3 menjadi LLM
+Ganti Framework RAG
+Metode Filtering
+
+
+=== Notes ===
+2.1.1 Chatbot
+2.1.2 Analisis Sentimen pada E-commerce
+2.1.3 Sistem rekomendasi berbasis ulasan
+
+2.2.1 NLP
+2.2.2 RAG
+2.2.3 Chunking (Adaptive Chunking)
+2.2.4 Embedding
+2.2.5 LLM
