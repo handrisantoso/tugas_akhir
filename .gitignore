@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# ML Models & Scalers
+models/*.keras
+models/*.tflite
+models/*.joblib
+
+# Datasets (uncomment if you want to keep data local)
+# dataset/gesture_data.csv
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
