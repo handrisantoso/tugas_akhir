@@ -49,12 +49,17 @@ class GestureGloveApp(ctk.CTk):
         # Build tab contents
         self.recorder_tab = RecorderTab(tab1, self.serial)
         self.recorder_tab.pack(fill="both", expand=True)
+        # recorder_tab handles keyboard hold/release via callbacks below
 
         self.train_tab = TrainTab(tab2)
         self.train_tab.pack(fill="both", expand=True)
 
         self.debug_tab = DebugTab(tab3, self.serial)
         self.debug_tab.pack(fill="both", expand=True)
+
+        # ── Global keyboard — hold 1-5 to record ──────────────
+        self.bind("<KeyPress>", self._on_key_press)
+        self.bind("<KeyRelease>", self._on_key_release)
 
         # ── Footer Status Bar ──
         footer = ctk.CTkFrame(self, height=28, corner_radius=0, fg_color="#0f0f23")
@@ -67,6 +72,12 @@ class GestureGloveApp(ctk.CTk):
 
         # Handle close
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _on_key_press(self, event):
+        self.recorder_tab.on_key_press(event.keysym)
+
+    def _on_key_release(self, event):
+        self.recorder_tab.on_key_release(event.keysym)
 
     def _on_close(self):
         if self.serial.is_connected:

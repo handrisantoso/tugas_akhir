@@ -18,31 +18,31 @@ STEP_SIZE      = int(WINDOW_SIZE * (1 - OVERLAP))  # 125 samples = 1.25 sec
 BAUD_RATE      = 115200
 
 # ─── Hardware (XIAO Seeed ESP32-S3) ─────────────────────────────
-I2C_SDA_PIN       = 4
-I2C_SCL_PIN       = 5
+I2C_SDA_PIN       = 4   # D4 (default ESP32-S3 I2C SDA)
+I2C_SCL_PIN       = 5   # D5 (default ESP32-S3 I2C SCL)
 MPU6050_ADDR      = 0x69      # AD0 pulled HIGH
 MPU_ACCEL_RANGE   = 8         # ±8g
 MPU_GYRO_RANGE    = 500       # ±500°/s
 
 # ─── Gesture Definitions ────────────────────────────────────────
-GESTURE_NAMES  = ["idle", "swipe_up", "swipe_left", "swipe_right", "swipe_down"]
+GESTURE_NAMES  = ["idle", "flick_up", "wave_left", "wave_right", "flick_down"]
 GESTURE_LABELS = {name: i for i, name in enumerate(GESTURE_NAMES)}
 
 GESTURE_COLORS = {
     "idle":        "#6B7280",   # gray
-    "swipe_up":    "#EF4444",   # red
-    "swipe_left":  "#3B82F6",   # blue
-    "swipe_right": "#22C55E",   # green
-    "swipe_down":  "#F59E0B",   # amber
+    "flick_up":    "#EF4444",   # red
+    "wave_left":   "#3B82F6",   # blue
+    "wave_right":  "#22C55E",   # green
+    "flick_down":  "#F59E0B",   # amber
 }
 
 # HID key mapping (USB HID usage IDs for arrow keys)
 HID_KEY_MAP = {
     0: None,        # idle — no key
-    1: 0x52,        # swipe_up    → Arrow Up
-    2: 0x50,        # swipe_left  → Arrow Left
-    3: 0x4F,        # swipe_right → Arrow Right
-    4: 0x51,        # swipe_down  → Arrow Down
+    1: 0x52,        # flick_up    → Arrow Up
+    2: 0x50,        # wave_left  → Arrow Left
+    3: 0x4F,        # wave_right → Arrow Right
+    4: 0x51,        # flick_down  → Arrow Down
 }
 
 # ─── Inference Thresholds ────────────────────────────────────────
@@ -58,12 +58,13 @@ VALIDATION_SPLIT   = 0.2
 TFLITE_ARENA_KB    = 100      # TFLite arena size for ESP32
 
 # ─── Paths (relative to project root) ───────────────────────────
-PROJECT_ROOT  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT  = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR   = os.path.join(PROJECT_ROOT, "dataset")
 MODELS_DIR    = os.path.join(PROJECT_ROOT, "models")
 HEADERS_DIR   = os.path.join(PROJECT_ROOT, "output_headers")
-FIRMWARE_DIR  = os.path.join(PROJECT_ROOT, "firmware", "gesture_glove_esp32")
-DEFAULT_CSV   = os.path.join(DATASET_DIR, "gesture_data.csv")
+FIRMWARE_RF_DIR   = os.path.join(PROJECT_ROOT, "firmware", "gesture_glove_rf")
+FIRMWARE_MLP_DIR  = os.path.join(PROJECT_ROOT, "firmware", "gesture_glove_mlp")
+DEFAULT_CSV   = os.path.join(DATASET_DIR, "gesture_dataset.csv")
 
 # Create directories on import
 for d in [DATASET_DIR, MODELS_DIR, HEADERS_DIR]:
@@ -71,13 +72,8 @@ for d in [DATASET_DIR, MODELS_DIR, HEADERS_DIR]:
 
 # ─── CSV Column Names ───────────────────────────────────────────
 def get_csv_columns():
-    """Generate column names for the dataset CSV."""
-    cols = []
-    for t in range(WINDOW_SIZE):
-        for axis in ["ax", "ay", "az", "gx", "gy", "gz"]:
-            cols.append(f"{axis}_{t}")
-    cols.append("label")
-    return cols
+    """Generate column names for the 'Long' format dataset CSV."""
+    return ["label", "sample_id", "timestamp_ms", "ax", "ay", "az", "gx", "gy", "gz"]
 
 CSV_COLUMNS = get_csv_columns()
 

@@ -3,14 +3,14 @@ import customtkinter as ctk
 import threading
 import os
 import queue
-import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns
 from config import (
-    GESTURE_NAMES, DEFAULT_CSV, HEADERS_DIR, DEFAULT_EPOCHS,
-    DEFAULT_BATCH_SIZE, DEFAULT_RF_TREES, DEFAULT_RF_DEPTH, NUM_FEATURES
+    GESTURE_NAMES, DEFAULT_CSV, HEADERS_DIR, MODELS_DIR, FIRMWARE_RF_DIR,
+    DEFAULT_EPOCHS, DEFAULT_BATCH_SIZE, DEFAULT_RF_TREES
 )
+import os
 from recorder import GestureRecorder
 from models import train_model
 
@@ -64,6 +64,13 @@ class TrainTab(ctk.CTkFrame):
         self.quant_var = ctk.BooleanVar(value=True)
         self.quant_cb = ctk.CTkCheckBox(cfg_row, text="Int8 Quantize", variable=self.quant_var, font=("Inter", 11))
         self.quant_cb.pack(side="left", padx=12)
+
+        self.full_train_var = ctk.BooleanVar(value=True)
+        self.full_train_cb = ctk.CTkCheckBox(
+            cfg_row, text="Train on all data",
+            variable=self.full_train_var, font=("Inter", 11),
+        )
+        self.full_train_cb.pack(side="left", padx=8)
 
         # ── Train + Export Buttons ──
         btn_row = ctk.CTkFrame(top, fg_color="transparent")
@@ -148,6 +155,7 @@ class TrainTab(ctk.CTkFrame):
             batch = int(self.batch_var.get())
             trees = int(self.trees_var.get())
             quant = self.quant_var.get()
+            full_train = self.full_train_var.get()
 
             if model_type == "rf":
                 def on_progress(tree_idx, total_trees):
@@ -160,6 +168,7 @@ class TrainTab(ctk.CTkFrame):
                 model_type, X, y,
                 epochs=epochs, batch_size=batch,
                 n_estimators=trees, quantize_int8=quant,
+                full_train=full_train,
                 progress_callback=on_progress
             )
             self.progress_queue.put(("done", result))
@@ -195,13 +204,44 @@ class TrainTab(ctk.CTkFrame):
         self._last_result = result
         self.train_btn.configure(state="normal")
         self.export_btn.configure(state="normal")
-        acc = result.get("accuracy", 0)
-        self.status_lbl.configure(text=f"✅ Done — Accuracy: {acc:.1%}", text_color="#22C55E")
+        acc        = result.get("accuracy", 0)        # eval holdout accuracy
+        val_acc    = result.get("val_accuracy", 0)
+        train_n    = result.get("train_samples", 0)
+        val_n      = result.get("val_samples", 0)
+        test_n     = result.get("test_samples", 0)
+        model_type = self.model_var.get()
+        deployed_all = result.get("deployed_on_all", False)
+
+        note = " [all data]" if deployed_all else ""
+        self.status_lbl.configure(
+            text=f"Done{note} — Eval: {acc:.1%}  "
+                 f"(train={train_n} eval={test_n})",
+            text_color="#22C55E"
+        )
 
         # Model size
         fs = result.get("float_model_size", 0)
         qs = result.get("quantized_model_size", 0)
         self.size_lbl.configure(text=f"Size: {fs/1024:.1f}KB → {qs/1024:.1f}KB")
+
+        # Auto-export header immediately after training
+        header_path = result.get("header_path", "")
+        if header_path:
+            # Copy to all firmware directories
+            targets = {
+                "PC model": os.path.join(MODELS_DIR, f"{model_type}_model.keras" if model_type != "rf" else f"{model_type}_model.joblib"),
+                "ESP32 header": header_path,
+            }
+            for label, path in targets.items():
+                if os.path.isfile(path):
+                    short = os.path.relpath(path)
+                    self.status_lbl.configure(
+                        text=f"✅ Exported → {short}", text_color="#22C55E")
+                    break
+            self.export_btn.configure(text="📦 Re-export C Header")
+        else:
+            err = result.get("header_error", "unknown error")
+            self.status_lbl.configure(text=f"⚠️ Export skipped: {err[:60]}", text_color="#F59E0B")
 
         # Plot training curves
         history = result.get("history")
@@ -238,22 +278,47 @@ class TrainTab(ctk.CTkFrame):
         self.fig.tight_layout(pad=2)
         self.canvas.draw_idle()
 
-        # Classification report
+        # Classification report (EVAL holdout set)
         report = result.get("report", {})
         self.report_text.delete("1.0", "end")
-        header = f"{'Class':<15} {'Prec':>6} {'Recall':>7} {'F1':>6} {'Support':>8}\n"
-        self.report_text.insert("end", header)
+        mode_note = " [Deployed: ALL data]" if deployed_all else " [70/20/10 split]"
+        self.report_text.insert("end", "=" * 52 + "\n")
+        self.report_text.insert("end", f"  EVAL HOLD-OUT REPORT{mode_note}\n")
+        self.report_text.insert("end", f"  Train (deployed): {train_n}  Eval holdout: {test_n}\n")
+        self.report_text.insert("end", "=" * 52 + "\n")
+        self.report_text.insert("end",
+            f"{'Class':<14} {'Prec':>6} {'Recall':>7} {'F1':>6} {'Support':>8}\n")
         self.report_text.insert("end", "─" * 45 + "\n")
         for name in GESTURE_NAMES:
             if name in report:
                 r = report[name]
-                line = f"{name:<15} {r['precision']:>6.2f} {r['recall']:>7.2f} {r['f1-score']:>6.2f} {int(r['support']):>8}\n"
-                self.report_text.insert("end", line)
+                self.report_text.insert("end",
+                    f"{name:<14} {r['precision']:>6.2f} {r['recall']:>7.2f} "
+                    f"{r['f1-score']:>6.2f} {int(r['support']):>8}\n")
         if "accuracy" in report:
-            self.report_text.insert("end", f"\n{'Accuracy':<15} {report['accuracy']:>20.2f}\n")
+            self.report_text.insert("end", "─" * 45 + "\n")
+            self.report_text.insert("end",
+                f"{'Test Accuracy':<14} {report['accuracy']:>29.2f}\n")
+            self.report_text.insert("end",
+                f"{'Val Accuracy':<14} {val_acc:>29.2f}\n")
+            self.report_text.insert("end", "─" * 45 + "\n")
 
     def _export_header(self):
         if self._last_result and "header_path" in self._last_result:
-            self.status_lbl.configure(text=f"Exported: {self._last_result['header_path']}", text_color="#22C55E")
+            header = self._last_result["header_path"]
+            model_type = self.model_var.get()
+            # Show firmware output paths
+            esp32_path = os.path.join(
+                os.path.dirname(FIRMWARE_RF_DIR), "gesture_glove_esp32",
+                f"{model_type}_model_data.h" if model_type != "rf" else "rf_model_data.h"
+            )
+            self.status_lbl.configure(
+                text=f"✅ Exported → {os.path.relpath(header)}", text_color="#22C55E")
+            self.report_text.delete("1.0", "end")
+            self.report_text.insert("end", "Export targets:\n")
+            self.report_text.insert("end", f"  • output_headers/   ← {os.path.relpath(header)}\n")
+            if os.path.isfile(esp32_path):
+                self.report_text.insert("end", f"  • firmware/esp32/   ← {os.path.relpath(esp32_path)}\n")
+            self.report_text.insert("end", "\nTo use on ESP32: flash firmware/gesture_glove_esp32/\n")
         else:
             self.status_lbl.configure(text="Train a model first!", text_color="#EF4444")

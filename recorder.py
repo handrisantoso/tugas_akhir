@@ -267,35 +267,46 @@ class GestureRecorder:
         return flat.reshape(WINDOW_SIZE, NUM_AXES)
 
     def save_to_csv(self, filepath=None):
-        """Save all session samples to CSV file.
+        """Save all session samples to CSV file in 'Long' format.
 
         Args:
             filepath: Path to CSV file. If None, uses default path.
 
         Returns:
-            tuple: (filepath, num_samples_saved)
+            tuple: (filepath, num_windows_saved)
         """
         if filepath is None:
             filepath = DEFAULT_CSV
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        file_exists = os.path.isfile(filepath) and os.path.getsize(filepath) > 0
 
-        file_exists = os.path.isfile(filepath)
-
+        session_id = int(time.time())
+        
         with open(filepath, "a", newline="") as f:
             writer = csv.writer(f)
 
             # Write header if new file
-            if not file_exists or os.path.getsize(filepath) == 0:
+            if not file_exists:
                 writer.writerow(CSV_COLUMNS)
 
-            count = 0
-            for flat_array, label in self.session_samples:
-                row = flat_array.tolist() + [label]
-                writer.writerow(row)
-                count += 1
+            window_count = 0
+            for window_idx, (flat_array, label_idx) in enumerate(self.session_samples):
+                gesture_name = GESTURE_NAMES[label_idx]
+                sample_id = f"{gesture_name}_{session_id}_{window_idx}"
+                
+                # Reshape back to (WINDOW_SIZE, NUM_AXES)
+                data = flat_array.reshape(WINDOW_SIZE, NUM_AXES)
+                
+                for t in range(WINDOW_SIZE):
+                    timestamp_ms = t * (1000 // SAMPLE_RATE_HZ)
+                    # Row: label, sample_id, timestamp_ms, ax, ay, az, gx, gy, gz
+                    row = [gesture_name, sample_id, timestamp_ms] + data[t].tolist()
+                    writer.writerow(row)
+                
+                window_count += 1
 
-        return filepath, count
+        return filepath, window_count
 
     def clear_session(self):
         """Clear all recorded samples from the current session."""
@@ -304,14 +315,7 @@ class GestureRecorder:
 
     @staticmethod
     def load_csv(filepath=None):
-        """Load a dataset CSV and return sample counts per gesture.
-
-        Args:
-            filepath: Path to CSV file.
-
-        Returns:
-            tuple: (DataFrame, dict of gesture_name → count)
-        """
+        """Load a dataset CSV and return sample counts per gesture."""
         if filepath is None:
             filepath = DEFAULT_CSV
 
@@ -319,28 +323,70 @@ class GestureRecorder:
             return None, {name: 0 for name in GESTURE_NAMES}
 
         df = pd.read_csv(filepath)
-
-        counts = {}
-        for name in GESTURE_NAMES:
-            label = GESTURE_NAMES.index(name)
-            counts[name] = int((df["label"] == label).sum())
-
-        return df, counts
+        
+        # Detection: is it "long" format (per-sample) or "wide" format (per-window)?
+        if "sample_id" in df.columns and "label" in df.columns:
+            # Long format
+            counts = {}
+            for name in GESTURE_NAMES:
+                # Handle both string and int labels
+                subset = df[df["label"].astype(str) == str(name)]
+                if subset.empty and name in GESTURE_NAMES:
+                    try:
+                        idx = GESTURE_NAMES.index(name)
+                        subset = df[df["label"].astype(str) == str(idx)]
+                    except: pass
+                counts[name] = len(subset["sample_id"].unique())
+            return df, counts
+        else:
+            # Wide format
+            counts = {}
+            for name in GESTURE_NAMES:
+                try:
+                    label_idx = GESTURE_NAMES.index(name)
+                    counts[name] = int((df["label"] == label_idx).sum())
+                except:
+                    counts[name] = 0
+            return df, counts
 
     @staticmethod
     def load_dataset(filepath=None):
-        """Load dataset CSV and return X (features) and y (labels) arrays.
-
-        Args:
-            filepath: Path to CSV file.
-
-        Returns:
-            tuple: (X array of shape (N, NUM_FEATURES), y array of shape (N,))
-        """
+        """Load dataset CSV and return X (features) and y (labels) arrays."""
         if filepath is None:
             filepath = DEFAULT_CSV
 
         df = pd.read_csv(filepath)
-        X = df.iloc[:, :NUM_FEATURES].values.astype(np.float32)
-        y = df["label"].values.astype(np.int32)
-        return X, y
+        
+        # Handle "Long" Format (User's format)
+        if "sample_id" in df.columns and "ax" in df.columns:
+            X = []
+            y = []
+            
+            # Map string labels to indices
+            label_map = {name: i for i, name in enumerate(GESTURE_NAMES)}
+            
+            for sid, group in df.groupby("sample_id"):
+                if len(group) < WINDOW_SIZE:
+                    continue # Skip too short
+                
+                # Take first WINDOW_SIZE samples
+                window = group.iloc[:WINDOW_SIZE]
+                data = window[["ax", "ay", "az", "gx", "gy", "gz"]].values.flatten()
+                
+                label_val = window["label"].iloc[0]
+                if isinstance(label_val, str):
+                    label_idx = label_map.get(label_val, -1)
+                else:
+                    label_idx = int(label_val)
+                
+                if label_idx != -1:
+                    X.append(data)
+                    y.append(label_idx)
+            
+            return np.array(X, dtype=np.float32), np.array(y, dtype=np.int32)
+            
+        # Handle "Wide" Format (Default)
+        else:
+            X = df.iloc[:, :NUM_FEATURES].values.astype(np.float32)
+            y = df["label"].values.astype(np.int32)
+            return X, y
