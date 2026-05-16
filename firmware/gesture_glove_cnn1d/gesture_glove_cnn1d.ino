@@ -4,17 +4,17 @@
  *
  * Inference: raw IMU → scale 1500 values → TFLite int8 → buzzer output
  *
- * Model ops: CONV_2D, RESHAPE, ADD, LEAKY_RELU, AVERAGE_POOL_2D,
- *            FULLY_CONNECTED, SOFTMAX (7 ops total)
+ * Model ops: CONV_2D, RESHAPE, ADD, MEAN, FULLY_CONNECTED, SOFTMAX, etc.
+ *            (GlobalAveragePooling1D → MEAN in TFLite)
  */
 
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 
-#include <micro_mutable_op_resolver.h>
-#include <micro_interpreter.h>
-#include <schema_generated.h>
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/schema/schema_generated.h"
 
 #include "cnn1d_model_data.h"
 
@@ -47,7 +47,7 @@ static inline void beep_n(int n) {
 }
 
 // ─── TFLite — CNN1D ops (from tflm_esp32 library) ────────────
-static tflite::MicroMutableOpResolver<9> resolver;
+static tflite::MicroMutableOpResolver<15> resolver;
 static const tflite::Model* model = nullptr;
 static tflite::MicroInterpreter* interpreter = nullptr;
 static uint8_t tensor_arena[TENSOR_ARENA_SIZE];
@@ -84,14 +84,20 @@ void setup() {
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
-    // Register CNN1D ops (9 = safe margin over actual ~7 ops)
+    // Register CNN1D ops (15 total — includes MEAN for GlobalAveragePooling1D)
     resolver.AddConv2D();
     resolver.AddReshape();
-    resolver.AddAdd();
-    resolver.AddLeakyReLU();
+    resolver.AddExpandDims();
+    resolver.AddConcatenation();
+    resolver.AddDepthwiseConv2D();
+    resolver.AddLeakyRelu();
     resolver.AddAveragePool2D();
-    resolver.AddMaxPool2D();     // MaxPooling2D (from BatchNorm fused into conv)
-    resolver.AddMul();           // Mul (for residual add / BN scale)
+    resolver.AddMaxPool2D();
+    resolver.AddMul();
+    resolver.AddAdd();
+    resolver.AddMean();              // ← GlobalAveragePooling1D compiles to MEAN
+    resolver.AddDequantize();
+    resolver.AddTranspose();
     resolver.AddFullyConnected();
     resolver.AddSoftmax();
 
