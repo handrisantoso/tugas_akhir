@@ -14,6 +14,12 @@
 #include "tensorflow/lite/schema/schema_generated.h"
 
 #include "mlp_model_data.h"
+#include "measurements.h"
+
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
 
 // ─── Config ──────────────────────────────────────────────────
 #define I2C_SDA             5
@@ -28,6 +34,18 @@
 #define DEBOUNCE_MS         400
 #define TENSOR_ARENA_SIZE   (100 * 1024)
 #define CONF_THRESH         0.80
+
+// ─── BLE HID Key Codes (USB HID Usage IDs) ────────────────────
+#define KEY_F5     0x83   // F5 = start presentation
+#define KEY_LEFT   0x50   // Arrow Left = previous slide
+#define KEY_RIGHT  0x4F   // Arrow Right = next slide
+#define KEY_ESC    0x29   // Escape = exit presentation
+#define KEY_NONE   0x00   // No key (idle)
+
+// ─── BLE Server & Characteristics ─────────────────────────────
+static BLEServer* pServer = nullptr;
+static BLECharacteristic* pReportChar = nullptr;
+static bool ble_connected = false;
 
 // ─── Buzzer helpers ──────────────────────────────────────────
 #define BEEP_DUR_MS   60
@@ -61,6 +79,60 @@ static int samples_since_infer = 0;
 static float feat_buf[MODEL_NUM_FEATURES];   // 36
 static unsigned long last_fired_ms[5] = {0};
 static unsigned long last_sample_us = 0;
+
+// ─── Measurement Stats ────────────────────────────────────────
+static InferenceStats inf_stats;
+
+// ─── BLE HID Setup ─────────────────────────────────────────────
+class MyBLEServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        ble_connected = true;
+        Serial.println("[BLE] Client connected");
+    }
+    void onDisconnect(BLEServer* pServer) {
+        ble_connected = false;
+        Serial.println("[BLE] Client disconnected");
+    }
+};
+
+static void init_ble_hid() {
+    BLEDevice::init("GestureGlove");
+    BLEDevice::setPower(ESP_PWR_LVL_P3);
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyBLEServerCallbacks());
+    BLEService* pHID = pServer->createService(BLEUUID((uint16_t)0x1812));
+    pReportChar = pHID->createCharacteristic(
+        BLEUUID((uint16_t)0x2A4D),
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
+    );
+    pReportChar->addDescriptor(new BLE2902());
+    pHID->start();
+    pServer->getAdvertising()->setAppearance(0x03C0);
+    pServer->getAdvertising()->start();
+    Serial.println("[BLE] Advertising as 'GestureGlove'");
+}
+
+static void ble_send_key(uint8_t key) {
+    if (!ble_connected || key == KEY_NONE) return;
+    uint8_t report[5] = {0, 0, key, 0, 0};
+    pReportChar->setValue(report, 5);
+    pReportChar->notify();
+    delay(15);
+    memset(report, 0, 5);
+    pReportChar->setValue(report, 5);
+    pReportChar->notify();
+}
+
+static inline uint8_t gesture_to_key(uint8_t idx) {
+    switch (idx) {
+        case 0: return KEY_NONE;
+        case 1: return KEY_F5;
+        case 2: return KEY_LEFT;
+        case 3: return KEY_RIGHT;
+        case 4: return KEY_ESC;
+        default: return KEY_NONE;
+    }
+}
 
 // ─── Feature extraction (36 features, in-place normalize) ────
 static inline void extract_features(int start) {
@@ -132,6 +204,17 @@ void setup() {
         while (1);
     }
 
+    // Init measurement stats
+    stats_init(&inf_stats);
+
+    // Print startup info
+    Serial.printf("[INFO] Model: MLP | Features: %d | Arena: %d KB\n",
+                  MODEL_NUM_FEATURES, TENSOR_ARENA_SIZE / 1024);
+    Serial.printf("[INFO] Heap: %d / %d bytes\n", ESP.getFreeHeap(), ESP.getHeapSize());
+
+    // Init BLE HID keyboard
+    init_ble_hid();
+
     Serial.println("[OK] MLP Ready");
     beep_n(1);  // startup confirmation: 1 beep
     last_sample_us = micros();
@@ -171,8 +254,19 @@ void loop() {
         in->data.int8[i] = (int8_t) constrain((int)(feat_buf[i] / scale + zp), -128, 127);
     }
 
-    // ── Inference ──
-    if (interpreter->Invoke() != kTfLiteOk) return;
+    // --- Inference with timing ---
+    int64_t t0 = esp_timer_get_time();
+    bool ok = (interpreter->Invoke() == kTfLiteOk);
+    int64_t t1 = esp_timer_get_time();
+    int64_t latency_us = t1 - t0;
+
+    if (!ok) {
+        stats_record(&inf_stats, latency_us, false);
+        Serial.println("[ERR] Invoke failed");
+        return;
+    }
+
+    stats_record(&inf_stats, latency_us, true);
 
     TfLiteTensor* out = interpreter->output(0);
     float max_prob = -1.0f;
@@ -182,13 +276,39 @@ void loop() {
         if (p > max_prob) { max_prob = p; best = i; }
     }
 
-    Serial.printf("[%s] %.2f\n", MODEL_GESTURE_NAMES[best], max_prob);
+    // --- Serial output: prediction with latency + heap ---
+    Serial.printf("[PRED] %s %.2f %lld %ld\\n",
+        MODEL_GESTURE_NAMES[best], max_prob, latency_us, ESP.getFreeHeap());
 
-    // ── Buzzer output ──
+    // --- Periodic stats (every 100 inferences) ---
+    if (inf_stats.total_count > 0 && inf_stats.total_count % 100 == 0) {
+        float avg_lat = stats_avg_latency(&inf_stats);
+        float fps = stats_avg_fps(&inf_stats);
+        Serial.printf(
+            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld\\n",
+            inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
+            inf_stats.latency_min, inf_stats.latency_max,
+            avg_lat, fps, ESP.getFreeHeap()
+        );
+    }
+
+    // --- Stability report (every 30,000 inferences) ---
+    if (inf_stats.total_count > 0 && inf_stats.total_count % 30000 == 0) {
+        int64_t dur = (esp_timer_get_time() - inf_stats.test_start_us) / 1000000;
+        float sr = 100.0f * (float)inf_stats.ok_count / inf_stats.total_count;
+        Serial.printf(
+            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld\\n",
+            (int)dur, inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
+            sr, stats_avg_latency(&inf_stats), stats_avg_fps(&inf_stats), inf_stats.heap_min
+        );
+    }
+
+    // --- Buzzer + BLE output ---
     if (max_prob >= CONF_THRESH && best != 0) {
         unsigned long now = millis();
         if (now - last_fired_ms[best] > DEBOUNCE_MS) {
-            beep_n(best);       // 1=flick_up, 2=wave_left, 3=wave_right, 4=flick_down
+            beep_n(best);
+            ble_send_key(gesture_to_key(best));
             last_fired_ms[best] = now;
         }
     }
