@@ -266,14 +266,15 @@ class GestureRecorder:
         flat, _ = self.session_samples[-1]
         return flat.reshape(WINDOW_SIZE, NUM_AXES)
 
-    def save_to_csv(self, filepath=None):
+    def save_to_csv(self, filepath=None, subject_id=None):
         """Save all session samples to CSV file in 'Long' format.
 
         Args:
             filepath: Path to CSV file. If None, uses default path.
-
-        Returns:
-            tuple: (filepath, num_windows_saved)
+            subject_id: Explicit subject identifier string. If None, defaults
+                        to session_id (Unix timestamp). Pass an explicit value
+                        when recording data for a known subject to enable
+                        multi-subject / LOSO support.
         """
         if filepath is None:
             filepath = DEFAULT_CSV
@@ -282,7 +283,9 @@ class GestureRecorder:
         file_exists = os.path.isfile(filepath) and os.path.getsize(filepath) > 0
 
         session_id = int(time.time())
-        
+        # Use explicit subject_id if provided; otherwise fall back to session_id
+        subj = subject_id if subject_id is not None else str(session_id)
+
         with open(filepath, "a", newline="") as f:
             writer = csv.writer(f)
 
@@ -294,16 +297,16 @@ class GestureRecorder:
             for window_idx, (flat_array, label_idx) in enumerate(self.session_samples):
                 gesture_name = GESTURE_NAMES[label_idx]
                 sample_id = f"{gesture_name}_{session_id}_{window_idx}"
-                
+
                 # Reshape back to (WINDOW_SIZE, NUM_AXES)
                 data = flat_array.reshape(WINDOW_SIZE, NUM_AXES)
-                
+
                 for t in range(WINDOW_SIZE):
                     timestamp_ms = t * (1000 // SAMPLE_RATE_HZ)
-                    # Row: label, sample_id, timestamp_ms, ax, ay, az, gx, gy, gz
-                    row = [gesture_name, sample_id, timestamp_ms] + data[t].tolist()
+                    # Row: label, sample_id, timestamp_ms, subject_id, ax, ay, az, gx, gy, gz
+                    row = [gesture_name, sample_id, timestamp_ms, subj] + data[t].tolist()
                     writer.writerow(row)
-                
+
                 window_count += 1
 
         return filepath, window_count
@@ -323,7 +326,7 @@ class GestureRecorder:
             return None, {name: 0 for name in GESTURE_NAMES}
 
         df = pd.read_csv(filepath)
-        
+
         # Detection: is it "long" format (per-sample) or "wide" format (per-window)?
         if "sample_id" in df.columns and "label" in df.columns:
             # Long format
@@ -351,42 +354,62 @@ class GestureRecorder:
 
     @staticmethod
     def load_dataset(filepath=None):
-        """Load dataset CSV and return X (features) and y (labels) arrays."""
+        """Load dataset CSV and return X (features), y (labels), and subject_ids.
+
+        Returns:
+            X          : np.ndarray, shape (N, NUM_FEATURES), dtype float32
+            y          : np.ndarray, shape (N,), dtype int32
+            subject_ids: np.ndarray, shape (N,), dtype object
+                         Unique values identify subjects.
+
+        Backward compatibility:
+            Legacy CSVs without a subject_id column produce
+            subject_ids = np.array(["single_subject"] * N),
+            which triggers the single-subject fallback in train_model().
+        """
         if filepath is None:
             filepath = DEFAULT_CSV
 
         df = pd.read_csv(filepath)
-        
+
         # Handle "Long" Format (User's format)
         if "sample_id" in df.columns and "ax" in df.columns:
             X = []
             y = []
-            
-            # Map string labels to indices
+            subject_ids = []
             label_map = {name: i for i, name in enumerate(GESTURE_NAMES)}
-            
+            has_subject_col = "subject_id" in df.columns
+
             for sid, group in df.groupby("sample_id"):
                 if len(group) < WINDOW_SIZE:
                     continue # Skip too short
-                
+
                 # Take first WINDOW_SIZE samples
                 window = group.iloc[:WINDOW_SIZE]
                 data = window[["ax", "ay", "az", "gx", "gy", "gz"]].values.flatten()
-                
+
                 label_val = window["label"].iloc[0]
                 if isinstance(label_val, str):
                     label_idx = label_map.get(label_val, -1)
                 else:
                     label_idx = int(label_val)
-                
+
+                # Subject ID: explicit column or single-subject placeholder
+                subj = str(window["subject_id"].iloc[0]) if has_subject_col else "single_subject"
+
                 if label_idx != -1:
                     X.append(data)
                     y.append(label_idx)
-            
-            return np.array(X, dtype=np.float32), np.array(y, dtype=np.int32)
-            
+                    subject_ids.append(subj)
+
+            return (
+                np.array(X, dtype=np.float32),
+                np.array(y, dtype=np.int32),
+                np.array(subject_ids, dtype=object),
+            )
+
         # Handle "Wide" Format (Default)
         else:
             X = df.iloc[:, :NUM_FEATURES].values.astype(np.float32)
             y = df["label"].values.astype(np.int32)
-            return X, y
+            return X, y, np.array(["single_subject"] * len(y), dtype=object)

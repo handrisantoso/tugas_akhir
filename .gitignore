@@ -22,3 +22,6 @@ dataset/
 # OS
 .DS_Store
 Thumbs.db
+
+# Thesis Documents & skripsi
+thesis/

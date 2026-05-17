@@ -3,6 +3,7 @@ import customtkinter as ctk
 import threading
 import os
 import queue
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns
@@ -72,6 +73,25 @@ class TrainTab(ctk.CTkFrame):
         )
         self.full_train_cb.pack(side="left", padx=8)
 
+        # ── LOSO / CV Mode Row ──────────────────────────────────────
+        cv_row = ctk.CTkFrame(top, fg_color="transparent")
+        cv_row.pack(fill="x", padx=12, pady=(4, 4))
+
+        self.loso_var = ctk.BooleanVar(value=False)
+        self.loso_cb = ctk.CTkCheckBox(
+            cv_row,
+            text="LOSO Cross-Validation (multi-subject)",
+            variable=self.loso_var,
+            font=("Inter", 11, "bold"),
+            command=self._on_loso_toggle,
+        )
+        self.loso_cb.pack(side="left", padx=(0, 8))
+
+        self.loso_info_lbl = ctk.CTkLabel(
+            cv_row, text="", font=("Inter", 10), text_color="#6B7280",
+        )
+        self.loso_info_lbl.pack(side="left", padx=4)
+
         # ── Train + Export Buttons ──
         btn_row = ctk.CTkFrame(top, fg_color="transparent")
         btn_row.pack(fill="x", padx=12, pady=(4,10))
@@ -125,6 +145,26 @@ class TrainTab(ctk.CTkFrame):
             total = sum(counts.values())
             self.ds_info.configure(text=f"{total} samples loaded")
 
+            # Check subject count for LOSO readiness
+            try:
+                _, _, subj_ids = GestureRecorder.load_dataset(path)
+                unique_subjects = np.unique(subj_ids)
+                if len(unique_subjects) > 1:
+                    self.loso_info_lbl.configure(
+                        text=f"  {len(unique_subjects)} subjects detected — LOSO ready",
+                        text_color="#22C55E"
+                    )
+                else:
+                    self.loso_info_lbl.configure(
+                        text="  Single subject — standard split will be used",
+                        text_color="#6B7280"
+                    )
+                    if self.loso_var.get():
+                        self.loso_var.set(False)
+                        self._on_loso_toggle()
+            except Exception:
+                self.loso_info_lbl.configure(text="", text_color="#6B7280")
+
     def _on_model_change(self, val):
         is_keras = val in ("mlp", "cnn1d")
         state = "normal" if is_keras else "disabled"
@@ -132,6 +172,18 @@ class TrainTab(ctk.CTkFrame):
         self.batch_entry.configure(state=state)
         self.quant_cb.configure(state=state)
         self.trees_entry.configure(state="normal" if val == "rf" else "disabled")
+
+    def _on_loso_toggle(self):
+        """Disable 'Train on all data' when LOSO mode is active."""
+        if self.loso_var.get():
+            self.full_train_cb.configure(state="disabled")
+            self.loso_info_lbl.configure(
+                text="  'Train on all data' disabled in LOSO mode",
+                text_color="#F59E0B"
+            )
+        else:
+            self.full_train_cb.configure(state="normal")
+            self.loso_info_lbl.configure(text="", text_color="#6B7280")
 
     def start_training(self):
         csv_path = self.csv_var.get()
@@ -149,15 +201,20 @@ class TrainTab(ctk.CTkFrame):
 
     def _train_worker(self):
         try:
-            X, y = GestureRecorder.load_dataset(self.csv_var.get())
+            X, y, subject_ids = GestureRecorder.load_dataset(self.csv_var.get())
             model_type = self.model_var.get()
             epochs = int(self.epochs_var.get())
             batch = int(self.batch_var.get())
             trees = int(self.trees_var.get())
             quant = self.quant_var.get()
             full_train = self.full_train_var.get()
+            loso_mode = self.loso_var.get()
 
-            if model_type == "rf":
+            # Unified progress callback — LOSO folds dispatch differently
+            if loso_mode:
+                def on_progress(fold_idx, n_folds, held_out, fold_result):
+                    self.progress_queue.put(("loso_fold", fold_idx, n_folds, held_out, fold_result))
+            elif model_type == "rf":
                 def on_progress(tree_idx, total_trees):
                     self.progress_queue.put(("rf_progress", tree_idx, total_trees))
             else:
@@ -169,7 +226,9 @@ class TrainTab(ctk.CTkFrame):
                 epochs=epochs, batch_size=batch,
                 n_estimators=trees, quantize_int8=quant,
                 full_train=full_train,
-                progress_callback=on_progress
+                progress_callback=on_progress,
+                loso_mode=loso_mode,
+                subject_ids=subject_ids,
             )
             self.progress_queue.put(("done", result))
         except Exception as e:
@@ -189,6 +248,14 @@ class TrainTab(ctk.CTkFrame):
                 elif msg[0] == "rf_progress":
                     tree_idx, total = msg[1], msg[2]
                     self.status_lbl.configure(text=f"Training RF... {tree_idx}/{total} trees")
+                elif msg[0] == "loso_fold":
+                    fold_idx, n_folds, held_out, fold_result = msg[1], msg[2], msg[3], msg[4]
+                    acc = fold_result.get("accuracy", 0)
+                    self.status_lbl.configure(
+                        text=f"LOSO Fold {fold_idx+1}/{n_folds} — "
+                             f"held out: {held_out} — acc: {acc:.1%}",
+                        text_color="#F59E0B"
+                    )
                 elif msg[0] == "done":
                     self._on_training_done(msg[1])
                     return
@@ -203,6 +270,13 @@ class TrainTab(ctk.CTkFrame):
     def _on_training_done(self, result):
         self._last_result = result
         self.train_btn.configure(state="normal")
+
+        # ── LOSO result ────────────────────────────────────────────────
+        if "per_fold" in result and "aggregated" in result:
+            self._render_loso_results(result)
+            return
+
+        # ── Standard single-split result ────────────────────────────────
         self.export_btn.configure(state="normal")
         acc        = result.get("accuracy", 0)        # eval holdout accuracy
         val_acc    = result.get("val_accuracy", 0)
@@ -302,6 +376,117 @@ class TrainTab(ctk.CTkFrame):
             self.report_text.insert("end",
                 f"{'Val Accuracy':<14} {val_acc:>29.2f}\n")
             self.report_text.insert("end", "─" * 45 + "\n")
+
+    def _render_loso_results(self, result):
+        """Render full LOSO cross-validation results in the GUI."""
+        agg = result["aggregated"]
+        per_fold = result["per_fold"]
+        n_subjects = result["n_subjects"]
+        subjects = result["subjects"]
+        confusion_agg = result["confusion_agg"]
+
+        # ── Status bar ────────────────────────────────────────────────
+        acc_m, acc_s = agg["accuracy_mean"], agg["accuracy_std"]
+        f1_m,  f1_s  = agg["f1_mean"],       agg["f1_std"]
+        self.status_lbl.configure(
+            text=(f"LOSO Done — {n_subjects} subjects — "
+                  f"Acc: {acc_m:.1%} ± {acc_s:.1%}  "
+                  f"F1:  {f1_m:.1%} ± {f1_s:.1%}"),
+            text_color="#22C55E"
+        )
+        self.export_btn.configure(state="disabled")
+        self.size_lbl.configure(text="")
+
+        # ── Reconfigure figure: 3-panel LOSO layout ────────────────────
+        self.fig.clear()
+        gs = self.fig.add_gridspec(1, 3, wspace=0.35)
+
+        # Panel 1: Per-fold accuracy bar chart
+        ax_bar = self.fig.add_subplot(gs[0, 0])
+        ax_bar.set_facecolor("#16213e")
+        fold_labels = [str(s) for s in subjects]
+        fold_accs   = [f["accuracy"] for f in per_fold]
+        colors = ["#8B5CF6" if a >= acc_m else "#F59E0B" for a in fold_accs]
+        ax_bar.bar(fold_labels, fold_accs, color=colors,
+                   edgecolor="#374151", linewidth=0.5)
+        ax_bar.axhline(acc_m, color="#22C55E", linestyle="--",
+                       linewidth=1.5, label=f"Mean {acc_m:.1%}")
+        ax_bar.set_ylabel("Accuracy", color="#D1D5DB", fontsize=9)
+        ax_bar.set_xlabel("Held-out Subject", color="#D1D5DB", fontsize=9)
+        ax_bar.set_title("Per-Fold Accuracy", color="#D1D5DB", fontsize=10)
+        ax_bar.set_ylim(0, 1.05)
+        ax_bar.tick_params(colors="#9CA3AF", labelsize=7)
+        for spine in ax_bar.spines.values(): spine.set_color("#374151")
+        ax_bar.legend(fontsize=7, facecolor="#1a1a2e",
+                       edgecolor="#374151", labelcolor="#D1D5DB")
+
+        # Panel 2: Cross-subject confusion matrix (aggregated)
+        ax_cm = self.fig.add_subplot(gs[0, 1])
+        ax_cm.set_facecolor("#16213e")
+        sns.heatmap(
+            confusion_agg, annot=True, fmt="d", cmap="magma", ax=ax_cm,
+            xticklabels=GESTURE_NAMES, yticklabels=GESTURE_NAMES,
+            cbar=True, cbar_kws={"shrink": 0.7},
+            linewidths=0.5, linecolor="#374151",
+        )
+        ax_cm.set_title("Cross-Subject Confusion\n(Aggregated)", color="#D1D5DB", fontsize=10)
+        ax_cm.tick_params(colors="#9CA3AF", labelsize=7)
+
+        # Panel 3: Aggregated metrics (mean ± std bar chart)
+        ax_met = self.fig.add_subplot(gs[0, 2])
+        ax_met.set_facecolor("#16213e")
+        metric_names = ["Accuracy", "Precision", "Recall", "F1"]
+        means = [agg["accuracy_mean"], agg["precision_mean"],
+                 agg["recall_mean"],   agg["f1_mean"]]
+        stds  = [agg["accuracy_std"],  agg["precision_std"],
+                 agg["recall_std"],   agg["f1_std"]]
+        x_pos = np.arange(len(metric_names))
+        bars = ax_met.bar(x_pos, means, yerr=stds, capsize=4,
+                          color=["#8B5CF6", "#3B82F6", "#22C55E", "#F59E0B"],
+                          edgecolor="#374151", linewidth=0.5, alpha=0.85)
+        ax_met.set_xticks(x_pos)
+        ax_met.set_xticklabels(metric_names, color="#D1D5DB", fontsize=8)
+        ax_met.set_ylabel("Score", color="#D1D5DB", fontsize=9)
+        ax_met.set_title("Aggregated Metrics\n(mean ± std)", color="#D1D5DB", fontsize=10)
+        ax_met.set_ylim(0, 1.15)
+        ax_met.tick_params(colors="#9CA3AF", labelsize=8)
+        for spine in ax_met.spines.values(): spine.set_color("#374151")
+        for bar, mean, std in zip(bars, means, stds):
+            ax_met.text(
+                bar.get_x() + bar.get_width() / 2, mean + std + 0.02,
+                f"{mean:.2f}±{std:.2f}", ha="center", va="bottom",
+                color="#D1D5DB", fontsize=7,
+            )
+
+        self.fig.tight_layout(pad=2)
+        self.canvas.draw_idle()
+
+        # ── LOSO Classification Report Textbox ─────────────────────────
+        self.report_text.delete("1.0", "end")
+        sep = "─" * 62
+        self.report_text.insert("end", "LOSO Cross-Validation Report\n")
+        self.report_text.insert("end", f"{sep}\n")
+        self.report_text.insert("end",
+            f"  Subjects (K={n_subjects}): {', '.join(subjects)}\n")
+        self.report_text.insert("end", f"{sep}\n")
+        self.report_text.insert("end",
+            f"{'Subject':<22} {'Train':>7} {'Test':>6} "
+            f"{'Acc':>7} {'Prec':>7} {'Rec':>7} {'F1':>7}\n")
+        self.report_text.insert("end", f"{sep}\n")
+        for f in per_fold:
+            self.report_text.insert("end",
+                f"{str(f['subject_held_out']):<22} "
+                f"{f['train_n']:>7} {f['test_n']:>6} "
+                f"{f['accuracy']:>7.2f} {f['precision']:>7.2f} "
+                f"{f['recall']:>7.2f} {f['f1']:>7.2f}\n")
+        self.report_text.insert("end", f"{sep}\n")
+        self.report_text.insert("end",
+            f"{'AGGREGATED (mean ± std)':<22} {'':>14} "
+            f"{acc_m:>7.2f} {agg['precision_mean']:>7.2f} "
+            f"{agg['recall_mean']:>7.2f} {agg['f1_mean']:>7.2f}\n")
+        self.report_text.insert("end",
+            f"{'':>22}  ±{acc_s:>6.2f} ±{agg['precision_std']:>6.2f} "
+            f"±{agg['recall_std']:>6.2f} ±{agg['f1_std']:>6.2f}\n")
 
     def _export_header(self):
         if self._last_result and "header_path" in self._last_result:

@@ -8,6 +8,10 @@
 #define RF_MODEL_DATA_H
 
 #include <math.h>
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // ─── Model Configuration ───────────────────────────────
 const int MODEL_NUM_FEATURES = 36;  // statistical features
@@ -41,170 +45,170 @@ const float scaler_scale[36] = {
     1.00183899f, 3.13422540f, 0.74377652f, 0.08169652f
 };
 
-// ─── Random Forest Model (m2cgen) ────────────────────
+// ─── Random Forest Model (m2cgen, float-optimized) ────
 // Call: score(input, output) where input[36], output[5]
 // output[i] = vote count for class i
 #include <string.h>
-void add_vectors(double *v1, double *v2, int size, double *result) {
+void add_vectors(float *v1, float *v2, int size, float *result) {
     for(int i = 0; i < size; ++i)
         result[i] = v1[i] + v2[i];
 }
-void mul_vector_number(double *v1, double num, int size, double *result) {
+void mul_vector_number(float *v1, float num, int size, float *result) {
     for(int i = 0; i < size; ++i)
         result[i] = v1[i] * num;
 }
-void score(double * input, double * output) {
-    double var0[5];
-    double var1[5];
-    double var2[5];
-    double var3[5];
-    double var4[5];
-    double var5[5];
-    double var6[5];
-    double var7[5];
-    double var8[5];
-    double var9[5];
-    double var10[5];
-    double var11[5];
-    double var12[5];
-    double var13[5];
-    double var14[5];
-    double var15[5];
-    double var16[5];
-    double var17[5];
-    double var18[5];
-    double var19[5];
-    double var20[5];
-    double var21[5];
-    double var22[5];
-    double var23[5];
-    double var24[5];
-    double var25[5];
-    double var26[5];
-    double var27[5];
-    double var28[5];
-    double var29[5];
-    double var30[5];
-    double var31[5];
-    double var32[5];
-    double var33[5];
-    double var34[5];
-    double var35[5];
-    double var36[5];
-    double var37[5];
-    double var38[5];
-    double var39[5];
-    double var40[5];
-    double var41[5];
-    double var42[5];
-    double var43[5];
-    double var44[5];
-    double var45[5];
-    double var46[5];
-    double var47[5];
-    double var48[5];
-    double var49[5];
-    double var50[5];
-    double var51[5];
-    double var52[5];
-    double var53[5];
-    double var54[5];
-    double var55[5];
-    double var56[5];
-    double var57[5];
-    double var58[5];
-    double var59[5];
-    double var60[5];
-    double var61[5];
-    double var62[5];
-    double var63[5];
-    double var64[5];
-    double var65[5];
-    double var66[5];
-    double var67[5];
-    double var68[5];
-    double var69[5];
-    double var70[5];
-    double var71[5];
-    double var72[5];
-    double var73[5];
-    double var74[5];
-    double var75[5];
-    double var76[5];
-    double var77[5];
-    double var78[5];
-    double var79[5];
-    double var80[5];
-    double var81[5];
-    double var82[5];
-    double var83[5];
-    double var84[5];
-    double var85[5];
-    double var86[5];
-    double var87[5];
-    double var88[5];
-    double var89[5];
-    double var90[5];
-    double var91[5];
-    double var92[5];
-    double var93[5];
-    double var94[5];
-    double var95[5];
-    double var96[5];
-    double var97[5];
-    double var98[5];
-    double var99[5];
-    double var100[5];
-    double var101[5];
-    double var102[5];
-    double var103[5];
-    double var104[5];
-    double var105[5];
-    double var106[5];
-    double var107[5];
-    double var108[5];
-    double var109[5];
-    double var110[5];
-    double var111[5];
-    double var112[5];
-    double var113[5];
-    double var114[5];
-    double var115[5];
-    double var116[5];
-    double var117[5];
-    double var118[5];
-    double var119[5];
-    double var120[5];
-    double var121[5];
-    double var122[5];
-    double var123[5];
-    double var124[5];
-    double var125[5];
-    double var126[5];
-    double var127[5];
-    double var128[5];
-    double var129[5];
-    double var130[5];
-    double var131[5];
-    double var132[5];
-    double var133[5];
-    double var134[5];
-    double var135[5];
-    double var136[5];
-    double var137[5];
-    double var138[5];
-    double var139[5];
-    double var140[5];
-    double var141[5];
-    double var142[5];
-    double var143[5];
-    double var144[5];
-    double var145[5];
-    double var146[5];
-    double var147[5];
-    double var148[5];
-    double var149[5];
-    double var150[5];
+void score(float * input, float * output) {
+    float var0[5];
+    float var1[5];
+    float var2[5];
+    float var3[5];
+    float var4[5];
+    float var5[5];
+    float var6[5];
+    float var7[5];
+    float var8[5];
+    float var9[5];
+    float var10[5];
+    float var11[5];
+    float var12[5];
+    float var13[5];
+    float var14[5];
+    float var15[5];
+    float var16[5];
+    float var17[5];
+    float var18[5];
+    float var19[5];
+    float var20[5];
+    float var21[5];
+    float var22[5];
+    float var23[5];
+    float var24[5];
+    float var25[5];
+    float var26[5];
+    float var27[5];
+    float var28[5];
+    float var29[5];
+    float var30[5];
+    float var31[5];
+    float var32[5];
+    float var33[5];
+    float var34[5];
+    float var35[5];
+    float var36[5];
+    float var37[5];
+    float var38[5];
+    float var39[5];
+    float var40[5];
+    float var41[5];
+    float var42[5];
+    float var43[5];
+    float var44[5];
+    float var45[5];
+    float var46[5];
+    float var47[5];
+    float var48[5];
+    float var49[5];
+    float var50[5];
+    float var51[5];
+    float var52[5];
+    float var53[5];
+    float var54[5];
+    float var55[5];
+    float var56[5];
+    float var57[5];
+    float var58[5];
+    float var59[5];
+    float var60[5];
+    float var61[5];
+    float var62[5];
+    float var63[5];
+    float var64[5];
+    float var65[5];
+    float var66[5];
+    float var67[5];
+    float var68[5];
+    float var69[5];
+    float var70[5];
+    float var71[5];
+    float var72[5];
+    float var73[5];
+    float var74[5];
+    float var75[5];
+    float var76[5];
+    float var77[5];
+    float var78[5];
+    float var79[5];
+    float var80[5];
+    float var81[5];
+    float var82[5];
+    float var83[5];
+    float var84[5];
+    float var85[5];
+    float var86[5];
+    float var87[5];
+    float var88[5];
+    float var89[5];
+    float var90[5];
+    float var91[5];
+    float var92[5];
+    float var93[5];
+    float var94[5];
+    float var95[5];
+    float var96[5];
+    float var97[5];
+    float var98[5];
+    float var99[5];
+    float var100[5];
+    float var101[5];
+    float var102[5];
+    float var103[5];
+    float var104[5];
+    float var105[5];
+    float var106[5];
+    float var107[5];
+    float var108[5];
+    float var109[5];
+    float var110[5];
+    float var111[5];
+    float var112[5];
+    float var113[5];
+    float var114[5];
+    float var115[5];
+    float var116[5];
+    float var117[5];
+    float var118[5];
+    float var119[5];
+    float var120[5];
+    float var121[5];
+    float var122[5];
+    float var123[5];
+    float var124[5];
+    float var125[5];
+    float var126[5];
+    float var127[5];
+    float var128[5];
+    float var129[5];
+    float var130[5];
+    float var131[5];
+    float var132[5];
+    float var133[5];
+    float var134[5];
+    float var135[5];
+    float var136[5];
+    float var137[5];
+    float var138[5];
+    float var139[5];
+    float var140[5];
+    float var141[5];
+    float var142[5];
+    float var143[5];
+    float var144[5];
+    float var145[5];
+    float var146[5];
+    float var147[5];
+    float var148[5];
+    float var149[5];
+    float var150[5];
     if (input[21] <= -1.1231977939605713) {
         if (input[7] <= 0.6337846517562866) {
             if (input[31] <= 1.0516569763422012) {
@@ -226,7 +230,7 @@ void score(double * input, double * output) {
             memcpy(var150, (double[]){0.0, 1.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
         }
     }
-    double var151[5];
+    float var151[5];
     if (input[2] <= -0.37396346032619476) {
         if (input[28] <= -0.9612322300672531) {
             memcpy(var151, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -245,7 +249,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var150, var151, 5, var149);
-    double var152[5];
+    float var152[5];
     if (input[14] <= 0.5831575095653534) {
         if (input[19] <= 0.2572232447564602) {
             if (input[21] <= 1.0443012714385986) {
@@ -272,7 +276,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var149, var152, 5, var148);
-    double var153[5];
+    float var153[5];
     if (input[26] <= -1.149899661540985) {
         memcpy(var153, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -295,7 +299,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var148, var153, 5, var147);
-    double var154[5];
+    float var154[5];
     if (input[20] <= -0.9104708731174469) {
         memcpy(var154, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -318,7 +322,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var147, var154, 5, var146);
-    double var155[5];
+    float var155[5];
     if (input[0] <= -1.0471914112567902) {
         memcpy(var155, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -341,7 +345,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var146, var155, 5, var145);
-    double var156[5];
+    float var156[5];
     if (input[0] <= -1.621078908443451) {
         memcpy(var156, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -368,7 +372,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var145, var156, 5, var144);
-    double var157[5];
+    float var157[5];
     if (input[34] <= 0.8683479130268097) {
         if (input[6] <= -0.6367635875940323) {
             if (input[9] <= -0.2087152898311615) {
@@ -391,7 +395,7 @@ void score(double * input, double * output) {
         memcpy(var157, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var144, var157, 5, var143);
-    double var158[5];
+    float var158[5];
     if (input[34] <= 1.0641179382801056) {
         if (input[2] <= -0.922749936580658) {
             memcpy(var158, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -414,7 +418,7 @@ void score(double * input, double * output) {
         memcpy(var158, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var143, var158, 5, var142);
-    double var159[5];
+    float var159[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[9] <= -0.7913037240505219) {
             memcpy(var159, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -433,7 +437,7 @@ void score(double * input, double * output) {
         memcpy(var159, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var142, var159, 5, var141);
-    double var160[5];
+    float var160[5];
     if (input[13] <= -0.4611549526453018) {
         if (input[26] <= -0.9287512004375458) {
             memcpy(var160, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -452,7 +456,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var141, var160, 5, var140);
-    double var161[5];
+    float var161[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var161, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -479,7 +483,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var140, var161, 5, var139);
-    double var162[5];
+    float var162[5];
     if (input[7] <= -1.135006308555603) {
         memcpy(var162, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -506,7 +510,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var139, var162, 5, var138);
-    double var163[5];
+    float var163[5];
     if (input[31] <= 0.629157304763794) {
         if (input[1] <= -1.0076859891414642) {
             memcpy(var163, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -537,7 +541,7 @@ void score(double * input, double * output) {
         memcpy(var163, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var138, var163, 5, var137);
-    double var164[5];
+    float var164[5];
     if (input[31] <= 0.8706164658069611) {
         if (input[1] <= -1.0059182047843933) {
             memcpy(var164, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -560,7 +564,7 @@ void score(double * input, double * output) {
         memcpy(var164, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var137, var164, 5, var136);
-    double var165[5];
+    float var165[5];
     if (input[2] <= -0.38676975667476654) {
         if (input[34] <= -0.8494201898574829) {
             memcpy(var165, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -579,7 +583,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var136, var165, 5, var135);
-    double var166[5];
+    float var166[5];
     if (input[21] <= -1.1198696494102478) {
         if (input[7] <= 0.6337846517562866) {
             if (input[17] <= -0.28498271852731705) {
@@ -602,7 +606,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var135, var166, 5, var134);
-    double var167[5];
+    float var167[5];
     if (input[33] <= -1.0066205263137817) {
         memcpy(var167, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -621,7 +625,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var134, var167, 5, var133);
-    double var168[5];
+    float var168[5];
     if (input[34] <= 0.6437788605690002) {
         if (input[8] <= -0.3496536463499069) {
             memcpy(var168, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -644,7 +648,7 @@ void score(double * input, double * output) {
         memcpy(var168, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var133, var168, 5, var132);
-    double var169[5];
+    float var169[5];
     if (input[34] <= 0.6437788605690002) {
         if (input[33] <= 0.917491227388382) {
             if (input[14] <= 0.38836005330085754) {
@@ -667,7 +671,7 @@ void score(double * input, double * output) {
         memcpy(var169, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var132, var169, 5, var131);
-    double var170[5];
+    float var170[5];
     if (input[18] <= 0.8273141980171204) {
         if (input[22] <= 0.1790531501173973) {
             if (input[34] <= 0.16690415143966675) {
@@ -702,7 +706,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var131, var170, 5, var130);
-    double var171[5];
+    float var171[5];
     if (input[27] <= 1.1312413215637207) {
         if (input[34] <= 0.8683479130268097) {
             if (input[6] <= 0.6370169222354889) {
@@ -725,7 +729,7 @@ void score(double * input, double * output) {
         memcpy(var171, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var130, var171, 5, var129);
-    double var172[5];
+    float var172[5];
     if (input[2] <= -0.9043357074260712) {
         if (input[26] <= -0.8745157867670059) {
             memcpy(var172, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -768,7 +772,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var129, var172, 5, var128);
-    double var173[5];
+    float var173[5];
     if (input[1] <= -1.0059182047843933) {
         memcpy(var173, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -803,7 +807,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var128, var173, 5, var127);
-    double var174[5];
+    float var174[5];
     if (input[7] <= -1.184262454509735) {
         memcpy(var174, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -838,7 +842,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var127, var174, 5, var126);
-    double var175[5];
+    float var175[5];
     if (input[33] <= 0.917491227388382) {
         if (input[10] <= 0.9794793128967285) {
             if (input[4] <= 1.1451544165611267) {
@@ -865,7 +869,7 @@ void score(double * input, double * output) {
         memcpy(var175, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var126, var175, 5, var125);
-    double var176[5];
+    float var176[5];
     if (input[22] <= -1.3505991101264954) {
         memcpy(var176, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -888,7 +892,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var125, var176, 5, var124);
-    double var177[5];
+    float var177[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[14] <= 0.13453134149312973) {
             if (input[9] <= -0.8289207220077515) {
@@ -911,7 +915,7 @@ void score(double * input, double * output) {
         memcpy(var177, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var124, var177, 5, var123);
-    double var178[5];
+    float var178[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var178, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -930,7 +934,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var123, var178, 5, var122);
-    double var179[5];
+    float var179[5];
     if (input[31] <= 0.6481394171714783) {
         if (input[2] <= -0.38676975667476654) {
             if (input[33] <= 0.7620780169963837) {
@@ -961,7 +965,7 @@ void score(double * input, double * output) {
         memcpy(var179, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var122, var179, 5, var121);
-    double var180[5];
+    float var180[5];
     if (input[28] <= -1.2344004809856415) {
         memcpy(var180, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -992,7 +996,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var121, var180, 5, var120);
-    double var181[5];
+    float var181[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var181, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1015,7 +1019,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var120, var181, 5, var119);
-    double var182[5];
+    float var182[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var182, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1042,7 +1046,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var119, var182, 5, var118);
-    double var183[5];
+    float var183[5];
     if (input[0] <= -1.621078908443451) {
         memcpy(var183, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1065,7 +1069,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var118, var183, 5, var117);
-    double var184[5];
+    float var184[5];
     if (input[26] <= -1.1688430309295654) {
         memcpy(var184, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1084,7 +1088,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var117, var184, 5, var116);
-    double var185[5];
+    float var185[5];
     if (input[33] <= -0.9483286440372467) {
         memcpy(var185, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1115,7 +1119,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var116, var185, 5, var115);
-    double var186[5];
+    float var186[5];
     if (input[31] <= 0.9145866334438324) {
         if (input[7] <= 0.91996631026268) {
             if (input[30] <= 0.3291357755661011) {
@@ -1158,7 +1162,7 @@ void score(double * input, double * output) {
         memcpy(var186, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var115, var186, 5, var114);
-    double var187[5];
+    float var187[5];
     if (input[9] <= -0.8722111284732819) {
         memcpy(var187, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
     } else {
@@ -1181,7 +1185,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var114, var187, 5, var113);
-    double var188[5];
+    float var188[5];
     if (input[6] <= -0.9594720900058746) {
         if (input[33] <= 0.7935371696949005) {
             memcpy(var188, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -1212,7 +1216,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var113, var188, 5, var112);
-    double var189[5];
+    float var189[5];
     if (input[14] <= 0.5659061968326569) {
         if (input[9] <= -0.8963554799556732) {
             memcpy(var189, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -1239,7 +1243,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var112, var189, 5, var111);
-    double var190[5];
+    float var190[5];
     if (input[9] <= -0.8617240190505981) {
         if (input[10] <= 0.38607611134648323) {
             memcpy(var190, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -1266,7 +1270,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var111, var190, 5, var110);
-    double var191[5];
+    float var191[5];
     if (input[32] <= -1.2198688387870789) {
         memcpy(var191, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1285,7 +1289,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var110, var191, 5, var109);
-    double var192[5];
+    float var192[5];
     if (input[6] <= -0.9305718541145325) {
         if (input[0] <= 0.3276781439781189) {
             memcpy(var192, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -1316,7 +1320,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var109, var192, 5, var108);
-    double var193[5];
+    float var193[5];
     if (input[32] <= -1.1781954765319824) {
         memcpy(var193, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1339,7 +1343,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var108, var193, 5, var107);
-    double var194[5];
+    float var194[5];
     if (input[28] <= -1.242868572473526) {
         memcpy(var194, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1366,7 +1370,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var107, var194, 5, var106);
-    double var195[5];
+    float var195[5];
     if (input[31] <= 0.8650154620409012) {
         if (input[21] <= -0.3251264989376068) {
             if (input[26] <= 0.03589860163629055) {
@@ -1401,7 +1405,7 @@ void score(double * input, double * output) {
         memcpy(var195, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var106, var195, 5, var105);
-    double var196[5];
+    float var196[5];
     if (input[7] <= -1.135006308555603) {
         memcpy(var196, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1432,7 +1436,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var105, var196, 5, var104);
-    double var197[5];
+    float var197[5];
     if (input[0] <= -1.0471914112567902) {
         memcpy(var197, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1451,7 +1455,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var104, var197, 5, var103);
-    double var198[5];
+    float var198[5];
     if (input[9] <= -0.8182407021522522) {
         if (input[15] <= -1.7383990287780762) {
             if (input[13] <= 0.8891584277153015) {
@@ -1482,7 +1486,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var103, var198, 5, var102);
-    double var199[5];
+    float var199[5];
     if (input[0] <= -1.0471914112567902) {
         memcpy(var199, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1505,7 +1509,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var102, var199, 5, var101);
-    double var200[5];
+    float var200[5];
     if (input[26] <= -1.1386898756027222) {
         memcpy(var200, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1524,7 +1528,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var101, var200, 5, var100);
-    double var201[5];
+    float var201[5];
     if (input[9] <= -0.7913037240505219) {
         if (input[4] <= 0.8153408393263817) {
             memcpy(var201, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -1555,7 +1559,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var100, var201, 5, var99);
-    double var202[5];
+    float var202[5];
     if (input[21] <= 1.0937809348106384) {
         if (input[4] <= 1.1595022082328796) {
             if (input[33] <= -1.0066205263137817) {
@@ -1574,7 +1578,7 @@ void score(double * input, double * output) {
         memcpy(var202, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var99, var202, 5, var98);
-    double var203[5];
+    float var203[5];
     if (input[33] <= -1.1044277548789978) {
         memcpy(var203, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1605,7 +1609,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var98, var203, 5, var97);
-    double var204[5];
+    float var204[5];
     if (input[32] <= -1.2198688387870789) {
         memcpy(var204, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1636,7 +1640,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var97, var204, 5, var96);
-    double var205[5];
+    float var205[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[33] <= -1.0066205263137817) {
             memcpy(var205, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
@@ -1655,7 +1659,7 @@ void score(double * input, double * output) {
         memcpy(var205, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var96, var205, 5, var95);
-    double var206[5];
+    float var206[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[7] <= -0.8384470343589783) {
             memcpy(var206, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -1686,7 +1690,7 @@ void score(double * input, double * output) {
         memcpy(var206, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var95, var206, 5, var94);
-    double var207[5];
+    float var207[5];
     if (input[16] <= -1.0484721064567566) {
         if (input[0] <= -0.7968908469192684) {
             memcpy(var207, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -1717,7 +1721,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var94, var207, 5, var93);
-    double var208[5];
+    float var208[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[31] <= 0.6481394171714783) {
             if (input[2] <= -0.38839034736156464) {
@@ -1736,7 +1740,7 @@ void score(double * input, double * output) {
         memcpy(var208, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var93, var208, 5, var92);
-    double var209[5];
+    float var209[5];
     if (input[1] <= -1.0059182047843933) {
         memcpy(var209, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1759,7 +1763,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var92, var209, 5, var91);
-    double var210[5];
+    float var210[5];
     if (input[33] <= -1.1044277548789978) {
         memcpy(var210, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1782,7 +1786,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var91, var210, 5, var90);
-    double var211[5];
+    float var211[5];
     if (input[9] <= -0.7913037240505219) {
         if (input[7] <= 0.6245461404323578) {
             memcpy(var211, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -1805,7 +1809,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var90, var211, 5, var89);
-    double var212[5];
+    float var212[5];
     if (input[7] <= -1.135006308555603) {
         memcpy(var212, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1836,7 +1840,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var89, var212, 5, var88);
-    double var213[5];
+    float var213[5];
     if (input[26] <= -1.1681125164031982) {
         memcpy(var213, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1863,7 +1867,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var88, var213, 5, var87);
-    double var214[5];
+    float var214[5];
     if (input[21] <= -1.1231977939605713) {
         if (input[10] <= 0.4783673267811537) {
             if (input[33] <= -1.213960438966751) {
@@ -1886,7 +1890,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var87, var214, 5, var86);
-    double var215[5];
+    float var215[5];
     if (input[34] <= 1.0075680315494537) {
         if (input[2] <= -0.903619647026062) {
             if (input[34] <= -0.7697314321994781) {
@@ -1917,7 +1921,7 @@ void score(double * input, double * output) {
         memcpy(var215, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var86, var215, 5, var85);
-    double var216[5];
+    float var216[5];
     if (input[31] <= -0.8814278542995453) {
         memcpy(var216, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1952,7 +1956,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var85, var216, 5, var84);
-    double var217[5];
+    float var217[5];
     if (input[33] <= -1.0066205263137817) {
         memcpy(var217, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1971,7 +1975,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var84, var217, 5, var83);
-    double var218[5];
+    float var218[5];
     if (input[7] <= -1.1206527948379517) {
         memcpy(var218, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -1990,7 +1994,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var83, var218, 5, var82);
-    double var219[5];
+    float var219[5];
     if (input[0] <= -1.0305031090974808) {
         memcpy(var219, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2013,7 +2017,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var82, var219, 5, var81);
-    double var220[5];
+    float var220[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[26] <= -1.1565499901771545) {
             memcpy(var220, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2032,7 +2036,7 @@ void score(double * input, double * output) {
         memcpy(var220, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var81, var220, 5, var80);
-    double var221[5];
+    float var221[5];
     if (input[1] <= -1.0121104717254639) {
         memcpy(var221, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2055,7 +2059,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var80, var221, 5, var79);
-    double var222[5];
+    float var222[5];
     if (input[0] <= -1.0785003900527954) {
         memcpy(var222, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2074,7 +2078,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var79, var222, 5, var78);
-    double var223[5];
+    float var223[5];
     if (input[9] <= -0.8722111284732819) {
         if (input[14] <= -1.6115627884864807) {
             memcpy(var223, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2101,7 +2105,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var78, var223, 5, var77);
-    double var224[5];
+    float var224[5];
     if (input[6] <= -0.907457023859024) {
         if (input[11] <= 0.42921628803014755) {
             memcpy(var224, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -2132,7 +2136,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var77, var224, 5, var76);
-    double var225[5];
+    float var225[5];
     if (input[31] <= 0.8706164658069611) {
         if (input[1] <= -1.0080392956733704) {
             memcpy(var225, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2159,7 +2163,7 @@ void score(double * input, double * output) {
         memcpy(var225, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var76, var225, 5, var75);
-    double var226[5];
+    float var226[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var226, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2186,7 +2190,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var75, var226, 5, var74);
-    double var227[5];
+    float var227[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[2] <= -0.37396346032619476) {
             if (input[33] <= 0.7616473138332367) {
@@ -2213,7 +2217,7 @@ void score(double * input, double * output) {
         memcpy(var227, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var74, var227, 5, var73);
-    double var228[5];
+    float var228[5];
     if (input[20] <= -0.9176185727119446) {
         memcpy(var228, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2236,7 +2240,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var73, var228, 5, var72);
-    double var229[5];
+    float var229[5];
     if (input[31] <= 0.6481394171714783) {
         if (input[32] <= -1.1717073917388916) {
             memcpy(var229, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2255,7 +2259,7 @@ void score(double * input, double * output) {
         memcpy(var229, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var72, var229, 5, var71);
-    double var230[5];
+    float var230[5];
     if (input[22] <= -0.09263775497674942) {
         if (input[31] <= -0.060391515493392944) {
             memcpy(var230, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2282,7 +2286,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var71, var230, 5, var70);
-    double var231[5];
+    float var231[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[14] <= -0.22632380574941635) {
             if (input[25] <= -1.1019698679447174) {
@@ -2305,7 +2309,7 @@ void score(double * input, double * output) {
         memcpy(var231, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var70, var231, 5, var69);
-    double var232[5];
+    float var232[5];
     if (input[25] <= -1.2392461001873016) {
         memcpy(var232, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2336,7 +2340,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var69, var232, 5, var68);
-    double var233[5];
+    float var233[5];
     if (input[18] <= 0.8273141980171204) {
         if (input[0] <= -1.621078908443451) {
             memcpy(var233, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2367,7 +2371,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var68, var233, 5, var67);
-    double var234[5];
+    float var234[5];
     if (input[22] <= -0.09263775497674942) {
         if (input[14] <= -0.2634677365422249) {
             memcpy(var234, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2386,7 +2390,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var67, var234, 5, var66);
-    double var235[5];
+    float var235[5];
     if (input[28] <= -1.215049296617508) {
         memcpy(var235, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2413,7 +2417,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var66, var235, 5, var65);
-    double var236[5];
+    float var236[5];
     if (input[22] <= -1.3373225927352905) {
         memcpy(var236, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2440,7 +2444,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var65, var236, 5, var64);
-    double var237[5];
+    float var237[5];
     if (input[31] <= 0.6481394171714783) {
         if (input[9] <= -0.8182407021522522) {
             if (input[0] <= -0.801907055079937) {
@@ -2467,7 +2471,7 @@ void score(double * input, double * output) {
         memcpy(var237, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var64, var237, 5, var63);
-    double var238[5];
+    float var238[5];
     if (input[22] <= -1.3341405391693115) {
         memcpy(var238, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2486,7 +2490,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var63, var238, 5, var62);
-    double var239[5];
+    float var239[5];
     if (input[27] <= 1.1305260062217712) {
         if (input[4] <= 1.1595022082328796) {
             if (input[9] <= -0.7913037240505219) {
@@ -2505,7 +2509,7 @@ void score(double * input, double * output) {
         memcpy(var239, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var62, var239, 5, var61);
-    double var240[5];
+    float var240[5];
     if (input[25] <= -1.2411408126354218) {
         memcpy(var240, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2532,7 +2536,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var61, var240, 5, var60);
-    double var241[5];
+    float var241[5];
     if (input[1] <= -1.0080392956733704) {
         memcpy(var241, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2551,7 +2555,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var60, var241, 5, var59);
-    double var242[5];
+    float var242[5];
     if (input[2] <= -0.9281618893146515) {
         if (input[33] <= 0.703929677605629) {
             memcpy(var242, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2594,7 +2598,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var59, var242, 5, var58);
-    double var243[5];
+    float var243[5];
     if (input[6] <= -0.9538039267063141) {
         if (input[13] <= -0.8658160716295242) {
             memcpy(var243, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2625,7 +2629,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var58, var243, 5, var57);
-    double var244[5];
+    float var244[5];
     if (input[9] <= -0.8182407021522522) {
         memcpy(var244, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
     } else {
@@ -2652,7 +2656,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var57, var244, 5, var56);
-    double var245[5];
+    float var245[5];
     if (input[26] <= -1.149899661540985) {
         memcpy(var245, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2679,7 +2683,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var56, var245, 5, var55);
-    double var246[5];
+    float var246[5];
     if (input[9] <= -0.8182407021522522) {
         if (input[33] <= -0.4637751579284668) {
             if (input[17] <= -0.5582488179206848) {
@@ -2710,7 +2714,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var55, var246, 5, var54);
-    double var247[5];
+    float var247[5];
     if (input[8] <= -0.3496536463499069) {
         if (input[20] <= -0.9094969630241394) {
             memcpy(var247, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2741,7 +2745,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var54, var247, 5, var53);
-    double var248[5];
+    float var248[5];
     if (input[22] <= -0.09263775497674942) {
         if (input[25] <= -1.0428062975406647) {
             memcpy(var248, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2760,7 +2764,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var53, var248, 5, var52);
-    double var249[5];
+    float var249[5];
     if (input[31] <= 0.8650154620409012) {
         if (input[32] <= -1.1456553041934967) {
             memcpy(var249, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2783,7 +2787,7 @@ void score(double * input, double * output) {
         memcpy(var249, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var52, var249, 5, var51);
-    double var250[5];
+    float var250[5];
     if (input[0] <= -1.5416640043258667) {
         memcpy(var250, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2806,7 +2810,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var51, var250, 5, var50);
-    double var251[5];
+    float var251[5];
     if (input[21] <= 1.0770493149757385) {
         if (input[13] <= -0.5806641727685928) {
             memcpy(var251, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
@@ -2825,7 +2829,7 @@ void score(double * input, double * output) {
         memcpy(var251, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var50, var251, 5, var49);
-    double var252[5];
+    float var252[5];
     if (input[0] <= -1.0305031090974808) {
         memcpy(var252, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2852,7 +2856,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var49, var252, 5, var48);
-    double var253[5];
+    float var253[5];
     if (input[4] <= 1.5306716561317444) {
         if (input[22] <= -1.3338571190834045) {
             memcpy(var253, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -2875,7 +2879,7 @@ void score(double * input, double * output) {
         memcpy(var253, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var48, var253, 5, var47);
-    double var254[5];
+    float var254[5];
     if (input[19] <= -1.3459670543670654) {
         memcpy(var254, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2910,7 +2914,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var47, var254, 5, var46);
-    double var255[5];
+    float var255[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[34] <= 0.6232727915048599) {
             if (input[14] <= 0.38836005330085754) {
@@ -2933,7 +2937,7 @@ void score(double * input, double * output) {
         memcpy(var255, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var46, var255, 5, var45);
-    double var256[5];
+    float var256[5];
     if (input[12] <= -0.13012975454330444) {
         if (input[6] <= -0.5360596925020218) {
             memcpy(var256, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -2956,7 +2960,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var45, var256, 5, var44);
-    double var257[5];
+    float var257[5];
     if (input[13] <= -1.1604884266853333) {
         memcpy(var257, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -2991,7 +2995,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var44, var257, 5, var43);
-    double var258[5];
+    float var258[5];
     if (input[33] <= -1.0066205263137817) {
         memcpy(var258, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3034,7 +3038,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var43, var258, 5, var42);
-    double var259[5];
+    float var259[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[1] <= -1.0081409811973572) {
             memcpy(var259, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -3053,7 +3057,7 @@ void score(double * input, double * output) {
         memcpy(var259, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var42, var259, 5, var41);
-    double var260[5];
+    float var260[5];
     if (input[22] <= -1.3187292218208313) {
         memcpy(var260, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3088,7 +3092,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var41, var260, 5, var40);
-    double var261[5];
+    float var261[5];
     if (input[31] <= 0.6425384134054184) {
         if (input[33] <= 0.917060524225235) {
             if (input[18] <= 0.8273141980171204) {
@@ -3115,7 +3119,7 @@ void score(double * input, double * output) {
         memcpy(var261, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var40, var261, 5, var39);
-    double var262[5];
+    float var262[5];
     if (input[4] <= 1.0723678916692734) {
         if (input[15] <= 0.394700787961483) {
             if (input[18] <= 0.18065120652318) {
@@ -3138,7 +3142,7 @@ void score(double * input, double * output) {
         memcpy(var262, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var39, var262, 5, var38);
-    double var263[5];
+    float var263[5];
     if (input[26] <= -1.149899661540985) {
         memcpy(var263, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3165,7 +3169,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var38, var263, 5, var37);
-    double var264[5];
+    float var264[5];
     if (input[7] <= -1.184262454509735) {
         memcpy(var264, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3184,7 +3188,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var37, var264, 5, var36);
-    double var265[5];
+    float var265[5];
     if (input[9] <= -0.8182407021522522) {
         memcpy(var265, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
     } else {
@@ -3203,7 +3207,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var36, var265, 5, var35);
-    double var266[5];
+    float var266[5];
     if (input[34] <= 0.6437788605690002) {
         if (input[6] <= -0.3050949200987816) {
             if (input[26] <= -1.1463478207588196) {
@@ -3226,7 +3230,7 @@ void score(double * input, double * output) {
         memcpy(var266, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var35, var266, 5, var34);
-    double var267[5];
+    float var267[5];
     if (input[15] <= 0.24456477165222168) {
         if (input[4] <= 1.1451544165611267) {
             if (input[9] <= -0.7622532546520233) {
@@ -3249,7 +3253,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var34, var267, 5, var33);
-    double var268[5];
+    float var268[5];
     if (input[13] <= -1.1597828269004822) {
         memcpy(var268, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3308,7 +3312,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var33, var268, 5, var32);
-    double var269[5];
+    float var269[5];
     if (input[22] <= -0.09263775497674942) {
         if (input[1] <= -0.47311943769454956) {
             memcpy(var269, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -3331,7 +3335,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var32, var269, 5, var31);
-    double var270[5];
+    float var270[5];
     if (input[33] <= -1.0066205263137817) {
         memcpy(var270, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3350,7 +3354,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var31, var270, 5, var30);
-    double var271[5];
+    float var271[5];
     if (input[34] <= -0.8997063934803009) {
         memcpy(var271, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3385,7 +3389,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var30, var271, 5, var29);
-    double var272[5];
+    float var272[5];
     if (input[31] <= -0.9177519679069519) {
         memcpy(var272, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3416,7 +3420,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var29, var272, 5, var28);
-    double var273[5];
+    float var273[5];
     if (input[19] <= -0.0748985055834055) {
         if (input[34] <= 0.47847795486450195) {
             if (input[7] <= -0.5853810831904411) {
@@ -3447,7 +3451,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var28, var273, 5, var27);
-    double var274[5];
+    float var274[5];
     if (input[33] <= -0.9618566632270813) {
         memcpy(var274, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3474,7 +3478,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var27, var274, 5, var26);
-    double var275[5];
+    float var275[5];
     if (input[20] <= -0.9185924828052521) {
         memcpy(var275, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3501,7 +3505,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var26, var275, 5, var25);
-    double var276[5];
+    float var276[5];
     if (input[25] <= -1.264087200164795) {
         memcpy(var276, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3528,7 +3532,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var25, var276, 5, var24);
-    double var277[5];
+    float var277[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[21] <= -1.1231977939605713) {
             if (input[7] <= 0.3585761757567525) {
@@ -3555,7 +3559,7 @@ void score(double * input, double * output) {
         memcpy(var277, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var24, var277, 5, var23);
-    double var278[5];
+    float var278[5];
     if (input[4] <= 1.5163238644599915) {
         if (input[33] <= 0.917060524225235) {
             if (input[18] <= 0.861009955406189) {
@@ -3582,7 +3586,7 @@ void score(double * input, double * output) {
         memcpy(var278, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var23, var278, 5, var22);
-    double var279[5];
+    float var279[5];
     if (input[27] <= 1.1057265996932983) {
         if (input[6] <= -0.9554537832736969) {
             memcpy(var279, (double[]){0.0, 0.0, 0.0, 0.0, 1.0}, 5 * sizeof(double));
@@ -3605,7 +3609,7 @@ void score(double * input, double * output) {
         memcpy(var279, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var22, var279, 5, var21);
-    double var280[5];
+    float var280[5];
     if (input[20] <= -0.9176185727119446) {
         memcpy(var280, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3624,7 +3628,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var21, var280, 5, var20);
-    double var281[5];
+    float var281[5];
     if (input[34] <= 1.0075680315494537) {
         if (input[3] <= -0.4966980218887329) {
             if (input[2] <= -0.334979266859591) {
@@ -3647,7 +3651,7 @@ void score(double * input, double * output) {
         memcpy(var281, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var20, var281, 5, var19);
-    double var282[5];
+    float var282[5];
     if (input[33] <= 0.917060524225235) {
         if (input[14] <= -0.20753025263547897) {
             if (input[0] <= -0.6246804893016815) {
@@ -3674,7 +3678,7 @@ void score(double * input, double * output) {
         memcpy(var282, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var19, var282, 5, var18);
-    double var283[5];
+    float var283[5];
     if (input[33] <= 0.9240798056125641) {
         if (input[0] <= -1.0305031090974808) {
             memcpy(var283, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -3697,7 +3701,7 @@ void score(double * input, double * output) {
         memcpy(var283, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var18, var283, 5, var17);
-    double var284[5];
+    float var284[5];
     if (input[28] <= -1.215049296617508) {
         memcpy(var284, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3716,7 +3720,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var17, var284, 5, var16);
-    double var285[5];
+    float var285[5];
     if (input[1] <= -1.0055648982524872) {
         memcpy(var285, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3747,7 +3751,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var16, var285, 5, var15);
-    double var286[5];
+    float var286[5];
     if (input[22] <= -0.09263775497674942) {
         if (input[26] <= -0.9354015290737152) {
             memcpy(var286, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -3770,7 +3774,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var15, var286, 5, var14);
-    double var287[5];
+    float var287[5];
     if (input[21] <= -1.1231977939605713) {
         if (input[6] <= -0.35128869116306305) {
             if (input[1] <= 1.2278511822223663) {
@@ -3793,7 +3797,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var14, var287, 5, var13);
-    double var288[5];
+    float var288[5];
     if (input[18] <= 0.8273141980171204) {
         if (input[14] <= -0.19912619143724442) {
             if (input[2] <= -0.3746795207262039) {
@@ -3828,7 +3832,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var13, var288, 5, var12);
-    double var289[5];
+    float var289[5];
     if (input[33] <= -1.0066205263137817) {
         memcpy(var289, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3847,7 +3851,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var12, var289, 5, var11);
-    double var290[5];
+    float var290[5];
     if (input[4] <= 1.1451544165611267) {
         if (input[22] <= -0.09263775497674942) {
             if (input[14] <= -0.26015229523181915) {
@@ -3866,7 +3870,7 @@ void score(double * input, double * output) {
         memcpy(var290, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var11, var290, 5, var10);
-    double var291[5];
+    float var291[5];
     if (input[33] <= -0.9242716133594513) {
         memcpy(var291, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3885,7 +3889,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var10, var291, 5, var9);
-    double var292[5];
+    float var292[5];
     if (input[2] <= -0.37396346032619476) {
         if (input[27] <= 1.033746987581253) {
             memcpy(var292, (double[]){0.0, 0.0, 1.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -3904,7 +3908,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var9, var292, 5, var8);
-    double var293[5];
+    float var293[5];
     if (input[34] <= 0.7446615099906921) {
         if (input[21] <= -0.3331347703933716) {
             if (input[7] <= 0.6337846517562866) {
@@ -3923,7 +3927,7 @@ void score(double * input, double * output) {
         memcpy(var293, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
     }
     add_vectors(var8, var293, 5, var7);
-    double var294[5];
+    float var294[5];
     if (input[34] <= -0.9237703084945679) {
         memcpy(var294, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
     } else {
@@ -3942,7 +3946,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var7, var294, 5, var6);
-    double var295[5];
+    float var295[5];
     if (input[14] <= -0.20973745733499527) {
         if (input[3] <= -0.7255745530128479) {
             if (input[2] <= -0.10578495264053345) {
@@ -3973,7 +3977,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var6, var295, 5, var5);
-    double var296[5];
+    float var296[5];
     if (input[15] <= 0.23128797113895416) {
         if (input[18] <= 0.8273141980171204) {
             if (input[0] <= -1.0305031090974808) {
@@ -4004,7 +4008,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var5, var296, 5, var4);
-    double var297[5];
+    float var297[5];
     if (input[14] <= 0.5659061968326569) {
         if (input[13] <= -1.1597828269004822) {
             memcpy(var297, (double[]){1.0, 0.0, 0.0, 0.0, 0.0}, 5 * sizeof(double));
@@ -4031,7 +4035,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var4, var297, 5, var3);
-    double var298[5];
+    float var298[5];
     if (input[22] <= -0.10604753717780113) {
         if (input[27] <= 1.0522783994674683) {
             memcpy(var298, (double[]){0.0, 0.0, 0.0, 1.0, 0.0}, 5 * sizeof(double));
@@ -4050,7 +4054,7 @@ void score(double * input, double * output) {
         }
     }
     add_vectors(var3, var298, 5, var2);
-    double var299[5];
+    float var299[5];
     if (input[19] <= -0.027193627320230007) {
         if (input[25] <= -0.7792982757091522) {
             if (input[29] <= -0.22133653424680233) {
@@ -4096,24 +4100,28 @@ void score(double * input, double * output) {
 
 // ─── Prediction Helper ────────────────────────────────
 int rf_predict(float* input, float* confidence) {
-    double output[5];
+    float output[5];
     score(input, output);
-    
+
     // Convert votes to probabilities
-    double total = 0.0;
+    float total = 0.0f;
     for (int i = 0; i < 5; i++) total += output[i];
-    
+
     int best = 0;
-    double best_prob = 0.0;
+    float best_prob = 0.0f;
     for (int i = 0; i < 5; i++) {
-        double prob = (total > 0) ? output[i] / total : 0.0;
+        float prob = (total > 0.0f) ? output[i] / total : 0.0f;
         if (prob > best_prob) {
             best_prob = prob;
             best = i;
         }
     }
-    *confidence = (float)best_prob;
+    *confidence = best_prob;
     return best;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RF_MODEL_DATA_H

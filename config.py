@@ -73,7 +73,7 @@ for d in [DATASET_DIR, MODELS_DIR, HEADERS_DIR]:
 # ─── CSV Column Names ───────────────────────────────────────────
 def get_csv_columns():
     """Generate column names for the 'Long' format dataset CSV."""
-    return ["label", "sample_id", "timestamp_ms", "ax", "ay", "az", "gx", "gy", "gz"]
+    return ["label", "sample_id", "timestamp_ms", "subject_id", "ax", "ay", "az", "gx", "gy", "gz"]
 
 CSV_COLUMNS = get_csv_columns()
 

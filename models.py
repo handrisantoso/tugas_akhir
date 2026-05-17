@@ -9,8 +9,14 @@ import numpy as np
 import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.model_selection import (
+    train_test_split,
+    StratifiedGroupKFold,
+)
+from sklearn.metrics import (
+    classification_report, confusion_matrix, accuracy_score,
+    precision_score, recall_score, f1_score,
+)
 import warnings
 
 from config import (
@@ -791,12 +797,179 @@ def export_rf_c_header(rf_model, scaler):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  LOSO CROSS-VALIDATION
+# ═══════════════════════════════════════════════════════════════════
+
+def evaluate_model_loso(
+    model_type,
+    X, y, subject_ids,
+    epochs=DEFAULT_EPOCHS,
+    batch_size=DEFAULT_BATCH_SIZE,
+    n_estimators=DEFAULT_RF_TREES,
+    max_depth=DEFAULT_RF_DEPTH,
+    progress_callback=None,
+):
+    """Run full Leave-One-Subject-Out (LOSO) cross-validation.
+
+    Args:
+        model_type        : "mlp" | "cnn1d" | "rf"
+        X, y, subject_ids : dataset arrays (from GestureRecorder.load_dataset)
+        epochs/batch_size : Keras hyperparams (ignored for RF)
+        n_estimators/max_depth : RF hyperparams (ignored for Keras)
+        progress_callback : fn(fold_idx, n_folds, subject_name, fold_result)
+
+    Returns:
+        dict with keys:
+            n_subjects   : int
+            subjects     : list of subject IDs in fold order
+            per_fold     : list of dicts — one per fold with all metrics
+            aggregated   : {accuracy_mean, accuracy_std, precision_mean, ...}
+            confusion_agg: 2D array summed across all folds
+            model_paths  : per-fold saved model paths
+            scaler_paths : per-fold saved scaler paths
+    """
+    unique_subjects = np.unique(subject_ids)
+    n_subjects = len(unique_subjects)
+
+    if n_subjects < 2:
+        raise ValueError(
+            f"LOSO requires at least 2 subjects, got {n_subjects}. "
+            "Use train_model() with standard split for single-subject data."
+        )
+
+    # StratifiedGroupKFold: stratifies by y, groups by subject_ids
+    sgkf = StratifiedGroupKFold(n_splits=n_subjects, shuffle=True, random_state=42)
+
+    per_fold = []
+    confusion_agg = np.zeros((NUM_CLASSES, NUM_CLASSES), dtype=np.int32)
+    model_paths, scaler_paths = [], []
+    accs, precs, recs, f1s = [], [], [], []
+
+    for fold_idx, (train_idx, test_idx) in enumerate(
+        sgkf.split(X, y, groups=subject_ids)
+    ):
+        held_out = str(unique_subjects[fold_idx])
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+
+        # Feature extraction & scaling
+        if model_type == "cnn1d":
+            scaler = fit_scaler(X_train)
+            X_tr_in = scaler.transform(X_train).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            X_te_in = scaler.transform(X_test).reshape(-1, WINDOW_SIZE, NUM_AXES)
+        else:  # mlp or rf
+            X_tr_f = extract_features(X_train)
+            X_te_f = extract_features(X_test)
+            scaler = fit_scaler(X_tr_f)
+            X_tr_in = scaler.transform(X_tr_f)
+            X_te_in = scaler.transform(X_te_f)
+
+        # Train model
+        if model_type == "cnn1d":
+            model = build_cnn1d()
+            tf = _import_tensorflow()
+            from tensorflow import keras as Keras
+            model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
+                          loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+            model.fit(X_tr_in, y_train, epochs=epochs,
+                      batch_size=batch_size, verbose=0)
+            y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
+
+        elif model_type == "mlp":
+            model = build_mlp(input_dim=X_tr_in.shape[1])
+            tf = _import_tensorflow()
+            from tensorflow import keras as Keras
+            model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
+                          loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+            model.fit(X_tr_in, y_train, epochs=epochs,
+                      batch_size=batch_size, verbose=0)
+            y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
+
+        elif model_type == "rf":
+            rf = RandomForestClassifier(
+                n_estimators=n_estimators, max_depth=max_depth,
+                random_state=42, n_jobs=-1
+            )
+            rf.fit(X_tr_in, y_train)
+            y_pred = rf.predict(X_te_in)
+            model = rf
+        else:
+            raise ValueError(f"Unknown model_type: {model_type}")
+
+        # Per-fold metrics
+        acc  = accuracy_score(y_test, y_pred)
+        prec = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+        rec  = recall_score(y_test, y_pred, average="weighted", zero_division=0)
+        f1   = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+        conf = confusion_matrix(y_test, y_pred)
+        rep  = classification_report(y_test, y_pred, target_names=GESTURE_NAMES,
+                                      output_dict=True, zero_division=0)
+
+        accs.append(acc); precs.append(prec); recs.append(rec); f1s.append(f1)
+        confusion_agg += conf
+
+        fold_result = {
+            "fold": fold_idx,
+            "subject_held_out": held_out,
+            "train_n": len(y_train), "test_n": len(y_test),
+            "accuracy": acc, "precision": prec,
+            "recall": rec, "f1": f1,
+            "confusion": conf, "report": rep,
+        }
+        per_fold.append(fold_result)
+
+        # Save per-fold model
+        fold_dir = os.path.join(MODELS_DIR, f"loso_{model_type}_fold{fold_idx}")
+        os.makedirs(fold_dir, exist_ok=True)
+        if model_type == "rf":
+            mp = os.path.join(fold_dir, "rf_model.joblib")
+            joblib.dump(model, mp)
+            sp = os.path.join(fold_dir, "rf_scaler.joblib")
+            joblib.dump(scaler, sp)
+        else:
+            mp = os.path.join(fold_dir, f"{model_type}_model.keras")
+            model.save(mp)
+            sp = os.path.join(fold_dir, f"{model_type}_scaler.joblib")
+            joblib.dump(scaler, sp)
+        model_paths.append(mp)
+        scaler_paths.append(sp)
+
+        if progress_callback:
+            progress_callback(fold_idx, n_subjects, held_out, fold_result)
+
+    # Aggregated statistics
+    def _ms(arr):
+        return float(np.mean(arr)), float(np.std(arr))
+
+    acc_m, acc_s = _ms(accs)
+    prec_m, prec_s = _ms(precs)
+    rec_m, rec_s = _ms(recs)
+    f1_m, f1_s = _ms(f1s)
+
+    return {
+        "n_subjects": n_subjects,
+        "subjects": list(unique_subjects),
+        "per_fold": per_fold,
+        "aggregated": {
+            "accuracy_mean": acc_m,  "accuracy_std": acc_s,
+            "precision_mean": prec_m, "precision_std": prec_s,
+            "recall_mean": rec_m,    "recall_std": rec_s,
+            "f1_mean": f1_m,         "f1_std": f1_s,
+        },
+        "confusion_agg": confusion_agg,
+        "model_paths": model_paths,
+        "scaler_paths": scaler_paths,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  UNIFIED TRAINING API
 # ═══════════════════════════════════════════════════════════════════
 
 def train_model(model_type, X, y, epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATCH_SIZE,
                 n_estimators=DEFAULT_RF_TREES, max_depth=DEFAULT_RF_DEPTH,
-                quantize_int8=True, full_train=False, progress_callback=None):
+                quantize_int8=True, full_train=False, progress_callback=None,
+                loso_mode=False, subject_ids=None):
     """Unified training entry point.
 
     Args:
@@ -808,10 +981,31 @@ def train_model(model_type, X, y, epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATC
         full_train: if True, train on ALL data after evaluating on 15% holdout.
                     Best for single-user personal models — deployed model uses 100% of data.
         progress_callback: for UI updates
+        loso_mode: if True, run full LOSO CV across all subjects.
+                   Ignores full_train. Returns aggregated results.
+        subject_ids: array-like — required when loso_mode=True.
+                     Pass the array returned by GestureRecorder.load_dataset().
 
     Returns:
         dict with training results, model info, and export paths
     """
+    # ── LOSO path ───────────────────────────────────────────────────
+    if loso_mode:
+        if subject_ids is None:
+            raise ValueError(
+                "subject_ids is required when loso_mode=True. "
+                "Pass the array returned by GestureRecorder.load_dataset()."
+            )
+        result = evaluate_model_loso(
+            model_type, X, y, subject_ids,
+            epochs=epochs, batch_size=batch_size,
+            n_estimators=n_estimators, max_depth=max_depth,
+            progress_callback=progress_callback,
+        )
+        # No model export in LOSO mode — purely an evaluation pass.
+        return result
+
+    # ── Standard single-split path ─────────────────────────────────
     if model_type in ("mlp", "cnn1d"):
         result = train_keras_model(
             model_type, X, y, epochs, batch_size,
