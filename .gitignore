@@ -5,15 +5,6 @@ __pycache__/
 .venv/
 .env
 
-# ML Models & Scalers
-models/*.keras
-models/*.tflite
-models/*.joblib
-
-# Datasets
-*.csv
-dataset/
-
 
 # IDEs
 .vscode/
