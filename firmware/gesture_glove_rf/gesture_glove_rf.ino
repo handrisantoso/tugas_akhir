@@ -197,8 +197,10 @@ void setup() {
     stats_init(&inf_stats);
 
     // Print startup info
-    Serial.printf("[INFO] Model: RF | Trees: %d | Features: %d\n", 10, MODEL_NUM_FEATURES);
-    Serial.printf("[INFO] Heap: %d / %d bytes\n", ESP.getFreeHeap(), ESP.getHeapSize());
+    Serial.printf("[INFO] Model: RF | Trees: %d | Features: %d
+", MODEL_NUM_TREES, MODEL_NUM_FEATURES);
+    Serial.printf("[INFO] Heap: %d / %d bytes
+", ESP.getFreeHeap(), ESP.getHeapSize());
 
     // Init BLE HID keyboard
     init_ble_hid();
@@ -244,7 +246,8 @@ void loop() {
     stats_record(&inf_stats, latency_us, ok);
 
     // ── Serial output: prediction with latency + heap ──
-    Serial.printf("[PRED] %s %.2f %lld %ld\n",
+    Serial.printf("[PRED] %s %.2f %lld %ld
+",
         MODEL_GESTURE_NAMES[predicted], confidence,
         latency_us, ESP.getFreeHeap());
 
@@ -253,7 +256,8 @@ void loop() {
         float avg_lat = stats_avg_latency(&inf_stats);
         float fps = stats_avg_fps(&inf_stats);
         Serial.printf(
-            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld\n",
+            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld
+",
             inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             inf_stats.latency_min, inf_stats.latency_max,
             avg_lat, fps, ESP.getFreeHeap()
@@ -265,7 +269,8 @@ void loop() {
         int64_t dur = (esp_timer_get_time() - inf_stats.test_start_us) / 1000000;
         float sr = 100.0f * (float)inf_stats.ok_count / inf_stats.total_count;
         Serial.printf(
-            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld\n",
+            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld
+",
             (int)dur, inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             sr, stats_avg_latency(&inf_stats), stats_avg_fps(&inf_stats), inf_stats.heap_min
         );
