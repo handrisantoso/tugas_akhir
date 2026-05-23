@@ -1,0 +1,5 @@
+1. Selesai training RT-DETR, hasilnya terlalu lambat, membutuhkan kurang lebih 50 m/s per frame dibandingkan yolov11s yang hanya butuh 10m/s, sehingga performa real time akan menurun cukup drastis. Mencoba training yolov11m, inference hanya membutuhkan 17m/s, lebih lambat 7m/s daripada yolov11s, namun deteksi jauh lebih stabil daripada yolov11s, sehingga peningkatan waktu inference masih worth it untuk dilakukan
+
+2. Peningkatan conf threshold pada deteksi yolo dari 0.15 ke 0.35 dan ke 0.5 menunjukkan peningkatan ke stabilan oc-sort, dibuktikan dengan berkurangnya ID switching seiring ditingkatkannya conf threshold
+
+3. Entah kenapa walaupun bbox mencakup seluruh bagian tubuh character 1, namun jika melebar sedikit saja dan overlap dengan character 2, maka skeleton nya akan mengambil bagian dari character ke 2
