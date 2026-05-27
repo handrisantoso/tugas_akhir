@@ -254,7 +254,7 @@ void loop() {
         in->data.int8[i] = (int8_t) constrain((int)(feat_buf[i] / scale + zp), -128, 127);
     }
 
-    // --- Inference with timing ---
+    // --- Inference timing (Model Only - comparable to PC benchmark) ---
     int64_t t0 = esp_timer_get_time();
     bool ok = (interpreter->Invoke() == kTfLiteOk);
     int64_t t1 = esp_timer_get_time();
@@ -277,7 +277,7 @@ void loop() {
     }
 
     // --- Serial output: prediction with latency + heap ---
-    Serial.printf("[PRED] %s %.2f %lld %ld\\n",
+    Serial.printf("[PRED] %s %.2f %lld %ld\n",
         MODEL_GESTURE_NAMES[best], max_prob, latency_us, ESP.getFreeHeap());
 
     // --- Periodic stats (every 100 inferences) ---
@@ -285,7 +285,7 @@ void loop() {
         float avg_lat = stats_avg_latency(&inf_stats);
         float fps = stats_avg_fps(&inf_stats);
         Serial.printf(
-            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld\\n",
+            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld\n",
             inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             inf_stats.latency_min, inf_stats.latency_max,
             avg_lat, fps, ESP.getFreeHeap()
@@ -297,7 +297,7 @@ void loop() {
         int64_t dur = (esp_timer_get_time() - inf_stats.test_start_us) / 1000000;
         float sr = 100.0f * (float)inf_stats.ok_count / inf_stats.total_count;
         Serial.printf(
-            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld\\n",
+            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld\n",
             (int)dur, inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             sr, stats_avg_latency(&inf_stats), stats_avg_fps(&inf_stats), inf_stats.heap_min
         );

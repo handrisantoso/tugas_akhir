@@ -246,8 +246,7 @@ void loop() {
     stats_record(&inf_stats, latency_us, ok);
 
     // ── Serial output: prediction with latency + heap ──
-    Serial.printf("[PRED] %s %.2f %lld %ld
-",
+    Serial.printf("[PRED] %s %.2f %lld %ld\n",
         MODEL_GESTURE_NAMES[predicted], confidence,
         latency_us, ESP.getFreeHeap());
 

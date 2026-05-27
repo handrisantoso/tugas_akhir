@@ -92,56 +92,93 @@ def train_all_models(X, y):
     return results
 
 
-def measure_latency(results, X, y, n_runs=100):
-    """Measure PC-side inference latency for each model.
-    
-    Times the FULL pipeline per sample: feature extraction + scaling + prediction.
-    Uses X_test from the actual 70/20/10 split (not arbitrary X[:n_runs]).
+def measure_latency(results, X, y, n_runs=100, n_warmup=10):
+    """Measure PC-side pure model inference latency.
+
+    Steps:
+    1. Pre-process ALL samples BEFORE timing (no preprocessing in benchmark)
+    2. Warmup: discard first n_warmup calls (remove session/graph overhead)
+    3. Time ONLY model.predict() per SAMPLE (batch_size=1, same as ESP32)
+    4. Record comprehensive stats: mean, std, min, max, P95
+    5. Log system conditions for reproducibility
     """
-    print("\n[5] Measuring Inference Latency...")
+    print("\n[5] Measuring Inference Latency (Model Only)...")
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
     import tensorflow as tf
+    import platform
 
     # Reproduce the same 70/20/10 split used during training
     _, _, X_test_raw, _, _, _ = split_dataset(X, y)
     n_samples = min(n_runs, len(X_test_raw))
-    print(f"    Using {n_samples} test samples from split (total test={len(X_test_raw)})")
+
+    # ── Log system conditions ──────────────────────────────
+    print("─" * 55)
+    print(f"  PC Spec:       {platform.processor()} | {platform.machine()}")
+    print(f"  TF Backend:    {tf.config.list_physical_devices()}")
+    print(f"  TF Version:    {tf.__version__}")
+    try:
+        n_threads = tf.config.threading.get_intra_op_parallelism_threads()
+        print(f"  TF Threads:    {n_threads}")
+    except Exception:
+        print(f"  TF Threads:    (default)")
+    print(f"  Samples:       {n_samples} | Warmup: {n_warmup}")
+    print("─" * 55)
 
     for name, res in results.items():
         model = res["model"]
         scaler = res["scaler"]
-        latencies = []
 
-        for i in range(n_samples):
-            sample = X_test_raw[i:i+1]
+        # Pre-process ALL samples before timing starts
+        if name == "RF":
+            feat_all = extract_features(X_test_raw[:n_samples])
+            scaled_all = scaler.transform(feat_all)
+        elif name == "MLP":
+            feat_all = extract_features(X_test_raw[:n_samples])
+            scaled_all = scaler.transform(feat_all)
+        elif name == "CNN1D":
+            flat_all = X_test_raw[:n_samples].reshape(n_samples, -1)
+            scaled_all = scaler.transform(flat_all).reshape(n_samples, WINDOW_SIZE, NUM_AXES)
 
+        # Warmup: discard first n_warmup calls to remove session/graph overhead
+        print(f"  {name}: warming up ({n_warmup} calls)...")
+        for i in range(n_warmup):
             if name == "RF":
-                t0 = time.perf_counter()
-                feat = extract_features(sample)
-                scaled = scaler.transform(feat)
-                model.predict(scaled)
-                latencies.append((time.perf_counter() - t0) * 1000)
+                model.predict(scaled_all[i:i+1])
             elif name == "MLP":
-                t0 = time.perf_counter()
-                feat = extract_features(sample)
-                scaled = scaler.transform(feat)
-                model.predict(scaled, verbose=0)
-                latencies.append((time.perf_counter() - t0) * 1000)
+                model.predict(scaled_all[i:i+1], verbose=0)
             elif name == "CNN1D":
-                t0 = time.perf_counter()
-                flat = sample.flatten().reshape(1, -1)
-                scaled = scaler.transform(flat).reshape(1, WINDOW_SIZE, NUM_AXES)
-                model.predict(scaled, verbose=0)
-                latencies.append((time.perf_counter() - t0) * 1000)
+                model.predict(scaled_all[i:i+1], verbose=0)
 
-        res["latency_mean_ms"] = np.mean(latencies)
-        res["latency_std_ms"] = np.std(latencies)
-        res["latency_p95_ms"] = np.percentile(latencies, 95)
-        res["latencies"] = latencies
-        fps = 1000.0 / res["latency_mean_ms"] if res["latency_mean_ms"] > 0 else 0
-        res["fps"] = fps
-        print(f"    {name}: {res['latency_mean_ms']:.2f} +/- {res['latency_std_ms']:.2f} ms "
-              f"(p95={res['latency_p95_ms']:.2f}ms, {fps:.1f} FPS)")
+        # Pure benchmark: batch_size=1 per call (same as ESP32)
+        latencies = []
+        t0_total = time.perf_counter()
+        for i in range(n_samples):
+            t0 = time.perf_counter()
+            if name == "RF":
+                model.predict(scaled_all[i:i+1])
+            elif name == "MLP":
+                model.predict(scaled_all[i:i+1], verbose=0)
+            elif name == "CNN1D":
+                model.predict(scaled_all[i:i+1], verbose=0)
+            latencies.append((time.perf_counter() - t0) * 1000)  # ms
+
+        elapsed_sec = time.perf_counter() - t0_total
+
+        # ── Comprehensive stats (same format as ESP32) ──
+        res["latency_mean_ms"]  = np.mean(latencies)
+        res["latency_std_ms"]   = np.std(latencies)
+        res["latency_min_ms"]   = np.min(latencies)
+        res["latency_max_ms"]   = np.max(latencies)
+        res["latency_p95_ms"]   = np.percentile(latencies, 95)
+        res["latencies"]        = latencies
+        res["fps"]              = n_samples / elapsed_sec if elapsed_sec > 0 else 0
+
+        print(f"  {name}: mean={res['latency_mean_ms']:.2f}ms "
+              f"std={res['latency_std_ms']:.2f}ms "
+              f"min={res['latency_min_ms']:.2f}ms "
+              f"max={res['latency_max_ms']:.2f}ms "
+              f"p95={res['latency_p95_ms']:.2f}ms "
+              f"fps={res['fps']:.1f}")
 
 
 def get_model_sizes(results):
@@ -347,8 +384,10 @@ def save_summary_json(results):
             "recall_macro": round(res["recall_macro"], 4),
             "val_accuracy": round(res.get("val_accuracy", 0), 4),
             "latency_mean_ms": round(res["latency_mean_ms"], 2),
-            "latency_std_ms": round(res["latency_std_ms"], 2),
-            "latency_p95_ms": round(res["latency_p95_ms"], 2),
+            "latency_std_ms":  round(res["latency_std_ms"], 2),
+            "latency_min_ms":  round(res.get("latency_min_ms", res["latency_mean_ms"]), 2),
+            "latency_max_ms":  round(res.get("latency_max_ms", res["latency_mean_ms"]), 2),
+            "latency_p95_ms":  round(res["latency_p95_ms"], 2),
             "fps": round(res["fps"], 1),
             "pc_model_kb": round(res["pc_model_kb"], 1),
             "esp_model_kb": round(res["esp_model_kb"], 1),
@@ -384,7 +423,11 @@ def print_latex_table(summary):
         ("F1-Score (macro)", "f1_macro", "{:.2%}"),
         ("Precision (macro)", "precision_macro", "{:.2%}"),
         ("Recall (macro)", "recall_macro", "{:.2%}"),
-        ("Latency (ms)", "latency_mean_ms", "{:.2f}"),
+        ("Latency mean (ms)", "latency_mean_ms", "{:.2f}"),
+        ("Latency std (ms)", "latency_std_ms", "{:.2f}"),
+        ("Latency min (ms)", "latency_min_ms", "{:.2f}"),
+        ("Latency max (ms)", "latency_max_ms", "{:.2f}"),
+        ("Latency P95 (ms)", "latency_p95_ms", "{:.2f}"),
         ("FPS", "fps", "{:.1f}"),
         ("ESP32 Flash (KB)", "esp_model_kb", "{:.0f}"),
         ("Arena (KB)", "arena_kb", "{:.0f}"),
