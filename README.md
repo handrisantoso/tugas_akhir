@@ -1,4 +1,4 @@
-The system currently can is trained on 2 class (pothole, crack) and 4 class (pothole, longitudinal crack, latitude crack, and alligator crack).
+The system currently is trained on 2 class (pothole, crack) and 4 class (pothole, longitudinal crack, latitude crack, and alligator crack).
 
 ## Overview
 
