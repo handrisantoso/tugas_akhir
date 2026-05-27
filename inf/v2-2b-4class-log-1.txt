@@ -1,0 +1,133 @@
+Road Damage Detection Log
+Generated : 2026-05-27 09:55:28
+Video     : /content/drive/MyDrive/img-captioning/vid/v2.mp4
+======================================================================
+
+[#1] Frame 15 | Time 00:00.50 | Video FPS: 14.1
+  Class      : longitudinal_cracking (conf: 0.253)
+  BBox       : [294, 788, 499, 946]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kiri lajur (sisi dekat).
+  Qwen time  : 1.936s
+----------------------------------------------------------------------
+[#2] Frame 45 | Time 00:01.50 | Video FPS: 7.7
+  Class      : longitudinal_cracking (conf: 0.733)
+  BBox       : [745, 624, 876, 889]
+  Caption    : Retak memanjang ringan terpantau dari analisis visual di tengah lajur (sisi dekat).
+  Qwen time  : 1.520s
+----------------------------------------------------------------------
+[#3] Frame 75 | Time 00:02.50 | Video FPS: 8.1
+  Class      : longitudinal_cracking (conf: 0.293)
+  BBox       : [866, 626, 910, 708]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 1.391s
+----------------------------------------------------------------------
+[#4] Frame 90 | Time 00:03.00 | Video FPS: 7.7
+  Class      : alligator_cracking (conf: 0.552)
+  BBox       : [452, 690, 828, 902]
+  Caption    : Retak kulit buaya ringan terpantau dari analisis visual di tengah lajur (sisi dekat).
+  Qwen time  : 1.455s
+----------------------------------------------------------------------
+[#5] Frame 90 | Time 00:03.00 | Video FPS: 7.7
+  Class      : longitudinal_cracking (conf: 0.315)
+  BBox       : [1287, 661, 1621, 780]
+  Caption    : Terdapat lubang yang tergolong kecil di kanan lajur (sisi dekat).
+  Qwen time  : 1.139s
+----------------------------------------------------------------------
+[#6] Frame 135 | Time 00:04.50 | Video FPS: 7.6
+  Class      : pothole (conf: 0.301)
+  BBox       : [279, 863, 1469, 985]
+  Caption    : Terdapat lubang yang tergolong kecil di tengah lajur (sisi dekat).
+  Qwen time  : 1.781s
+----------------------------------------------------------------------
+[#7] Frame 150 | Time 00:05.00 | Video FPS: 7.1
+  Class      : longitudinal_cracking (conf: 0.357)
+  BBox       : [628, 652, 744, 716]
+  Caption    : Retak kulit buaya ringan terpantau dari analisis visual di tengah lajur (sisi dekat).
+  Qwen time  : 1.468s
+----------------------------------------------------------------------
+[#8] Frame 240 | Time 00:08.00 | Video FPS: 8.4
+  Class      : longitudinal_cracking (conf: 0.600)
+  BBox       : [1398, 583, 1844, 729]
+  Caption    : Retak memanjang ringan terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.370s
+----------------------------------------------------------------------
+[#9] Frame 300 | Time 00:10.00 | Video FPS: 8.5
+  Class      : longitudinal_cracking (conf: 0.793)
+  BBox       : [149, 659, 569, 902]
+  Caption    : Retak memanjang sedang terpantau dari analisis visual di kiri lajur (sisi dekat).
+  Qwen time  : 1.381s
+----------------------------------------------------------------------
+[#10] Frame 315 | Time 00:10.50 | Video FPS: 8.3
+  Class      : longitudinal_cracking (conf: 0.552)
+  BBox       : [1430, 576, 1554, 625]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kanan lajur (sisi dekat).
+  Qwen time  : 1.371s
+----------------------------------------------------------------------
+[#11] Frame 315 | Time 00:10.50 | Video FPS: 8.3
+  Class      : longitudinal_cracking (conf: 0.445)
+  BBox       : [1155, 842, 1221, 898]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 1.368s
+----------------------------------------------------------------------
+[#12] Frame 315 | Time 00:10.50 | Video FPS: 8.3
+  Class      : longitudinal_cracking (conf: 0.282)
+  BBox       : [526, 631, 561, 670]
+  Caption    : Retak memanjang ringan terpantau dari analisis visual di kiri lajur (sisi dekat).
+  Qwen time  : 1.389s
+----------------------------------------------------------------------
+[#13] Frame 315 | Time 00:10.50 | Video FPS: 8.3
+  Class      : longitudinal_cracking (conf: 0.270)
+  BBox       : [472, 648, 506, 676]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kiri lajur (sisi dekat).
+  Qwen time  : 1.370s
+----------------------------------------------------------------------
+[#14] Frame 330 | Time 00:11.00 | Video FPS: 7.4
+  Class      : alligator_cracking (conf: 0.856)
+  BBox       : [1269, 646, 1920, 910]
+  Caption    : Retak kulit buaya sedang terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.815s
+----------------------------------------------------------------------
+[#15] Frame 345 | Time 00:11.50 | Video FPS: 7.2
+  Class      : longitudinal_cracking (conf: 0.799)
+  BBox       : [1136, 580, 1325, 686]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 2.147s
+----------------------------------------------------------------------
+[#16] Frame 345 | Time 00:11.50 | Video FPS: 7.2
+  Class      : longitudinal_cracking (conf: 0.542)
+  BBox       : [1508, 626, 1732, 701]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kanan lajur (sisi dekat).
+  Qwen time  : 1.377s
+----------------------------------------------------------------------
+[#17] Frame 345 | Time 00:11.50 | Video FPS: 7.2
+  Class      : alligator_cracking (conf: 0.289)
+  BBox       : [826, 585, 956, 608]
+  Caption    : Retak kulit buaya ringan terpantau dari analisis visual di tengah lajur (sisi dekat).
+  Qwen time  : 1.470s
+----------------------------------------------------------------------
+[#18] Frame 360 | Time 00:12.00 | Video FPS: 6.7
+  Class      : longitudinal_cracking (conf: 0.463)
+  BBox       : [1324, 716, 1441, 781]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kanan lajur (sisi dekat).
+  Qwen time  : 1.373s
+----------------------------------------------------------------------
+[#19] Frame 360 | Time 00:12.00 | Video FPS: 6.7
+  Class      : alligator_cracking (conf: 0.430)
+  BBox       : [1001, 664, 1456, 841]
+  Caption    : Retak kulit buaya ringan terpantau dari analisis visual di tengah lajur (sisi dekat).
+  Qwen time  : 1.465s
+----------------------------------------------------------------------
+[#20] Frame 360 | Time 00:12.00 | Video FPS: 6.7
+  Class      : longitudinal_cracking (conf: 0.251)
+  BBox       : [435, 651, 527, 698]
+  Caption    : Terdapat retak memanjang yang tergolong ringan di kiri lajur (sisi dekat).
+  Qwen time  : 1.379s
+----------------------------------------------------------------------
+
+======================================================================
+Summary
+  Total frames processed : 365
+  Total captions logged  : 20
+  Total Qwen time        : 29.96s
+  Avg Qwen time/caption  : 1.498s
+  Total pipeline time    : 58.54s

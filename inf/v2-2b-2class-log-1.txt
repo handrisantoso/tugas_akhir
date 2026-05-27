@@ -1,0 +1,139 @@
+Road Damage Detection Log
+Generated : 2026-05-27 09:58:49
+Video     : /content/drive/MyDrive/img-captioning/vid/v2.mp4
+======================================================================
+
+[#1] Frame 15 | Time 00:00.50 | Video FPS: 13.1
+  Class      : retakan (conf: 0.540)
+  BBox       : [708, 596, 869, 908]
+  Caption    : Terdapat retakan yang tergolong sedang di tengah lajur (sisi dekat).
+  Qwen time  : 1.228s
+----------------------------------------------------------------------
+[#2] Frame 45 | Time 00:01.50 | Video FPS: 10.2
+  Class      : retakan (conf: 0.372)
+  BBox       : [720, 867, 876, 948]
+  Caption    : Adanya retakan ringan pada permukaan jalan di tengah lajur (sisi dekat).
+  Qwen time  : 1.260s
+----------------------------------------------------------------------
+[#3] Frame 75 | Time 00:02.50 | Video FPS: 9.5
+  Class      : retakan (conf: 0.364)
+  BBox       : [872, 626, 916, 712]
+  Caption    : Terdapat retakan yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 1.965s
+----------------------------------------------------------------------
+[#4] Frame 90 | Time 00:03.00 | Video FPS: 7.8
+  Class      : pothole (conf: 0.756)
+  BBox       : [1293, 679, 1587, 775]
+  Caption    : Lubang kecil terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.466s
+----------------------------------------------------------------------
+[#5] Frame 90 | Time 00:03.00 | Video FPS: 7.8
+  Class      : retakan (conf: 0.739)
+  BBox       : [439, 691, 814, 898]
+  Caption    : Terdapat retakan yang tergolong sedang di kiri lajur (sisi dekat).
+  Qwen time  : 1.140s
+----------------------------------------------------------------------
+[#6] Frame 105 | Time 00:03.50 | Video FPS: 6.9
+  Class      : pothole (conf: 0.480)
+  BBox       : [1499, 859, 1733, 958]
+  Caption    : Terdapat lubang yang tergolong kecil di kanan lajur (sisi dekat).
+  Qwen time  : 1.183s
+----------------------------------------------------------------------
+[#7] Frame 240 | Time 00:08.00 | Video FPS: 8.9
+  Class      : retakan (conf: 0.670)
+  BBox       : [575, 553, 816, 782]
+  Caption    : Adanya retakan ringan pada permukaan jalan di tengah lajur (sisi dekat).
+  Qwen time  : 1.144s
+----------------------------------------------------------------------
+[#8] Frame 240 | Time 00:08.00 | Video FPS: 8.9
+  Class      : retakan (conf: 0.323)
+  BBox       : [385, 797, 544, 963]
+  Caption    : Terdapat retakan yang tergolong ringan di kiri lajur (sisi dekat).
+  Qwen time  : 1.128s
+----------------------------------------------------------------------
+[#9] Frame 270 | Time 00:09.00 | Video FPS: 8.6
+  Class      : retakan (conf: 0.538)
+  BBox       : [1708, 686, 1918, 763]
+  Caption    : Retakan ringan terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.155s
+----------------------------------------------------------------------
+[#10] Frame 270 | Time 00:09.00 | Video FPS: 8.6
+  Class      : retakan (conf: 0.461)
+  BBox       : [271, 641, 640, 921]
+  Caption    : Terdapat retakan yang tergolong sedang di kiri lajur (sisi dekat).
+  Qwen time  : 1.167s
+----------------------------------------------------------------------
+[#11] Frame 300 | Time 00:10.00 | Video FPS: 8.4
+  Class      : retakan (conf: 0.828)
+  BBox       : [78, 604, 646, 965]
+  Caption    : Terdapat retakan yang tergolong sedang di kiri lajur (sisi dekat).
+  Qwen time  : 1.516s
+----------------------------------------------------------------------
+[#12] Frame 315 | Time 00:10.50 | Video FPS: 8.1
+  Class      : retakan (conf: 0.492)
+  BBox       : [1430, 575, 1560, 624]
+  Caption    : Lubang kecil terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.903s
+----------------------------------------------------------------------
+[#13] Frame 315 | Time 00:10.50 | Video FPS: 8.1
+  Class      : retakan (conf: 0.256)
+  BBox       : [1634, 627, 1802, 687]
+  Caption    : Terdapat retakan yang tergolong ringan di kanan lajur (sisi dekat).
+  Qwen time  : 1.349s
+----------------------------------------------------------------------
+[#14] Frame 330 | Time 00:11.00 | Video FPS: 7.6
+  Class      : retakan (conf: 0.467)
+  BBox       : [1216, 634, 1624, 921]
+  Caption    : Retakan sedang terpantau dari analisis visual di kanan lajur (sisi dekat).
+  Qwen time  : 1.180s
+----------------------------------------------------------------------
+[#15] Frame 345 | Time 00:11.50 | Video FPS: 7.6
+  Class      : retakan (conf: 0.368)
+  BBox       : [1140, 578, 1339, 699]
+  Caption    : Terdapat retakan yang tergolong sedang di tengah lajur (sisi dekat).
+  Qwen time  : 1.167s
+----------------------------------------------------------------------
+[#16] Frame 345 | Time 00:11.50 | Video FPS: 7.6
+  Class      : retakan (conf: 0.343)
+  BBox       : [1140, 581, 1266, 650]
+  Caption    : Terdapat retakan yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 1.172s
+----------------------------------------------------------------------
+[#17] Frame 345 | Time 00:11.50 | Video FPS: 7.6
+  Class      : retakan (conf: 0.311)
+  BBox       : [1437, 608, 1601, 661]
+  Caption    : Adanya retakan ringan pada permukaan jalan di kanan lajur (sisi dekat).
+  Qwen time  : 1.152s
+----------------------------------------------------------------------
+[#18] Frame 345 | Time 00:11.50 | Video FPS: 7.6
+  Class      : retakan (conf: 0.301)
+  BBox       : [1449, 605, 1655, 667]
+  Caption    : Terdapat retakan yang tergolong ringan di kanan lajur (sisi dekat).
+  Qwen time  : 1.138s
+----------------------------------------------------------------------
+[#19] Frame 360 | Time 00:12.00 | Video FPS: 7.1
+  Class      : retakan (conf: 0.809)
+  BBox       : [1603, 694, 1847, 814]
+  Caption    : Adanya retakan ringan pada permukaan jalan di kanan lajur (sisi dekat).
+  Qwen time  : 1.662s
+----------------------------------------------------------------------
+[#20] Frame 360 | Time 00:12.00 | Video FPS: 7.1
+  Class      : retakan (conf: 0.529)
+  BBox       : [1013, 651, 1542, 842]
+  Caption    : Terdapat retakan yang tergolong sedang di tengah lajur (sisi dekat).
+  Qwen time  : 1.745s
+----------------------------------------------------------------------
+[#21] Frame 360 | Time 00:12.00 | Video FPS: 7.1
+  Class      : retakan (conf: 0.411)
+  BBox       : [649, 674, 1019, 828]
+  Caption    : Terdapat retakan yang tergolong ringan di tengah lajur (sisi dekat).
+  Qwen time  : 1.650s
+----------------------------------------------------------------------
+
+======================================================================
+Summary
+  Total frames processed : 365
+  Total captions logged  : 21
+  Total Qwen time        : 28.47s
+  Avg Qwen time/caption  : 1.356s
+  Total pipeline time    : 56.58s
