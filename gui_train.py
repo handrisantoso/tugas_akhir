@@ -101,6 +101,9 @@ class TrainTab(ctk.CTkFrame):
         self.export_btn = ctk.CTkButton(btn_row, text="📦 Export C Header", fg_color="#3B82F6",
                                          hover_color="#2563EB", command=self._export_header, width=140, state="disabled")
         self.export_btn.pack(side="left", padx=(0,8))
+        self.save_plot_btn = ctk.CTkButton(btn_row, text="💾 Save Plot", fg_color="#374151",
+                                            hover_color="#4B5563", command=self._save_plot, width=100, state="disabled")
+        self.save_plot_btn.pack(side="left", padx=(0,8))
         ctk.CTkButton(btn_row, text="📂 Open Output", width=120, fg_color="#374151",
                        command=lambda: os.startfile(HEADERS_DIR) if os.path.isdir(HEADERS_DIR) else None).pack(side="left")
         self.status_lbl = ctk.CTkLabel(btn_row, text="Ready", font=("Inter", 11), text_color="#9CA3AF")
@@ -214,12 +217,16 @@ class TrainTab(ctk.CTkFrame):
             if loso_mode:
                 def on_progress(fold_idx, n_folds, held_out, fold_result):
                     self.progress_queue.put(("loso_fold", fold_idx, n_folds, held_out, fold_result))
+                def on_epoch(fold_idx, n_folds, held_out, epoch, logs):
+                    self.progress_queue.put(("loso_epoch", fold_idx, n_folds, held_out, epoch, logs))
             elif model_type == "rf":
                 def on_progress(tree_idx, total_trees):
                     self.progress_queue.put(("rf_progress", tree_idx, total_trees))
+                on_epoch = None
             else:
                 def on_progress(epoch, logs):
                     self.progress_queue.put(("epoch", epoch, logs))
+                on_epoch = None
 
             result = train_model(
                 model_type, X, y,
@@ -229,6 +236,7 @@ class TrainTab(ctk.CTkFrame):
                 progress_callback=on_progress,
                 loso_mode=loso_mode,
                 subject_ids=subject_ids,
+                epoch_callback=on_epoch,
             )
             self.progress_queue.put(("done", result))
         except Exception as e:
@@ -248,6 +256,13 @@ class TrainTab(ctk.CTkFrame):
                 elif msg[0] == "rf_progress":
                     tree_idx, total = msg[1], msg[2]
                     self.status_lbl.configure(text=f"Training RF... {tree_idx}/{total} trees")
+                elif msg[0] == "loso_epoch":
+                    fold_idx, n_folds, held_out, epoch, logs = msg[1], msg[2], msg[3], msg[4], msg[5]
+                    acc = logs.get("accuracy", 0)
+                    self.status_lbl.configure(
+                        text=f"LOSO Fold {fold_idx+1}/{n_folds} — epoch {epoch+1} — acc: {acc:.3f}",
+                        text_color="#A78BFA",
+                    )
                 elif msg[0] == "loso_fold":
                     fold_idx, n_folds, held_out, fold_result = msg[1], msg[2], msg[3], msg[4]
                     acc = fold_result.get("accuracy", 0)
@@ -278,6 +293,7 @@ class TrainTab(ctk.CTkFrame):
 
         # ── Standard single-split result ────────────────────────────────
         self.export_btn.configure(state="normal")
+        self.save_plot_btn.configure(state="normal")
         acc        = result.get("accuracy", 0)        # eval holdout accuracy
         val_acc    = result.get("val_accuracy", 0)
         train_n    = result.get("train_samples", 0)
@@ -395,68 +411,79 @@ class TrainTab(ctk.CTkFrame):
             text_color="#22C55E"
         )
         self.export_btn.configure(state="disabled")
+        self.save_plot_btn.configure(state="normal")
         self.size_lbl.configure(text="")
 
-        # ── Reconfigure figure: 3-panel LOSO layout ────────────────────
+        # ── Reconfigure figure: same 3-panel layout as standard training ──
         self.fig.clear()
-        gs = self.fig.add_gridspec(1, 3, wspace=0.35)
+        gs = self.fig.add_gridspec(1, 3, wspace=0.38)
 
-        # Panel 1: Per-fold accuracy bar chart
-        ax_bar = self.fig.add_subplot(gs[0, 0])
-        ax_bar.set_facecolor("#16213e")
-        fold_labels = [str(s) for s in subjects]
+        # ── Panel 1: Per-fold accuracy (replaces Loss curve) ───────────
+        ax_fold = self.fig.add_subplot(gs[0, 0])
+        ax_fold.set_facecolor("#16213e")
+        fold_labels = [f"Fold {i+1}" for i in range(len(per_fold))]
         fold_accs   = [f["accuracy"] for f in per_fold]
-        colors = ["#8B5CF6" if a >= acc_m else "#F59E0B" for a in fold_accs]
-        ax_bar.bar(fold_labels, fold_accs, color=colors,
-                   edgecolor="#374151", linewidth=0.5)
-        ax_bar.axhline(acc_m, color="#22C55E", linestyle="--",
-                       linewidth=1.5, label=f"Mean {acc_m:.1%}")
-        ax_bar.set_ylabel("Accuracy", color="#D1D5DB", fontsize=9)
-        ax_bar.set_xlabel("Held-out Subject", color="#D1D5DB", fontsize=9)
-        ax_bar.set_title("Per-Fold Accuracy", color="#D1D5DB", fontsize=10)
-        ax_bar.set_ylim(0, 1.05)
-        ax_bar.tick_params(colors="#9CA3AF", labelsize=7)
-        for spine in ax_bar.spines.values(): spine.set_color("#374151")
-        ax_bar.legend(fontsize=7, facecolor="#1a1a2e",
-                       edgecolor="#374151", labelcolor="#D1D5DB")
+        fold_f1s    = [f["f1"]       for f in per_fold]
+        x = np.arange(len(fold_labels))
+        w = 0.35
+        ax_fold.bar(x - w/2, fold_accs, w, color="#22C55E",
+                    edgecolor="#374151", linewidth=0.5, label="Accuracy")
+        ax_fold.bar(x + w/2, fold_f1s,  w, color="#8B5CF6",
+                    edgecolor="#374151", linewidth=0.5, label="F1")
+        ax_fold.axhline(acc_m, color="#22C55E", linestyle="--", linewidth=1, alpha=0.6)
+        ax_fold.axhline(f1_m,  color="#8B5CF6", linestyle="--", linewidth=1, alpha=0.6)
+        ax_fold.set_xticks(x)
+        ax_fold.set_xticklabels(fold_labels, color="#9CA3AF", fontsize=7)
+        ax_fold.set_ylabel("Score", color="#D1D5DB", fontsize=9)
+        ax_fold.set_ylim(0, 1.05)
+        ax_fold.set_title(
+            f"Per-Fold  (mean acc {acc_m:.1%})", color="#D1D5DB", fontsize=10)
+        ax_fold.tick_params(colors="#9CA3AF", labelsize=7)
+        for sp in ax_fold.spines.values(): sp.set_color("#374151")
+        ax_fold.legend(fontsize=7, facecolor="#1a1a2e",
+                        edgecolor="#374151", labelcolor="#D1D5DB")
 
-        # Panel 2: Cross-subject confusion matrix (aggregated)
+        # ── Panel 2: Aggregated confusion matrix (same as standard) ────
         ax_cm = self.fig.add_subplot(gs[0, 1])
         ax_cm.set_facecolor("#16213e")
         sns.heatmap(
             confusion_agg, annot=True, fmt="d", cmap="magma", ax=ax_cm,
             xticklabels=GESTURE_NAMES, yticklabels=GESTURE_NAMES,
-            cbar=True, cbar_kws={"shrink": 0.7},
-            linewidths=0.5, linecolor="#374151",
+            cbar=False, linewidths=0.5, linecolor="#374151",
         )
-        ax_cm.set_title("Cross-Subject Confusion\n(Aggregated)", color="#D1D5DB", fontsize=10)
+        ax_cm.set_title("Confusion Matrix\n(aggregated across folds)",
+                         color="#D1D5DB", fontsize=10)
+        ax_cm.set_xlabel("Predicted", color="#9CA3AF", fontsize=8)
+        ax_cm.set_ylabel("True",      color="#9CA3AF", fontsize=8)
         ax_cm.tick_params(colors="#9CA3AF", labelsize=7)
 
-        # Panel 3: Aggregated metrics (mean ± std bar chart)
-        ax_met = self.fig.add_subplot(gs[0, 2])
-        ax_met.set_facecolor("#16213e")
-        metric_names = ["Accuracy", "Precision", "Recall", "F1"]
-        means = [agg["accuracy_mean"], agg["precision_mean"],
-                 agg["recall_mean"],   agg["f1_mean"]]
-        stds  = [agg["accuracy_std"],  agg["precision_std"],
-                 agg["recall_std"],   agg["f1_std"]]
-        x_pos = np.arange(len(metric_names))
-        bars = ax_met.bar(x_pos, means, yerr=stds, capsize=4,
-                          color=["#8B5CF6", "#3B82F6", "#22C55E", "#F59E0B"],
-                          edgecolor="#374151", linewidth=0.5, alpha=0.85)
-        ax_met.set_xticks(x_pos)
-        ax_met.set_xticklabels(metric_names, color="#D1D5DB", fontsize=8)
-        ax_met.set_ylabel("Score", color="#D1D5DB", fontsize=9)
-        ax_met.set_title("Aggregated Metrics\n(mean ± std)", color="#D1D5DB", fontsize=10)
-        ax_met.set_ylim(0, 1.15)
-        ax_met.tick_params(colors="#9CA3AF", labelsize=8)
-        for spine in ax_met.spines.values(): spine.set_color("#374151")
-        for bar, mean, std in zip(bars, means, stds):
-            ax_met.text(
-                bar.get_x() + bar.get_width() / 2, mean + std + 0.02,
-                f"{mean:.2f}±{std:.2f}", ha="center", va="bottom",
-                color="#D1D5DB", fontsize=7,
-            )
+        # ── Panel 3: Per-gesture F1 breakdown ──────────────────────────
+        ax_f1 = self.fig.add_subplot(gs[0, 2])
+        ax_f1.set_facecolor("#16213e")
+        # Average F1 per gesture class across all folds
+        gesture_f1 = {g: [] for g in GESTURE_NAMES}
+        for f in per_fold:
+            rep = f.get("report", {})
+            for g in GESTURE_NAMES:
+                gesture_f1[g].append(rep.get(g, {}).get("f1-score", 0.0))
+        g_means = [np.mean(gesture_f1[g]) for g in GESTURE_NAMES]
+        g_stds  = [np.std(gesture_f1[g])  for g in GESTURE_NAMES]
+        bar_colors = ["#8B5CF6", "#3B82F6", "#22C55E", "#F59E0B", "#EF4444"]
+        xg = np.arange(len(GESTURE_NAMES))
+        ax_f1.bar(xg, g_means, yerr=g_stds, capsize=4,
+                  color=bar_colors, edgecolor="#374151", linewidth=0.5, alpha=0.85)
+        ax_f1.set_xticks(xg)
+        ax_f1.set_xticklabels(GESTURE_NAMES, color="#D1D5DB", fontsize=7,
+                               rotation=15, ha="right")
+        ax_f1.set_ylabel("F1 Score", color="#D1D5DB", fontsize=9)
+        ax_f1.set_ylim(0, 1.15)
+        ax_f1.set_title("Per-Gesture F1\n(mean ± std across folds)",
+                         color="#D1D5DB", fontsize=10)
+        ax_f1.tick_params(colors="#9CA3AF", labelsize=7)
+        for sp in ax_f1.spines.values(): sp.set_color("#374151")
+        for i, (m, s) in enumerate(zip(g_means, g_stds)):
+            ax_f1.text(i, m + s + 0.02, f"{m:.2f}", ha="center", va="bottom",
+                       color="#D1D5DB", fontsize=7)
 
         self.fig.tight_layout(pad=2)
         self.canvas.draw_idle()
@@ -487,6 +514,22 @@ class TrainTab(ctk.CTkFrame):
         self.report_text.insert("end",
             f"{'':>22}  ±{acc_s:>6.2f} ±{agg['precision_std']:>6.2f} "
             f"±{agg['recall_std']:>6.2f} ±{agg['f1_std']:>6.2f}\n")
+
+    def _save_plot(self):
+        from tkinter import filedialog
+        is_loso = self._last_result and "per_fold" in self._last_result
+        default_name = "loso_results.png" if is_loso else f"{self.model_var.get()}_training.png"
+        path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG image", "*.png"), ("PDF", "*.pdf"), ("SVG", "*.svg")],
+            initialfile=default_name,
+        )
+        if not path:
+            return
+        self.fig.savefig(path, dpi=150, bbox_inches="tight",
+                         facecolor=self.fig.get_facecolor())
+        self.status_lbl.configure(text=f"✅ Plot saved → {os.path.basename(path)}",
+                                   text_color="#22C55E")
 
     def _export_header(self):
         if self._last_result and "header_path" in self._last_result:

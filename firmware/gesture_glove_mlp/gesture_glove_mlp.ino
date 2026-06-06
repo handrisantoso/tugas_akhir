@@ -276,10 +276,6 @@ void loop() {
         if (p > max_prob) { max_prob = p; best = i; }
     }
 
-    // --- Serial output: prediction with latency + heap ---
-    Serial.printf("[PRED] %s %.2f %lld %ld\n",
-        MODEL_GESTURE_NAMES[best], max_prob, latency_us, ESP.getFreeHeap());
-
     // --- Periodic stats (every 100 inferences) ---
     if (inf_stats.total_count > 0 && inf_stats.total_count % 100 == 0) {
         float avg_lat = stats_avg_latency(&inf_stats);
@@ -307,6 +303,9 @@ void loop() {
     if (max_prob >= CONF_THRESH && best != 0) {
         unsigned long now = millis();
         if (now - last_fired_ms[best] > DEBOUNCE_MS) {
+            // --- Serial output: confident prediction only ---
+            Serial.printf("[PRED] %s %.2f %lld %ld\n",
+                MODEL_GESTURE_NAMES[best], max_prob, latency_us, ESP.getFreeHeap());
             beep_n(best);
             ble_send_key(gesture_to_key(best));
             last_fired_ms[best] = now;

@@ -245,11 +245,6 @@ void loop() {
     bool ok = true;  // RF never fails
     stats_record(&inf_stats, latency_us, ok);
 
-    // ── Serial output: prediction with latency + heap ──
-    Serial.printf("[PRED] %s %.2f %lld %ld\n",
-        MODEL_GESTURE_NAMES[predicted], confidence,
-        latency_us, ESP.getFreeHeap());
-
     // ── Periodic stats (every 100 inferences) ──
     if (inf_stats.total_count > 0 && inf_stats.total_count % 100 == 0) {
         float avg_lat = stats_avg_latency(&inf_stats);
@@ -279,6 +274,10 @@ void loop() {
     if (confidence >= CONF_THRESH && predicted != 0) {
         unsigned long now = millis();
         if (now - last_fired_ms[predicted] > DEBOUNCE_MS) {
+            // ── Serial output: confident prediction only ──
+            Serial.printf("[PRED] %s %.2f %lld %ld\n",
+                MODEL_GESTURE_NAMES[predicted], confidence,
+                latency_us, ESP.getFreeHeap());
             beep_n(predicted);                        // buzzer beep
             ble_send_key(gesture_to_key(predicted));   // BLE HID key
             last_fired_ms[predicted] = now;

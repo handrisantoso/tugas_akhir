@@ -31,47 +31,73 @@ class PCInferenceEngine:
         self.model = None
         self.scaler = None
         self.model_type = None
+        self.model_path  = None
+        self.scaler_path = None
         self._tf = None
 
         # Rolling buffer for collecting IMU samples
         self.imu_buffer = collections.deque(maxlen=WINDOW_SIZE)
         self._samples_since_infer = 0
 
-    def load_model(self, model_type):
+    def load_model(self, model_type, loso_fold=None):
         """Load a trained model and its scaler from disk.
 
         Args:
             model_type: "mlp", "cnn1d", or "rf"
+            loso_fold:  int fold index to load a LOSO fold model, or None for
+                        the standard (full-data) model.
 
         Returns:
             True if loaded successfully, raises on failure
         """
         self.model_type = model_type
 
+        if loso_fold is not None:
+            model_dir = os.path.join(MODELS_DIR, f"loso_{model_type}_fold{loso_fold}")
+        else:
+            model_dir = MODELS_DIR
+
         if model_type in ("mlp", "cnn1d"):
             self._tf = self._import_tf()
-            model_path = os.path.join(MODELS_DIR, f"{model_type}_model.keras")
+            model_path = os.path.join(model_dir, f"{model_type}_model.keras")
             if not os.path.isfile(model_path):
                 raise FileNotFoundError(f"Model not found: {model_path}")
             self.model = self._tf.keras.models.load_model(model_path)
         elif model_type == "rf":
-            model_path = os.path.join(MODELS_DIR, "rf_model.joblib")
+            model_path = os.path.join(model_dir, f"rf_model.joblib")
             if not os.path.isfile(model_path):
                 raise FileNotFoundError(f"Model not found: {model_path}")
             self.model = joblib.load(model_path)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
-        scaler_path = os.path.join(MODELS_DIR, f"{model_type}_scaler.joblib")
+        scaler_path = os.path.join(model_dir, f"{model_type}_scaler.joblib")
         if not os.path.isfile(scaler_path):
             raise FileNotFoundError(f"Scaler not found: {scaler_path}")
         self.scaler = joblib.load(scaler_path)
+
+        # Store file metadata for display
+        self.model_path  = model_path
+        self.scaler_path = scaler_path
 
         # Reset buffer
         self.imu_buffer.clear()
         self._samples_since_infer = 0
 
         return True
+
+    def get_model_info(self):
+        """Return display info about the currently loaded model file."""
+        if not self.model_path or not os.path.isfile(self.model_path):
+            return None
+        import time
+        mtime = os.path.getmtime(self.model_path)
+        size  = os.path.getsize(self.model_path)
+        return {
+            "path":  self.model_path,
+            "date":  time.strftime("%Y-%m-%d %H:%M", time.localtime(mtime)),
+            "size":  f"{size / 1024:.1f} KB",
+        }
 
     def feed_sample(self, ax, ay, az, gx, gy, gz):
         """Feed one IMU sample into the rolling buffer.
@@ -145,14 +171,29 @@ class PCInferenceEngine:
         """Check which trained models are available on disk."""
         available = []
         for mt in ["mlp", "cnn1d", "rf"]:
-            if mt in ("mlp", "cnn1d"):
-                path = os.path.join(MODELS_DIR, f"{mt}_model.keras")
-            else:
-                path = os.path.join(MODELS_DIR, f"{mt}_model.joblib")
-            scaler_path = os.path.join(MODELS_DIR, f"{mt}_scaler.joblib")
-            if os.path.isfile(path) and os.path.isfile(scaler_path):
+            ext = ".keras" if mt in ("mlp", "cnn1d") else ".joblib"
+            path = os.path.join(MODELS_DIR, f"{mt}_model{ext}")
+            scaler = os.path.join(MODELS_DIR, f"{mt}_scaler.joblib")
+            if os.path.isfile(path) and os.path.isfile(scaler):
                 available.append(mt)
         return available
+
+    @staticmethod
+    def get_available_loso_folds(model_type):
+        """Return list of fold indices that have saved LOSO models."""
+        folds = []
+        fold = 0
+        while True:
+            d = os.path.join(MODELS_DIR, f"loso_{model_type}_fold{fold}")
+            ext = ".keras" if model_type in ("mlp", "cnn1d") else ".joblib"
+            mfile = os.path.join(d, f"{model_type}_model{ext}")
+            sfile = os.path.join(d, f"{model_type}_scaler.joblib")
+            if os.path.isfile(mfile) and os.path.isfile(sfile):
+                folds.append(fold)
+                fold += 1
+            else:
+                break
+        return folds
 
     def reset_buffer(self):
         """Clear the IMU sample buffer."""

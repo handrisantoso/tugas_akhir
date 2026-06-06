@@ -44,6 +44,7 @@ MODELS = {
     "MLP_int8":     {"keras": None,               "tflite": "mlp_model.tflite"},
     "CNN1D_float32":{"keras": "cnn1d_model.keras", "tflite": None},
     "CNN1D_int8":   {"keras": None,               "tflite": "cnn1d_model.tflite"},
+    "RF":           {"keras": None,                "tflite": None},  # sklearn .joblib
 }
 
 
@@ -152,7 +153,11 @@ def benchmark_inference(X_test, y_test, results, n_runs=100, n_warmup=10):
         scaler = res["scaler"]
 
         # Pre-process for THIS model type
-        if res["input"] == "windows":
+        if res["type"] == "rf":
+            # RF: extract features (36), then scale
+            feat_all   = extract_features(X_test[:n_samples])
+            scaled_all = scaler.transform(feat_all)
+        elif res["input"] == "windows":
             # CNN1D: scale flat windows (1500) using cnn1d_scaler, then reshape to (n, 250, 6)
             flat_all   = X_test[:n_samples].reshape(n_samples, -1)
             scaled_all = scaler.transform(flat_all).reshape(n_samples, WINDOW_SIZE, NUM_AXES)
@@ -166,12 +171,15 @@ def benchmark_inference(X_test, y_test, results, n_runs=100, n_warmup=10):
         for i in range(n_warmup):
             if res["type"] == "keras":
                 predict_float32(model, scaled_all[i], name)
-            else:
+            elif res["type"] == "tflite":
                 predict_int8(
                     model, res["in_scale"], res["in_zero"],
                     res["out_scale"], res["out_zero"],
                     scaled_all[i], name
                 )
+            else:
+                # RF: sklearn model, returns probabilities directly
+                model.predict_proba(scaled_all[i:i+1])
 
         # Benchmark
         latencies = []
@@ -184,12 +192,16 @@ def benchmark_inference(X_test, y_test, results, n_runs=100, n_warmup=10):
 
             if res["type"] == "keras":
                 pred, prob = predict_float32(model, scaled_all[i], name)
-            else:
+            elif res["type"] == "tflite":
                 pred, prob = predict_int8(
                     model, res["in_scale"], res["in_zero"],
                     res["out_scale"], res["out_zero"],
                     scaled_all[i], name
                 )
+            else:
+                # RF: sklearn model
+                prob = model.predict_proba(scaled_all[i:i+1])[0]
+                pred = np.argmax(prob)
 
             latencies.append((time.perf_counter() - t0) * 1000)
             if pred == y_test[i]:
@@ -236,6 +248,7 @@ def compute_metrics(results):
 # ═══════════════════════════════════════════════════
 
 COLORS = {
+    "RF": "#2ecc71",
     "MLP_float32": "#3498db", "MLP_int8": "#85c1e9",
     "CNN1D_float32": "#e74c3c", "CNN1D_int8": "#f1948a",
 }
@@ -243,8 +256,8 @@ LINESTYLE = {"float32": "-", "int8": "--"}
 
 
 def plot_latency_comparison(results):
-    """Fig: Latency comparison float32 vs int8."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    """Fig: Latency comparison — all models."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     names = list(results.keys())
     means = [results[n]["latency_mean_ms"] for n in names]
@@ -258,18 +271,17 @@ def plot_latency_comparison(results):
                  f"{val:.2f}ms", ha="center", fontweight="bold", fontsize=10)
     ax1.set_title("Inference Latency (ms)", fontweight="bold", fontsize=13)
     ax1.set_ylabel("Latency (ms)")
-    ax1.tick_params(axis="x", rotation=15)
+    ax1.tick_params(axis="x", rotation=20)
 
-    # Box plot
     data = [results[n]["latencies"] for n in names]
-    bp = ax2.boxplot(data, labels=names, patch_artist=True, widths=0.5)
+    bp = ax2.boxplot(data, tick_labels=names, patch_artist=True, widths=0.5)
     for patch, c in zip(bp["boxes"], colors):
         patch.set_facecolor(c); patch.set_alpha(0.7)
     ax2.set_title("Latency Distribution", fontweight="bold", fontsize=13)
     ax2.set_ylabel("Latency (ms)")
-    ax2.tick_params(axis="x", rotation=15)
+    ax2.tick_params(axis="x", rotation=20)
 
-    fig.suptitle("Perbandingan Latency: float32 vs int8 (PC)", fontsize=14, fontweight="bold")
+    fig.suptitle("Perbandingan Latency Semua Model (PC)", fontsize=14, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     path = os.path.join(OUT_DIR, "tflite_latency_comparison.png")
     fig.savefig(path, dpi=200, bbox_inches="tight")
@@ -278,17 +290,16 @@ def plot_latency_comparison(results):
 
 
 def plot_accuracy_comparison(results):
-    """Fig: Accuracy/F1 comparison."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    """Fig: Accuracy/F1 comparison — all models."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     names = list(results.keys())
-    accs  = [results[n]["accuracy"]      for n in names]
-    f1s   = [results[n]["f1_macro"]      for n in names]
+    accs  = [results[n]["accuracy"] for n in names]
+    f1s   = [results[n]["f1_macro"] for n in names]
     colors = [COLORS.get(n, "#95a5a6") for n in names]
 
     x = np.arange(len(names))
     w = 0.35
-
     b1 = ax1.bar(x - w/2, accs, w, label="Accuracy", color=colors,
                  edgecolor="black", linewidth=0.5)
     b2 = ax1.bar(x + w/2, f1s,  w, label="F1 (macro)", color=colors,
@@ -298,18 +309,17 @@ def plot_accuracy_comparison(results):
                  f"{val:.2%}", ha="center", fontsize=9)
     ax1.set_xticks(x); ax1.set_xticklabels(names, fontsize=9)
     ax1.set_ylim(0, 1.15); ax1.set_title("Accuracy & F1-Score", fontweight="bold")
-    ax1.legend(); ax1.tick_params(axis="x", rotation=15)
+    ax1.legend(); ax1.tick_params(axis="x", rotation=20)
 
-    # Bar chart: latency
     means = [results[n]["latency_mean_ms"] for n in names]
     bars = ax2.bar(names, means, color=colors, edgecolor="black", linewidth=0.5)
     for bar, val in zip(bars, means):
         ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
                  f"{val:.2f}ms", ha="center", fontsize=10)
     ax2.set_title("Latency (ms)", fontweight="bold")
-    ax2.tick_params(axis="x", rotation=15)
+    ax2.tick_params(axis="x", rotation=20)
 
-    fig.suptitle("Perbandingan Model: float32 (Keras) vs int8 (TFLite)", fontsize=14, fontweight="bold")
+    fig.suptitle("Perbandingan Semua Model: Keras float32 vs TFLite int8 vs RF", fontsize=14, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     path = os.path.join(OUT_DIR, "tflite_accuracy_comparison.png")
     fig.savefig(path, dpi=200, bbox_inches="tight")
@@ -369,13 +379,14 @@ def plot_confusion_all(results):
 
 
 def plot_float_vs_int_bar(results):
-    """Fig: Side-by-side float32 vs int8 for each architecture."""
+    """Fig: Side-by-side float32 vs int8 for MLP/CNN1D, plus RF standalone."""
     architectures = ["MLP", "CNN1D"]
+    all_model_keys = ["RF", "MLP_float32", "MLP_int8", "CNN1D_float32", "CNN1D_int8"]
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
-    metrics = ["accuracy", "f1_macro", "latency_mean_ms"]
-    titles  = ["Accuracy", "F1-Score (macro)", "Latency Mean (ms)"]
-    formats = ["{:.2%}", "{:.4f}", "{:.2f}ms"]
+    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
+    metrics  = ["accuracy", "f1_macro", "latency_mean_ms"]
+    titles   = ["Accuracy", "F1-Score (macro)", "Latency Mean (ms)"]
+    formats  = ["{:.2%}", "{:.4f}", "{:.2f}ms"]
 
     for row, arch in enumerate(architectures):
         float_name = f"{arch}_float32"
@@ -401,7 +412,28 @@ def plot_float_vs_int_bar(results):
             else:
                 ax.set_ylim(0, 1.12)
 
-    fig.suptitle("Perbandingan: float32 (Keras) vs int8 (TFLite) per Arsitektur",
+    # RF standalone: accuracy + F1 + latency
+    ax = axes[0, 2]
+    names = ["RF"]
+    vals  = [results["RF"]["accuracy"]]
+    ax.bar(names, vals, color=[COLORS["RF"]], edgecolor="black", linewidth=0.5)
+    ax.set_ylim(0, 1.12)
+    ax.set_title(f"RF — Accuracy", fontweight="bold")
+    for bar, val in zip(ax.patches, vals):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                "{:.2%}".format(val), ha="center", fontweight="bold")
+
+    ax = axes[1, 2]
+    names = ["RF"]
+    vals  = [results["RF"]["f1_macro"]]
+    ax.bar(names, vals, color=[COLORS["RF"]], edgecolor="black", linewidth=0.5)
+    ax.set_ylim(0, 1.1)
+    ax.set_title(f"RF — F1-Score (macro)", fontweight="bold")
+    for bar, val in zip(ax.patches, vals):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                "{:.4f}".format(val), ha="center", fontweight="bold")
+
+    fig.suptitle("Perbandingan: Keras float32 vs TFLite int8 vs RF",
                  fontsize=14, fontweight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     path = os.path.join(OUT_DIR, "tflite_float_vs_int_bar.png")
@@ -453,12 +485,9 @@ def save_json(results):
 
 def print_latex_table(summary):
     """Print LaTeX-ready table."""
-    print("\n" + "=" * 75)
-    print("  TABLE: TFLite PC Runtime - float32 vs int8 (Thesis)")
-    print("=" * 75)
-    header = f"{'Metric':<22} {'MLP_f32':>10} {'MLP_i8':>10} {'CNN1D_f32':>10} {'CNN1D_i8':>10}"
-    print(header)
-    print("-" * 75)
+    print("\n" + "=" * 80)
+    print("  TABLE: TFLite PC Runtime - RF + Keras float32 + TFLite int8 (Thesis)")
+    print("=" * 80)
     rows = [
         ("Accuracy",          "accuracy",        "{:.2%}"),
         ("F1-Score (macro)",  "f1_macro",         "{:.4f}"),
@@ -469,21 +498,22 @@ def print_latex_table(summary):
         ("Latency P95 (ms)",  "latency_p95_ms",   "{:.3f}"),
         ("FPS",               "fps",              "{:.1f}"),
     ]
-    keys = ["MLP_float32", "MLP_int8", "CNN1D_float32", "CNN1D_int8"]
+    keys = ["RF", "MLP_float32", "MLP_int8", "CNN1D_float32", "CNN1D_int8"]
+    print(f"{'Metric':<22} {'RF':>8} {'MLP_f32':>8} {'MLP_i8':>8} {'CNN1D_f32':>10} {'CNN1D_i8':>10}")
+    print("-" * 80)
     for label, key, fmt in rows:
         vals = [fmt.format(summary[k].get(key, 0)) for k in keys]
-        print(f"{label:<22} {vals[0]:>10} {vals[1]:>10} {vals[2]:>10} {vals[3]:>10}")
+        print(f"{label:<22} {vals[0]:>8} {vals[1]:>8} {vals[2]:>8} {vals[3]:>10} {vals[4]:>10}")
 
-    # Accuracy drop from float32 to int8
     print("  Accuracy drop (float32 -> int8):")
     for arch in ["MLP", "CNN1D"]:
         f32 = summary[f"{arch}_float32"]["accuracy"]
         i8  = summary[f"{arch}_int8"]["accuracy"]
         drop = (f32 - i8) * 100
         sign = "+" if drop >= 0 else ""
-        print(f"    {arch}: {drop:+.2f}% (f32={f32:.2%}, i8={i8:.2%})")
+        print(f"    {arch}: {sign}{drop:.2f}% (f32={f32:.2%}, i8={i8:.2%})")
 
-    print("=" * 75)
+    print("=" * 80)
 
 
 def main():
@@ -503,6 +533,15 @@ def main():
     results = {}
 
     print("\n[2] Loading Models...")
+
+    # ── Random Forest ───────────────────────────────────────
+    print("  Loading RF (sklearn .joblib)...")
+    rf_scaler = joblib.load(os.path.join(MODELS_DIR, "rf_scaler.joblib"))
+    rf_model  = joblib.load(os.path.join(MODELS_DIR, "rf_model.joblib"))
+    results["RF"] = {
+        "model": rf_model, "scaler": rf_scaler,
+        "type": "rf", "input": "features",
+    }
 
     # MLP float32 + its pre-trained scaler (36 features)
     print("  Loading MLP float32 (Keras)...")

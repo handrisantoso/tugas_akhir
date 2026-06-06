@@ -16,3 +16,7 @@ Thumbs.db
 
 # Thesis Documents & skripsi
 thesis/
+
+# Dataset files
+gesture_dataset*.csv
+dataset/gesture_dataset*.csv

@@ -154,22 +154,54 @@ class DebugTab(ctk.CTkFrame):
         ctk.CTkLabel(pc_frame, text="💻 PC Inference", font=("Inter", 14, "bold"),
                      text_color="#A78BFA").pack(anchor="w", padx=12, pady=(8, 4))
 
+        # Model type row
         pc_model_row = ctk.CTkFrame(pc_frame, fg_color="transparent")
         pc_model_row.pack(fill="x", padx=12, pady=2)
-        ctk.CTkLabel(pc_model_row, text="Model:", font=("Inter", 11)).pack(side="left")
+        ctk.CTkLabel(pc_model_row, text="Model:", font=("Inter", 11), width=46).pack(side="left")
         self.pc_model_seg = ctk.CTkSegmentedButton(pc_model_row,
                                                      values=["mlp", "cnn1d", "rf"],
-                                                     variable=self._pc_model_var)
+                                                     variable=self._pc_model_var,
+                                                     command=self._on_model_type_change)
         self.pc_model_seg.pack(side="left", padx=8)
 
+        # Source row: Standard vs LOSO fold
+        src_row = ctk.CTkFrame(pc_frame, fg_color="transparent")
+        src_row.pack(fill="x", padx=12, pady=2)
+        ctk.CTkLabel(src_row, text="Source:", font=("Inter", 11), width=46).pack(side="left")
+        self._pc_source_var = ctk.StringVar(value="standard")
+        self.pc_src_seg = ctk.CTkSegmentedButton(
+            src_row, values=["standard", "LOSO fold"],
+            variable=self._pc_source_var, command=self._on_source_change, width=180)
+        self.pc_src_seg.pack(side="left", padx=8)
+
+        # LOSO fold selector (hidden until LOSO source chosen)
+        self._fold_row = ctk.CTkFrame(pc_frame, fg_color="transparent")
+        ctk.CTkLabel(self._fold_row, text="Fold:", font=("Inter", 11), width=46).pack(side="left")
+        self._pc_fold_var = ctk.StringVar(value="0")
+        self.pc_fold_menu = ctk.CTkOptionMenu(
+            self._fold_row, variable=self._pc_fold_var,
+            values=["0"], width=80, command=lambda _: self._refresh_path_label())
+        self.pc_fold_menu.pack(side="left", padx=8)
+        ctk.CTkLabel(self._fold_row, text="(trained on all except this fold's subject)",
+                     font=("Inter", 9), text_color="#6B7280").pack(side="left", padx=4)
+
+        # Load + Enable row
         pc_btn_row = ctk.CTkFrame(pc_frame, fg_color="transparent")
-        pc_btn_row.pack(fill="x", padx=12, pady=(2, 8))
+        pc_btn_row.pack(fill="x", padx=12, pady=(4, 4))
         self.pc_load_btn = ctk.CTkButton(pc_btn_row, text="Load Model", width=100,
                                            fg_color="#8B5CF6", hover_color="#7C3AED",
                                            command=self._load_pc_model)
         self.pc_load_btn.pack(side="left", padx=(0, 4))
         ctk.CTkSwitch(pc_btn_row, text="Enable", variable=self._pc_inference_enabled,
                        font=("Inter", 11)).pack(side="left", padx=4)
+
+        # Model path info label
+        self.pc_path_label = ctk.CTkLabel(
+            pc_frame, text=self._model_path_preview(),
+            font=("Consolas", 9), text_color="#6B7280",
+            anchor="w", wraplength=290, justify="left",
+        )
+        self.pc_path_label.pack(fill="x", padx=12, pady=(0, 8))
 
         # ── HID Fire Log ──
         ctk.CTkLabel(right, text="🔥 HID Fire Log", font=("Inter", 13, "bold")).pack(
@@ -292,29 +324,94 @@ class DebugTab(ctk.CTkFrame):
 
         self.after(80, self._update_loop)
 
+    def _model_path_preview(self, model_type=None):
+        """Return path/size/date string for the model that would be / is loaded."""
+        import os, time as _time
+        from config import MODELS_DIR
+        mt = model_type or self._pc_model_var.get()
+        ext = ".keras" if mt in ("mlp", "cnn1d") else ".joblib"
+        if self._pc_source_var.get() == "LOSO fold":
+            fold = self._pc_fold_var.get()
+            if fold == "—":
+                return f"No LOSO {mt.upper()} models found — run LOSO training first"
+            model_dir = os.path.join(MODELS_DIR, f"loso_{mt}_fold{fold}")
+            tag = f"LOSO fold {fold}"
+        else:
+            model_dir = MODELS_DIR
+            tag = "Standard"
+        path = os.path.join(model_dir, f"{mt}_model{ext}")
+        if not os.path.isfile(path):
+            return f"[{tag}] {path}\n(not trained yet)"
+        mtime = os.path.getmtime(path)
+        size  = os.path.getsize(path) / 1024
+        date  = _time.strftime("%Y-%m-%d %H:%M", _time.localtime(mtime))
+        return f"[{tag}] {path}\nSize: {size:.1f} KB  |  Saved: {date}"
+
     def _load_pc_model(self):
         """Load a trained model for PC-side inference."""
         model_type = self._pc_model_var.get()
-        self.pc_status_label.configure(text="Loading...", text_color="#F59E0B")
+        source = self._pc_source_var.get()
+        fold_str = self._pc_fold_var.get()
+        loso_fold = int(fold_str) if source == "LOSO fold" and fold_str.isdigit() else None
+        label = f"LOSO fold {loso_fold}" if loso_fold is not None else "Standard"
+        self.pc_status_label.configure(text=f"Loading {model_type.upper()} ({label})...",
+                                        text_color="#F59E0B")
+        self.pc_path_label.configure(text=self._model_path_preview(), text_color="#F59E0B")
         self.pc_load_btn.configure(state="disabled")
 
         def _load():
             try:
                 from inference import PCInferenceEngine
                 self._pc_engine = PCInferenceEngine()
-                self._pc_engine.load_model(model_type)
-                self.after(0, lambda: self._on_pc_model_loaded(model_type))
+                self._pc_engine.load_model(model_type, loso_fold=loso_fold)
+                self.after(0, lambda: self._on_pc_model_loaded(model_type, label))
             except Exception as e:
                 self.after(0, lambda: self._on_pc_model_error(str(e)))
 
         threading.Thread(target=_load, daemon=True).start()
 
-    def _on_pc_model_loaded(self, model_type):
+    def _on_model_type_change(self, val):
+        self._refresh_fold_options(val)
+        self._refresh_path_label()
+
+    def _on_source_change(self, val):
+        if val == "LOSO fold":
+            self._fold_row.pack(fill="x", padx=12, pady=(0, 2))
+            self._refresh_fold_options(self._pc_model_var.get())
+        else:
+            self._fold_row.pack_forget()
+        self._refresh_path_label()
+
+    def _refresh_fold_options(self, model_type=None):
+        from inference import PCInferenceEngine
+        mt = model_type or self._pc_model_var.get()
+        folds = PCInferenceEngine.get_available_loso_folds(mt)
+        if folds:
+            self.pc_fold_menu.configure(values=[str(f) for f in folds])
+            if self._pc_fold_var.get() not in [str(f) for f in folds]:
+                self._pc_fold_var.set(str(folds[0]))
+        else:
+            self.pc_fold_menu.configure(values=["—"])
+            self._pc_fold_var.set("—")
+
+    def _refresh_path_label(self):
+        self.pc_path_label.configure(
+            text=self._model_path_preview(), text_color="#6B7280")
+
+    def _on_pc_model_loaded(self, model_type, label="Standard"):
         self.pc_status_label.configure(
-            text=f"✅ {model_type.upper()} loaded (float32)", text_color="#22C55E")
+            text=f"✅ {model_type.upper()} ({label})", text_color="#22C55E")
         self.pc_load_btn.configure(state="normal")
         self._pc_inference_enabled.set(True)
-        self._log_hid(f"PC model loaded: {model_type.upper()} (float32, high accuracy)")
+        # Refresh path label with confirmed loaded file info
+        if self._pc_engine:
+            info = self._pc_engine.get_model_info()
+            if info:
+                self.pc_path_label.configure(
+                    text=f"Path: {info['path']}\nSize: {info['size']}  |  Saved: {info['date']}",
+                    text_color="#22C55E",
+                )
+        self._log_hid(f"PC model loaded: {model_type.upper()} — {self._model_path_preview(model_type)}")
 
     def _on_pc_model_error(self, error):
         self.pc_status_label.configure(text=f"❌ {error[:40]}", text_color="#EF4444")

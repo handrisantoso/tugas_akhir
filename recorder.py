@@ -317,6 +317,41 @@ class GestureRecorder:
         self.sample_counts = {name: 0 for name in GESTURE_NAMES}
 
     @staticmethod
+    def _read_csv_robust(filepath):
+        """Read a CSV whose rows may have 9 or 10 columns due to a format mismatch.
+
+        The recorder writes 10-column rows (with subject_id at index 3) but
+        early sessions wrote a 9-column header (no subject_id). This normalises
+        everything to 10 columns, inferring subject_id from the session timestamp
+        embedded in sample_id for old 9-column rows.
+        """
+        import re as _re
+        cols_10 = ['label', 'sample_id', 'timestamp_ms', 'subject_id',
+                   'ax', 'ay', 'az', 'gx', 'gy', 'gz']
+        numeric_cols = ['timestamp_ms', 'ax', 'ay', 'az', 'gx', 'gy', 'gz']
+        rows = []
+        with open(filepath, 'r', newline='', encoding='utf-8') as f:
+            _reader = csv.reader(f)
+            next(_reader)  # skip file header (may be 9-col, missing subject_id)
+            for fields in _reader:
+                if len(fields) == 10:
+                    # New format: label, sample_id, ts, subject_id, ax..gz
+                    rows.append(dict(zip(cols_10, fields)))
+                elif len(fields) == 9:
+                    # Old format: label, sample_id, ts, ax..gz — infer subject_id
+                    m = _re.match(r'^[a-z_]+_(\d+)_\d+$', fields[1])
+                    subj = m.group(1) if m else 'unknown'
+                    d = {'label': fields[0], 'sample_id': fields[1],
+                         'timestamp_ms': fields[2], 'subject_id': subj,
+                         'ax': fields[3], 'ay': fields[4], 'az': fields[5],
+                         'gx': fields[6], 'gy': fields[7], 'gz': fields[8]}
+                    rows.append(d)
+        df = pd.DataFrame(rows, columns=cols_10)
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        return df
+
+    @staticmethod
     def load_csv(filepath=None):
         """Load a dataset CSV and return sample counts per gesture."""
         if filepath is None:
@@ -325,7 +360,10 @@ class GestureRecorder:
         if not os.path.isfile(filepath):
             return None, {name: 0 for name in GESTURE_NAMES}
 
-        df = pd.read_csv(filepath)
+        try:
+            df = pd.read_csv(filepath)
+        except pd.errors.ParserError:
+            df = GestureRecorder._read_csv_robust(filepath)
 
         # Detection: is it "long" format (per-sample) or "wide" format (per-window)?
         if "sample_id" in df.columns and "label" in df.columns:
@@ -370,7 +408,10 @@ class GestureRecorder:
         if filepath is None:
             filepath = DEFAULT_CSV
 
-        df = pd.read_csv(filepath)
+        try:
+            df = pd.read_csv(filepath)
+        except pd.errors.ParserError:
+            df = GestureRecorder._read_csv_robust(filepath)
 
         # Handle "Long" Format (User's format)
         if "sample_id" in df.columns and "ax" in df.columns:
@@ -394,8 +435,13 @@ class GestureRecorder:
                 else:
                     label_idx = int(label_val)
 
-                # Subject ID: explicit column or single-subject placeholder
-                subj = str(window["subject_id"].iloc[0]) if has_subject_col else "single_subject"
+                # Subject ID: explicit column → infer from sample_id → placeholder
+                if has_subject_col:
+                    subj = str(window["subject_id"].iloc[0])
+                else:
+                    import re as _re
+                    m = _re.match(r'^[a-z_]+_(\d+)_\d+$', str(sid))
+                    subj = m.group(1) if m else "single_subject"
 
                 if label_idx != -1:
                     X.append(data)

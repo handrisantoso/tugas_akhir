@@ -75,6 +75,51 @@ def extract_features(X_raw):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  PER-WINDOW NORMALIZATION & AUGMENTATION
+# ═══════════════════════════════════════════════════════════════════
+
+def normalize_windows(X_raw):
+    """Per-window z-score normalization per axis.
+
+    Removes absolute sensor offset caused by different users holding the
+    glove at different angles. Each window is independently centred and
+    scaled so the model sees motion shape, not absolute position.
+
+    Input : (N, 1500) flat  or  (N, 250, 6)
+    Output: same shape, dtype float32
+    """
+    flat = X_raw.ndim == 2
+    X = X_raw.reshape(-1, WINDOW_SIZE, NUM_AXES).astype(np.float32)
+    means = X.mean(axis=1, keepdims=True)          # (N, 1, 6)
+    stds  = X.std(axis=1, keepdims=True)            # (N, 1, 6)
+    stds  = np.where(stds < 1e-8, 1.0, stds)
+    X_n = (X - means) / stds
+    return X_n.reshape(X_raw.shape[0], -1) if flat else X_n
+
+
+def augment_windows(X_raw, y_in, rng=None, n_copies=3):
+    """Augment training windows with noise + amplitude jitter.
+
+    Creates n_copies synthetic copies per sample by adding Gaussian noise
+    and random per-axis amplitude scaling. Applied only to training data.
+
+    Input : X_raw (N, 1500), y_in (N,)
+    Output: augmented X (N*(1+n_copies), 1500), y (N*(1+n_copies),)
+    """
+    if rng is None:
+        rng = np.random.default_rng(42)
+    parts_X, parts_y = [X_raw], [y_in]
+    X3 = X_raw.reshape(-1, WINDOW_SIZE, NUM_AXES)
+    for _ in range(n_copies):
+        noise = rng.normal(0, 0.05, X3.shape).astype(np.float32)
+        scale = rng.uniform(0.9, 1.1, (X3.shape[0], 1, NUM_AXES)).astype(np.float32)
+        aug = (X3 * scale + noise).reshape(X_raw.shape[0], -1)
+        parts_X.append(aug)
+        parts_y.append(y_in)
+    return np.concatenate(parts_X), np.concatenate(parts_y)
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  SCALER UTILITIES
 # ═══════════════════════════════════════════════════════════════════
 
@@ -808,6 +853,7 @@ def evaluate_model_loso(
     n_estimators=DEFAULT_RF_TREES,
     max_depth=DEFAULT_RF_DEPTH,
     progress_callback=None,
+    epoch_callback=None,
 ):
     """Run full Leave-One-Subject-Out (LOSO) cross-validation.
 
@@ -852,37 +898,58 @@ def evaluate_model_loso(
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
 
+        # CNN1D is expensive on CPU — use fewer aug copies; MLP/RF can afford more
+        aug_copies = 1 if model_type == "cnn1d" else 3
+        X_train_aug, y_train_aug = augment_windows(X_train, y_train, n_copies=aug_copies)
+        X_train_n = normalize_windows(X_train_aug)
+        X_test_n  = normalize_windows(X_test)
+
         # Feature extraction & scaling
         if model_type == "cnn1d":
-            scaler = fit_scaler(X_train)
-            X_tr_in = scaler.transform(X_train).reshape(-1, WINDOW_SIZE, NUM_AXES)
-            X_te_in = scaler.transform(X_test).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            scaler = fit_scaler(X_train_n)
+            X_tr_in = scaler.transform(X_train_n).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            X_te_in = scaler.transform(X_test_n).reshape(-1, WINDOW_SIZE, NUM_AXES)
         else:  # mlp or rf
-            X_tr_f = extract_features(X_train)
-            X_te_f = extract_features(X_test)
+            X_tr_f = extract_features(X_train_n)
+            X_te_f = extract_features(X_test_n)
             scaler = fit_scaler(X_tr_f)
             X_tr_in = scaler.transform(X_tr_f)
             X_te_in = scaler.transform(X_te_f)
 
+        # Build per-epoch Keras callback that reports progress to the GUI
+        keras_callbacks = []
+        if model_type in ("cnn1d", "mlp"):
+            tf = _import_tensorflow()
+            from tensorflow import keras as Keras
+
+            early_stop = Keras.callbacks.EarlyStopping(
+                monitor="loss", patience=8, restore_best_weights=True, verbose=0)
+            keras_callbacks.append(early_stop)
+
+            if epoch_callback is not None:
+                n_folds_total = n_subjects
+
+                class _FoldEpochCB(Keras.callbacks.Callback):
+                    def on_epoch_end(self, epoch, logs=None):
+                        epoch_callback(fold_idx, n_folds_total, held_out, epoch, logs or {})
+
+                keras_callbacks.append(_FoldEpochCB())
+
         # Train model
         if model_type == "cnn1d":
             model = build_cnn1d()
-            tf = _import_tensorflow()
-            from tensorflow import keras as Keras
             model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
                           loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-            model.fit(X_tr_in, y_train, epochs=epochs,
-                      batch_size=batch_size, verbose=0)
+            model.fit(X_tr_in, y_train_aug, epochs=epochs,
+                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks)
             y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
 
         elif model_type == "mlp":
             model = build_mlp(input_dim=X_tr_in.shape[1])
-            tf = _import_tensorflow()
-            from tensorflow import keras as Keras
             model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
                           loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-            model.fit(X_tr_in, y_train, epochs=epochs,
-                      batch_size=batch_size, verbose=0)
+            model.fit(X_tr_in, y_train_aug, epochs=epochs,
+                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks)
             y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
 
         elif model_type == "rf":
@@ -890,7 +957,7 @@ def evaluate_model_loso(
                 n_estimators=n_estimators, max_depth=max_depth,
                 random_state=42, n_jobs=-1
             )
-            rf.fit(X_tr_in, y_train)
+            rf.fit(X_tr_in, y_train_aug)
             y_pred = rf.predict(X_te_in)
             model = rf
         else:
@@ -969,7 +1036,7 @@ def evaluate_model_loso(
 def train_model(model_type, X, y, epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATCH_SIZE,
                 n_estimators=DEFAULT_RF_TREES, max_depth=DEFAULT_RF_DEPTH,
                 quantize_int8=True, full_train=False, progress_callback=None,
-                loso_mode=False, subject_ids=None):
+                loso_mode=False, subject_ids=None, epoch_callback=None):
     """Unified training entry point.
 
     Args:
@@ -1001,6 +1068,7 @@ def train_model(model_type, X, y, epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATC
             epochs=epochs, batch_size=batch_size,
             n_estimators=n_estimators, max_depth=max_depth,
             progress_callback=progress_callback,
+            epoch_callback=epoch_callback,
         )
         # No model export in LOSO mode — purely an evaluation pass.
         return result
