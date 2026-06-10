@@ -1,0 +1,106 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1781081726.812406   15860 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1781081728.344491   15860 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+WARNING:tensorflow:From C:\Users\sibga\OneDrive\Documents\gesture_glove\.venv\Lib\site-packages\keras\src\backend\common\global_state.py:82: The name tf.reset_default_graph is deprecated. Please use tf.compat.v1.reset_default_graph instead.
+
+==============================================================================
+  GESTURE GLOVE — SEMUA METRIK THESIS (LOSO + PC + ESP32)
+==============================================================================
+  Dataset: C:\Users\sibga\OneDrive\Documents\gesture_glove\dataset\gesture_dataset.csv
+  3758 windows, 5 subjek
+
+[1] LOSO 5-fold  | subjects: ['1778852097', '1780652263', '1780983846', '1780993661', '1781009863']
+    FOLD 0  held-out=1778852097  (train=3007 test=751)
+        acc -> RF=0.8003  MLP=0.7936  CNN1D=0.7843
+    FOLD 1  held-out=1780652263  (train=3008 test=750)
+        acc -> RF=0.9907  MLP=0.8587  CNN1D=0.9333
+    FOLD 2  held-out=1780983846  (train=3003 test=755)
+        acc -> RF=0.9947  MLP=0.9404  CNN1D=0.9762
+    FOLD 3  held-out=1780993661  (train=3008 test=750)
+        acc -> RF=0.9987  MLP=0.9987  CNN1D=0.9987
+    FOLD 4  held-out=1781009863  (train=3006 test=752)
+        acc -> RF=0.9987  MLP=0.9641  CNN1D=1.0000
+
+[2] Training final (PC) + ukur Training Time...
+    RF    trained in 0.4s
+    MLP   trained in 14.1s
+    CNN1D trained in 101.1s
+
+[3] Ukur PC-side latency (batch=1, warmup, tf.function)...
+    RF: mean=27.82ms p95=32.67ms fps=35.9
+    MLP: mean=0.37ms p95=0.50ms fps=2675.8
+    CNN1D: mean=1.23ms p95=1.42ms fps=813.1
+
+==============================================================================
+  TABEL UTAMA — RINGKASAN (copy ke thesis)
+==============================================================================
+  Metrik                                        RF           MLP         CNN1D
+  --------------------------------------------------------------------------
+  -- Akurasi & F1 (LOSO 5-fold, cross-subject) --
+  Mean Accuracy                             95.66%        91.11%        93.85%
+  Std Akurasi antar Fold                     7.82%         7.47%         8.08%
+  Range Fold Acc (min-max)               80.0-99.9     79.4-99.9    78.4-100.0
+  Mean F1-Score (macro)                     94.28%        89.50%        92.53%
+  Mean Precision (macro)                    93.55%        89.83%        92.12%
+  Mean Recall (macro)                       95.65%        91.09%        93.84%
+  -- Kinerja PC-Side --
+  PC Latency mean (ms)                       27.82          0.37          1.23
+  PC Latency P95 (ms)                        32.67          0.50          1.42
+  PC FPS                                      35.9        2675.8         813.1
+  Training Time (s)                            0.4          14.1         101.1
+  -- ESP32 On-Device (terukur) --
+  ESP32 Latency mean (ms)                     1.17          0.14        106.23
+  ESP32 FPS                                    853          7262             9
+  ESP32 Model size (KB)                     inline           5.7         200.7
+  ESP32 Firmware flash (KB)                  442.8         368.1         669.6
+  -- ESP32 Memori (RAM) --
+  ESP32 Tensor arena (KB)                        0           100           220
+  ESP32 RAM statis total (KB)                 27.9         128.3         242.8
+  ESP32 RAM statis (%)                        8.7%         40.1%         75.9%
+  ESP32 Heap terpakai (KB)                    n/a*          34.5          46.4
+  ESP32 Free heap runtime (KB)                 232           240           114
+  -- ESP32 Kinerja --
+  Stabilitas ESP32 (%)                      100.0%        100.0%        100.0%
+  Skalabilitas (x real-time)                 1066x         9078x           11x
+==============================================================================
+
+==============================================================================
+  AKURASI PER-FOLD (LOSO)
+==============================================================================
+  Model        F0(17788)     F1(17806)     F2(17809)     F3(17809)     F4(17810)
+  ------------------------------------------------------------------------------
+  RF              80.03%        99.07%        99.47%        99.87%        99.87%
+  MLP             79.36%        85.87%        94.04%        99.87%        96.41%
+  CNN1D           78.43%        93.33%        97.62%        99.87%       100.00%
+
+==============================================================================
+  METRIK PER KELAS — Precision/Recall/F1 AGREGAT LOSO
+==============================================================================
+
+  [RF]
+    Gesture         Precision     Recall         F1   Support
+    idle                0.995      0.997      0.996       752
+    flick_up            0.988      0.988      0.988       753
+    wave_left           0.992      0.997      0.995       750
+    wave_right          1.000      0.800      0.889       751
+    flick_down          0.839      1.000      0.913       752
+
+  [MLP]
+    Gesture         Precision     Recall         F1   Support
+    idle                0.995      0.992      0.993       752
+    flick_up            0.774      0.851      0.811       753
+    wave_left           0.889      0.939      0.913       750
+    wave_right          0.946      0.788      0.860       751
+    flick_down          0.972      0.985      0.979       752
+
+  [CNN1D]
+    Gesture         Precision     Recall         F1   Support
+    idle                0.832      0.992      0.905       752
+    flick_up            0.999      0.956      0.977       753
+    wave_left           0.988      0.983      0.985       750
+    wave_right          0.905      0.798      0.848       751
+    flick_down          0.990      0.964      0.977       752
+
+[OK] JSON tersimpan: C:\Users\sibga\OneDrive\Documents\gesture_glove\thesis_figures\thesis_all_metrics.json

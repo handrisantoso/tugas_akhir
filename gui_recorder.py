@@ -20,6 +20,9 @@ class RecorderTab(ctk.CTkFrame):
         super().__init__(parent, fg_color="transparent")
         self.serial = serial_mgr
         self.recorder = GestureRecorder(serial_mgr)
+        self.ble = None              # BLEManager dibuat lazy saat scan/connect
+        self._active = serial_mgr    # koneksi aktif (serial ATAU ble)
+        self._ble_targets = {}       # label combobox -> alamat BLE
 
         # Keyboard recording: track which key is held
         self._held_key = None  # "1".."5" or None
@@ -50,6 +53,9 @@ class RecorderTab(ctk.CTkFrame):
         self.port_menu = ctk.CTkComboBox(port_row, variable=self.port_var, width=180, state="readonly")
         self.port_menu.pack(side="left", padx=(0,4))
         ctk.CTkButton(port_row, text="↻", width=32, command=self.refresh_ports).pack(side="left", padx=2)
+        self.ble_btn = ctk.CTkButton(port_row, text="🔵 BLE", width=60, command=self.scan_ble,
+                                     fg_color="#3B82F6", hover_color="#2563EB")
+        self.ble_btn.pack(side="left", padx=2)
 
         btn_row = ctk.CTkFrame(conn_frame, fg_color="transparent")
         btn_row.pack(fill="x", padx=10, pady=(2,8))
@@ -232,24 +238,109 @@ class RecorderTab(ctk.CTkFrame):
     # ── Serial / UI ─────────────────────────────────────────────
 
     def toggle_connection(self):
-        if self.serial.is_connected:
-            self.serial.on_imu_data = None
-            self.serial.disconnect()
-            self.connect_btn.configure(text="Connect", fg_color="#22C55E", hover_color="#16A34A")
-            self.status_label.configure(text="● Disconnected", text_color="#EF4444")
-            self._live_running = False
-            self.log("Disconnected.")
+        # ── Putuskan koneksi aktif ──
+        if self._active is not None and self._active.is_connected:
+            conn = self._active
+            conn.on_imu_data = None
+            self.connect_btn.configure(state="disabled", text="…")
+            # disconnect bisa blocking (BLE) -> jalankan di thread
+            def worker():
+                try:
+                    conn.disconnect()
+                except Exception:
+                    pass
+                self.after(0, self._after_disconnect)
+            threading.Thread(target=worker, daemon=True).start()
+            return
+
+        # ── Buka koneksi baru ──
+        sel = self.port_var.get()
+        if sel.startswith("BLE:"):
+            from ble_manager import BLEManager
+            if self.ble is None:
+                self.ble = BLEManager()
+            addr = self._ble_targets.get(sel)
+            if not addr:
+                self.log("Perangkat BLE tidak dikenal — scan ulang (🔵 BLE).")
+                return
+            conn = self.ble
         else:
+            conn = self.serial
+
+        # connect bisa blocking (BLE 2-10 dtk) -> jalankan di thread agar GUI tidak freeze
+        self.connect_btn.configure(state="disabled", text="…")
+        self.status_label.configure(text="● Connecting…", text_color="#F59E0B")
+        self.log(f"Connecting {sel} …")
+
+        def worker():
+            err = None
             try:
-                port = self.port_var.get()
-                self.serial.connect(port)
-                self.serial.on_imu_data = self._on_live_sample
-                self.connect_btn.configure(text="Disconnect", fg_color="#EF4444", hover_color="#DC2626")
-                self.status_label.configure(text="● Connected", text_color="#22C55E")
-                self._live_running = True
-                self.log(f"Connected to {port}. Hold 1-5 to record.")
+                conn.connect(addr if sel.startswith("BLE:") else sel)
             except Exception as e:
-                self.log(f"ERROR: {e}")
+                err = str(e)
+            self.after(0, lambda: self._after_connect(conn, sel, err))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _after_connect(self, conn, label, err):
+        """Finalisasi koneksi di thread GUI (dipanggil via self.after)."""
+        self.connect_btn.configure(state="normal")
+        if err:
+            self.connect_btn.configure(text="Connect", fg_color="#22C55E", hover_color="#16A34A")
+            self.status_label.configure(text="● Error", text_color="#EF4444")
+            self.log(f"ERROR: {err}")
+            return
+        conn.on_imu_data = self._on_live_sample
+        self._active = conn
+        self.recorder.serial = conn          # rekam dari koneksi ini (serial/BLE)
+        self.connect_btn.configure(text="Disconnect", fg_color="#EF4444", hover_color="#DC2626")
+        self.status_label.configure(text="● Connected", text_color="#22C55E")
+        self._live_running = True
+        self.log(f"Connected to {label}. Hold 1-5 to record.")
+
+    def _after_disconnect(self):
+        """Finalisasi pemutusan di thread GUI."""
+        self.connect_btn.configure(state="normal", text="Connect",
+                                   fg_color="#22C55E", hover_color="#16A34A")
+        self.status_label.configure(text="● Disconnected", text_color="#EF4444")
+        self._live_running = False
+        self.log("Disconnected.")
+        self._active = self.serial
+        self.recorder.serial = self.serial
+
+    def scan_ble(self):
+        """Pindai perangkat BLE 'GestureGlove' di thread terpisah (GUI tidak freeze)."""
+        self.ble_btn.configure(text="…", state="disabled")
+        self.log("Memindai BLE (±6 detik)…")
+
+        def worker():
+            err = None
+            devices = []
+            try:
+                from ble_manager import BLEManager
+                devices = BLEManager.scan(timeout=6.0)
+            except Exception as e:
+                err = str(e)
+            self.after(0, lambda: self._ble_scan_done(devices, err))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _ble_scan_done(self, devices, err):
+        self.ble_btn.configure(text="🔵 BLE", state="normal")
+        if err:
+            self.log(f"BLE scan error: {err}")
+            return
+        if not devices:
+            self.log("Tidak ada perangkat BLE 'GestureGlove' ditemukan.")
+            return
+        values = [v for v in self.port_menu.cget("values") if v != "No ports found"]
+        for addr, label in devices:
+            self._ble_targets[label] = addr
+            if label not in values:
+                values.append(label)
+        self.port_menu.configure(values=values)
+        self.port_var.set(devices[0][1])
+        self.log(f"Ditemukan {len(devices)} perangkat BLE. Pilih lalu Connect.")
 
     def _on_live_sample(self, ax, ay, az, gx, gy, gz):
         with self._buf_lock:

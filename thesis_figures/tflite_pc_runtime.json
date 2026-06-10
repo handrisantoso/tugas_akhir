@@ -1,0 +1,227 @@
+{
+  "RF": {
+    "accuracy": 0.91,
+    "f1_macro": 0.9058,
+    "f1_weighted": 0.9059,
+    "precision_macro": 0.916,
+    "recall_macro": 0.925,
+    "latency_mean_ms": 15.36,
+    "latency_std_ms": 0.71,
+    "latency_min_ms": 14.52,
+    "latency_max_ms": 18.59,
+    "latency_p95_ms": 16.72,
+    "fps": 65.1,
+    "per_class": {
+      "idle": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      },
+      "flick_up": {
+        "precision": 0.88,
+        "recall": 1.0,
+        "f1": 0.9362,
+        "support": 22
+      },
+      "wave_left": {
+        "precision": 1.0,
+        "recall": 0.625,
+        "f1": 0.7692,
+        "support": 24
+      },
+      "wave_right": {
+        "precision": 0.7,
+        "recall": 1.0,
+        "f1": 0.8235,
+        "support": 14
+      },
+      "flick_down": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      }
+    }
+  },
+  "MLP_float32": {
+    "accuracy": 0.86,
+    "f1_macro": 0.8616,
+    "f1_weighted": 0.8513,
+    "precision_macro": 0.8826,
+    "recall_macro": 0.8766,
+    "latency_mean_ms": 41.93,
+    "latency_std_ms": 4.02,
+    "latency_min_ms": 37.73,
+    "latency_max_ms": 63.11,
+    "latency_p95_ms": 48.8,
+    "fps": 23.8,
+    "per_class": {
+      "idle": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      },
+      "flick_up": {
+        "precision": 0.6774,
+        "recall": 0.9545,
+        "f1": 0.7925,
+        "support": 22
+      },
+      "wave_left": {
+        "precision": 0.9231,
+        "recall": 0.5,
+        "f1": 0.6486,
+        "support": 24
+      },
+      "wave_right": {
+        "precision": 0.8125,
+        "recall": 0.9286,
+        "f1": 0.8667,
+        "support": 14
+      },
+      "flick_down": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      }
+    }
+  },
+  "MLP_int8": {
+    "accuracy": 0.88,
+    "f1_macro": 0.8816,
+    "f1_weighted": 0.8748,
+    "precision_macro": 0.894,
+    "recall_macro": 0.8933,
+    "latency_mean_ms": 0.02,
+    "latency_std_ms": 0.0,
+    "latency_min_ms": 0.02,
+    "latency_max_ms": 0.03,
+    "latency_p95_ms": 0.02,
+    "fps": 52637.1,
+    "per_class": {
+      "idle": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      },
+      "flick_up": {
+        "precision": 0.7241,
+        "recall": 0.9545,
+        "f1": 0.8235,
+        "support": 22
+      },
+      "wave_left": {
+        "precision": 0.9333,
+        "recall": 0.5833,
+        "f1": 0.7179,
+        "support": 24
+      },
+      "wave_right": {
+        "precision": 0.8125,
+        "recall": 0.9286,
+        "f1": 0.8667,
+        "support": 14
+      },
+      "flick_down": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      }
+    }
+  },
+  "CNN1D_float32": {
+    "accuracy": 0.9,
+    "f1_macro": 0.904,
+    "f1_weighted": 0.8942,
+    "precision_macro": 0.9171,
+    "recall_macro": 0.9107,
+    "latency_mean_ms": 42.19,
+    "latency_std_ms": 2.83,
+    "latency_min_ms": 38.44,
+    "latency_max_ms": 49.49,
+    "latency_p95_ms": 48.1,
+    "fps": 23.7,
+    "per_class": {
+      "idle": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      },
+      "flick_up": {
+        "precision": 0.8148,
+        "recall": 1.0,
+        "f1": 0.898,
+        "support": 22
+      },
+      "wave_left": {
+        "precision": 0.9375,
+        "recall": 0.625,
+        "f1": 0.75,
+        "support": 24
+      },
+      "wave_right": {
+        "precision": 1.0,
+        "recall": 0.9286,
+        "f1": 0.963,
+        "support": 14
+      },
+      "flick_down": {
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091,
+        "support": 20
+      }
+    }
+  },
+  "CNN1D_int8": {
+    "accuracy": 0.9,
+    "f1_macro": 0.904,
+    "f1_weighted": 0.8942,
+    "precision_macro": 0.9171,
+    "recall_macro": 0.9107,
+    "latency_mean_ms": 0.13,
+    "latency_std_ms": 0.04,
+    "latency_min_ms": 0.11,
+    "latency_max_ms": 0.42,
+    "latency_p95_ms": 0.19,
+    "fps": 7861.5,
+    "per_class": {
+      "idle": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 20
+      },
+      "flick_up": {
+        "precision": 0.8148,
+        "recall": 1.0,
+        "f1": 0.898,
+        "support": 22
+      },
+      "wave_left": {
+        "precision": 0.9375,
+        "recall": 0.625,
+        "f1": 0.75,
+        "support": 24
+      },
+      "wave_right": {
+        "precision": 1.0,
+        "recall": 0.9286,
+        "f1": 0.963,
+        "support": 14
+      },
+      "flick_down": {
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091,
+        "support": 20
+      }
+    }
+  }
+}

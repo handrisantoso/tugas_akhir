@@ -738,9 +738,13 @@ def export_rf_c_header(rf_model, scaler):
 
     # Generate C code from model — m2cgen defaults to double; post-process to float
     c_code = m2c.export_to_c(rf_model)
-    # Replace all double with float for ESP32 efficiency (float is native on Xtensa FPU)
-    c_code = c_code.replace("double ", "float ")
-    c_code = c_code.replace("double*", "float*")
+    # Replace ALL double with float for ESP32 efficiency (float native on Xtensa FPU).
+    # Must cover declarations AND memcpy literals/sizeof: m2cgen emits
+    # `(double[]){...}` and `sizeof(double)` which lack a trailing space/star.
+    # Partial replace (only "double "/"double*") left these as double -> a 40-byte
+    # memcpy into a 20-byte float buffer = overrun + garbage votes. Full replace
+    # is safe: no identifier other than the type contains the substring "double".
+    c_code = c_code.replace("double", "float")
 
     guard = "RF_MODEL_DATA_H"
     # RF uses 36 statistical features (6 stats × 6 axes)

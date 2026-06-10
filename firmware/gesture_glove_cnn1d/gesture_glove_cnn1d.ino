@@ -19,11 +19,6 @@
 #include "cnn1d_model_data.h"
 #include "measurements.h"
 
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-
 // ─── Config ──────────────────────────────────────────────────
 #define I2C_SDA             5
 #define I2C_SCL             6
@@ -38,23 +33,14 @@
 #define DEBOUNCE_MS         400
 #define TENSOR_ARENA_SIZE   (220 * 1024)  // CNN1D: 205KB model + activations
 #define CONF_THRESH         0.80
+// Min gap between two GESTURE triggers. Must exceed the inference interval
+// (STEP_SIZE / SAMPLE_RATE = 1.25 s) to actually gate, else it is a no-op.
+#define OUTPUT_COOLDOWN_MS  5000
 
 // Use PSRAM on ESP32-S3 to hold large buffers (saves internal DRAM)
 #if defined(ESP32) && defined(SOC_PSRAM_SIZE)
   #define USE_PSRAM
 #endif
-
-// ─── BLE HID Key Codes (USB HID Usage IDs) ────────────────────
-#define KEY_F5     0x83
-#define KEY_LEFT   0x50
-#define KEY_RIGHT  0x4F
-#define KEY_ESC    0x29
-#define KEY_NONE   0x00
-
-// ─── BLE Server & Characteristics ─────────────────────────────
-static BLEServer* pServer = nullptr;
-static BLECharacteristic* pReportChar = nullptr;
-static bool ble_connected = false;
 
 // ─── Buzzer helpers ──────────────────────────────────────────
 #define BEEP_DUR_MS   60
@@ -93,7 +79,8 @@ static int samples_since_infer = 0;
 
 // ─── Model input (1500 raw values, in PSRAM) ──────────────────
 static float* model_input;
-static unsigned long last_fired_ms[5] = {0};
+static int last_shown = -1;                  // last printed class (-1 = none yet)
+static unsigned long last_gesture_ms = 0;    // time of last non-idle trigger (cooldown anchor)
 static unsigned long last_sample_us = 0;
 
 // ─── Measurement Stats ────────────────────────────────────────
@@ -163,64 +150,11 @@ void setup() {
                   MODEL_NUM_FEATURES, TENSOR_ARENA_SIZE / 1024);
     Serial.printf("[INFO] Heap: %d / %d bytes\n", ESP.getFreeHeap(), ESP.getHeapSize());
 
-    // Init BLE HID keyboard
-    init_ble_hid();
-
     Serial.printf("[OK] CNN1D Ready (features=%d)\n", MODEL_NUM_FEATURES);
     beep_n(2);  // startup: 2 beeps = CNN1D model
     last_sample_us = micros();
 }
 
-// ─── BLE HID Setup ─────────────────────────────────────────────
-class MyBLEServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-        ble_connected = true;
-        Serial.println("[BLE] Client connected");
-    }
-    void onDisconnect(BLEServer* pServer) {
-        ble_connected = false;
-        Serial.println("[BLE] Client disconnected");
-    }
-};
-
-static void init_ble_hid() {
-    BLEDevice::init("GestureGlove");
-    BLEDevice::setPower(ESP_PWR_LVL_P3);
-    pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new MyBLEServerCallbacks());
-    BLEService* pHID = pServer->createService(BLEUUID((uint16_t)0x1812));
-    pReportChar = pHID->createCharacteristic(
-        BLEUUID((uint16_t)0x2A4D),
-        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
-    );
-    pReportChar->addDescriptor(new BLE2902());
-    pHID->start();
-    pServer->getAdvertising()->setAppearance(0x03C0);
-    pServer->getAdvertising()->start();
-    Serial.println("[BLE] Advertising as 'GestureGlove'");
-}
-
-static void ble_send_key(uint8_t key) {
-    if (!ble_connected || key == KEY_NONE) return;
-    uint8_t report[5] = {0, 0, key, 0, 0};
-    pReportChar->setValue(report, 5);
-    pReportChar->notify();
-    delay(15);
-    memset(report, 0, 5);
-    pReportChar->setValue(report, 5);
-    pReportChar->notify();
-}
-
-static inline uint8_t gesture_to_key(uint8_t idx) {
-    switch (idx) {
-        case 0: return KEY_NONE;
-        case 1: return KEY_F5;
-        case 2: return KEY_LEFT;
-        case 3: return KEY_RIGHT;
-        case 4: return KEY_ESC;
-        default: return KEY_NONE;
-    }
-}
 
 // ─── Loop ───────────────────────────────────────────────────────
 void loop() {
@@ -308,15 +242,24 @@ void loop() {
         );
     }
 
-    // ── Buzzer + BLE output ──
-    if (max_prob >= CONF_THRESH && best != 0) {
-        unsigned long now = millis();
-        if (now - last_fired_ms[best] > DEBOUNCE_MS) {
+    // ── Prediction output (idle included) with gesture cooldown ──
+    // Print only on a class CHANGE. Idle is always shown (no beep). A non-idle
+    // gesture only fires if OUTPUT_COOLDOWN_MS has passed since the last gesture,
+    // so one physical motion triggers once and quick repeats are suppressed.
+    // Low-confidence readings fall back to idle (class 0).
+    int shown = (max_prob >= CONF_THRESH) ? best : 0;
+    unsigned long now = millis();
+    if (shown != last_shown) {
+        last_shown = shown;
+        if (shown == 0) {
             Serial.printf("[PRED] %s %.2f %lld %ld\n",
-                MODEL_GESTURE_NAMES[best], max_prob, latency_us, ESP.getFreeHeap());
-            beep_n(best);
-            ble_send_key(gesture_to_key(best));
-            last_fired_ms[best] = now;
+                MODEL_GESTURE_NAMES[shown], max_prob, latency_us, ESP.getFreeHeap());
+        } else if (now - last_gesture_ms >= OUTPUT_COOLDOWN_MS) {
+            Serial.printf("[PRED] %s %.2f %lld %ld\n",
+                MODEL_GESTURE_NAMES[shown], max_prob, latency_us, ESP.getFreeHeap());
+            beep_n(shown);
+            last_gesture_ms = now;
         }
+        // gesture within cooldown: suppressed (no print, no beep)
     }
 }

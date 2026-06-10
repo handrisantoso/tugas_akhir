@@ -1,0 +1,266 @@
+{
+  "RF": {
+    "loso": {
+      "mean_acc": 0.9276049468472337,
+      "std_acc": 0.09237840553501207,
+      "min_acc": 0.7946666666666666,
+      "max_acc": 1.0,
+      "mean_f1_macro": 0.9052308758232881,
+      "std_f1_macro": 0.12392732222442936,
+      "mean_prec_macro": 0.8942505452509861,
+      "mean_rec_macro": 0.9275643274853801,
+      "fold_acc": [
+        0.8003,
+        0.976,
+        0.996,
+        1.0,
+        0.9987,
+        0.7947
+      ],
+      "fold_subjects": [
+        "1778852097",
+        "1780652263",
+        "1780983846",
+        "1780993661",
+        "1781009863",
+        "1781102698"
+      ],
+      "per_class": {
+        "idle": {
+          "precision": 0.9945,
+          "recall": 0.9978,
+          "f1": 0.9961,
+          "support": 902
+        },
+        "flick_up": {
+          "precision": 0.8559,
+          "recall": 0.9934,
+          "f1": 0.9195,
+          "support": 903
+        },
+        "wave_left": {
+          "precision": 0.9967,
+          "recall": 0.9989,
+          "f1": 0.9978,
+          "support": 900
+        },
+        "wave_right": {
+          "precision": 0.9753,
+          "recall": 0.8324,
+          "f1": 0.8982,
+          "support": 901
+        },
+        "flick_down": {
+          "precision": 0.8326,
+          "recall": 0.816,
+          "f1": 0.8242,
+          "support": 902
+        }
+      }
+    },
+    "pc": {
+      "pc_lat_mean": 22.8279,
+      "pc_lat_std": 5.6791,
+      "pc_lat_min": 14.7535,
+      "pc_lat_max": 37.9028,
+      "pc_lat_p95": 28.3102,
+      "pc_fps": 43.8049,
+      "train_time": 0.3818
+    },
+    "esp32": {
+      "latency_mean_ms": 2.2,
+      "latency_min_ms": 1.75,
+      "latency_max_ms": 3.54,
+      "fps": 454,
+      "model_flash_kb": null,
+      "firmware_flash_kb": 442.79,
+      "static_ram_kb": 27.89,
+      "static_ram_pct": 8.72,
+      "free_heap_kb": 340.34,
+      "arena_kb": 0,
+      "heap_size_kb": 375.06,
+      "heap_used_kb": 34.71,
+      "stability_pct": 100.0,
+      "total_count": 100,
+      "fail_count": 0,
+      "scalability_x": 567.5,
+      "model_format": "pure C (m2cgen)"
+    }
+  },
+  "MLP": {
+    "loso": {
+      "mean_acc": 0.8972379529791797,
+      "std_acc": 0.08804719392915675,
+      "min_acc": 0.7666666666666667,
+      "max_acc": 0.9986666666666667,
+      "mean_f1_macro": 0.8727474655903936,
+      "std_f1_macro": 0.11916029360599661,
+      "mean_prec_macro": 0.867417520817383,
+      "mean_rec_macro": 0.8971198830409356,
+      "fold_acc": [
+        0.7936,
+        0.9093,
+        0.9351,
+        0.9987,
+        0.9801,
+        0.7667
+      ],
+      "fold_subjects": [
+        "1778852097",
+        "1780652263",
+        "1780983846",
+        "1780993661",
+        "1781009863",
+        "1781102698"
+      ],
+      "per_class": {
+        "idle": {
+          "precision": 0.8706,
+          "recall": 0.9922,
+          "f1": 0.9275,
+          "support": 902
+        },
+        "flick_up": {
+          "precision": 0.906,
+          "recall": 0.9823,
+          "f1": 0.9426,
+          "support": 903
+        },
+        "wave_left": {
+          "precision": 0.9881,
+          "recall": 0.9222,
+          "f1": 0.954,
+          "support": 900
+        },
+        "wave_right": {
+          "precision": 0.9057,
+          "recall": 0.8313,
+          "f1": 0.8669,
+          "support": 901
+        },
+        "flick_down": {
+          "precision": 0.8201,
+          "recall": 0.7583,
+          "f1": 0.788,
+          "support": 902
+        }
+      }
+    },
+    "pc": {
+      "pc_lat_mean": 0.3077,
+      "pc_lat_std": 0.0849,
+      "pc_lat_min": 0.2293,
+      "pc_lat_max": 0.6584,
+      "pc_lat_p95": 0.5049,
+      "pc_fps": 3246.3106,
+      "train_time": 12.8903
+    },
+    "esp32": {
+      "latency_mean_ms": 0.14,
+      "latency_min_ms": 0.11,
+      "latency_max_ms": 0.26,
+      "fps": 7262,
+      "model_flash_kb": 5.7,
+      "firmware_flash_kb": 368.11,
+      "static_ram_kb": 128.34,
+      "static_ram_pct": 40.11,
+      "free_heap_kb": 240.16,
+      "arena_kb": 100,
+      "heap_size_kb": 274.67,
+      "heap_used_kb": 34.51,
+      "stability_pct": 100.0,
+      "total_count": 100,
+      "fail_count": 0,
+      "scalability_x": 9077.5,
+      "model_format": "TFLite Micro int8"
+    }
+  },
+  "CNN1D": {
+    "loso": {
+      "mean_acc": 0.8909441817518923,
+      "std_acc": 0.14630942064220862,
+      "min_acc": 0.608,
+      "max_acc": 1.0,
+      "mean_f1_macro": 0.857365596461722,
+      "std_f1_macro": 0.1950101491910551,
+      "mean_prec_macro": 0.8633554363001746,
+      "mean_rec_macro": 0.8909035281360134,
+      "fold_acc": [
+        0.7896,
+        0.9573,
+        0.9934,
+        1.0,
+        0.9973,
+        0.608
+      ],
+      "fold_subjects": [
+        "1778852097",
+        "1780652263",
+        "1780983846",
+        "1780993661",
+        "1781009863",
+        "1781102698"
+      ],
+      "per_class": {
+        "idle": {
+          "precision": 0.8861,
+          "recall": 0.9922,
+          "f1": 0.9362,
+          "support": 902
+        },
+        "flick_up": {
+          "precision": 0.8603,
+          "recall": 0.9956,
+          "f1": 0.923,
+          "support": 903
+        },
+        "wave_left": {
+          "precision": 0.9393,
+          "recall": 0.8422,
+          "f1": 0.8881,
+          "support": 900
+        },
+        "wave_right": {
+          "precision": 0.819,
+          "recall": 0.8135,
+          "f1": 0.8163,
+          "support": 901
+        },
+        "flick_down": {
+          "precision": 0.9747,
+          "recall": 0.8115,
+          "f1": 0.8857,
+          "support": 902
+        }
+      }
+    },
+    "pc": {
+      "pc_lat_mean": 1.254,
+      "pc_lat_std": 0.1396,
+      "pc_lat_min": 1.0191,
+      "pc_lat_max": 1.7982,
+      "pc_lat_p95": 1.5078,
+      "pc_fps": 797.1627,
+      "train_time": 99.2881
+    },
+    "esp32": {
+      "latency_mean_ms": 106.23,
+      "latency_min_ms": 106.19,
+      "latency_max_ms": 106.29,
+      "fps": 9,
+      "model_flash_kb": 200.7,
+      "firmware_flash_kb": 669.6,
+      "static_ram_kb": 242.82,
+      "static_ram_pct": 75.88,
+      "free_heap_kb": 113.74,
+      "arena_kb": 220,
+      "heap_size_kb": 160.19,
+      "heap_used_kb": 46.45,
+      "stability_pct": 100.0,
+      "total_count": 100,
+      "fail_count": 0,
+      "scalability_x": 11.25,
+      "model_format": "TFLite Micro int8"
+    }
+  }
+}

@@ -71,12 +71,12 @@ ESP32_DATA = {
         "f1_macro":    1.0,
         "precision_macro": 1.0,
         "recall_macro":    1.0,
-        "latency_mean_us":  216,    # avg=216us from [STATS] count=100
-        "latency_min_us":   211,    # min=211us
-        "latency_max_us":   274,    # max=274us
-        "fps":             4640,    # fps=4640
-        "heap_bytes":    140000,    # heap=140000
-        "flash_kb":          39,   # mlp_model_data.h
+        "latency_mean_us":  138,    # avg=138us from [STATS] count=100 (run baru)
+        "latency_min_us":   112,    # min=112us
+        "latency_max_us":   258,    # max=258us
+        "fps":             7262,    # fps=7262
+        "heap_bytes":    245924,    # free heap runtime
+        "flash_kb":         5.7,    # model int8 (model_data_len=5856 B), bukan ukuran teks .h
         "arena_kb":        100,    # TFLite arena
         "fail_count":          0,
         "model_format": "TFLite Micro int8",
@@ -86,14 +86,14 @@ ESP32_DATA = {
         "f1_macro":    1.0,
         "precision_macro": 1.0,
         "recall_macro":    1.0,
-        "latency_mean_us": 106254, # avg=106254us
-        "latency_min_us":  106229, # min=106229us
-        "latency_max_us":  106299, # max=106299us
+        "latency_mean_us": 106228, # avg=106228us (run baru COM7)
+        "latency_min_us":  106194, # min=106194us
+        "latency_max_us":  106294, # max=106294us
         "fps":                 9,  # fps=9
-        "heap_bytes":      10600,  # heap=10600
-        "flash_kb":       1330,    # cnn1d_model_data.h (1.36 MB)
-        "arena_kb":        220,    # TFLite arena
-        "fail_count":        20,   # fail=20 from 120 attempts
+        "heap_bytes":     116472,  # free heap runtime (build teroptimasi, bukan 10600 lama)
+        "flash_kb":        200.7,  # model int8 (model_data_len=205520 B), bukan ukuran teks .h
+        "arena_kb":        220,    # TFLite arena (statis, internal DRAM)
+        "fail_count":         0,   # fail=0 dari 100 (100% stabil)
         "model_format": "TFLite Micro int8",
     },
 }

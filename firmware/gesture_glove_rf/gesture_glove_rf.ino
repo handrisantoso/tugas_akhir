@@ -3,12 +3,11 @@
  * Optimized for ESP32-S3 + MPU6050
  *
  * Pure C m2cgen model: fast, no ML framework dependency.
- * Realtime: raw IMU → 36 features → normalize → rf_predict → buzzer output
+ * Realtime: raw IMU → 36 statistical features → scale → rf_predict → buzzer output
  *
- * Features:
- *   - On-device inference measurement (latency, heap, FPS)
- *   - BLE HID keyboard output (F5, arrows, escape)
- *   - Serial debug + research data logging
+ * Struktur disamakan dengan gesture_glove_mlp.ino:
+ *   - On-device measurement (latency, heap, FPS, stability)
+ *   - TANPA BLE (output via buzzer + Serial)
  */
 
 #include <Wire.h>
@@ -17,11 +16,6 @@
 
 #include "rf_model_data.h"
 #include "measurements.h"
-
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
 
 // ─── Config ──────────────────────────────────────────────────
 #define I2C_SDA             5
@@ -35,18 +29,9 @@
 #define STEP_SIZE           125
 #define DEBOUNCE_MS         400
 #define CONF_THRESH         0.80
-
-// ─── BLE HID Key Codes (USB HID Usage IDs) ────────────────────
-#define KEY_F5     0x83   // F5 = start presentation
-#define KEY_LEFT   0x50   // Arrow Left = previous slide
-#define KEY_RIGHT  0x4F   // Arrow Right = next slide
-#define KEY_ESC    0x29   // Escape = exit presentation
-#define KEY_NONE   0x00   // No key (idle)
-
-// ─── BLE Server & Characteristics ─────────────────────────────
-static BLEServer* pServer = nullptr;
-static BLECharacteristic* pReportChar = nullptr;
-static bool ble_connected = false;
+// Min gap between two GESTURE triggers. Must exceed the inference interval
+// (STEP_SIZE / SAMPLE_RATE = 1.25 s) to actually gate, else it is a no-op.
+#define OUTPUT_COOLDOWN_MS  5000
 
 // ─── Buzzer helpers ──────────────────────────────────────────
 #define BEEP_DUR_MS   60
@@ -61,90 +46,29 @@ static inline void beep_n(int n) {
     }
 }
 
-// ─── BLE HID Setup ─────────────────────────────────────────────
-class MyBLEServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-        ble_connected = true;
-        Serial.println("[BLE] Client connected");
-    }
-    void onDisconnect(BLEServer* pServer) {
-        ble_connected = false;
-        Serial.println("[BLE] Client disconnected");
-    }
-};
-
-static void init_ble_hid() {
-    BLEDevice::init("GestureGlove");
-    BLEDevice::setPower(ESP_PWR_LVL_P3);  // max TX power
-
-    pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new MyBLEServerCallbacks());
-
-    // HID Service
-    BLEService* pHID = pServer->createService(BLEUUID((uint16_t)0x1812));
-
-    // Report characteristic (keyboard input)
-    pReportChar = pHID->createCharacteristic(
-        BLEUUID((uint16_t)0x2A4D),
-        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
-    );
-    pReportChar->addDescriptor(new BLE2902());
-
-    pHID->start();
-
-    // Start advertising
-    pServer->getAdvertising()->setAppearance(0x03C0);  // keyboard appearance
-    pServer->getAdvertising()->start();
-
-    Serial.println("[BLE] Advertising as 'GestureGlove'");
-}
-
-static void ble_send_key(uint8_t key) {
-    if (!ble_connected || key == KEY_NONE) return;
-
-    uint8_t report[5] = {0, 0, key, 0, 0};  // modifier + keycode
-    pReportChar->setValue(report, 5);
-    pReportChar->notify();
-
-    delay(15);  // hold briefly
-
-    // Release key
-    memset(report, 0, 5);
-    pReportChar->setValue(report, 5);
-    pReportChar->notify();
-}
-
-static inline uint8_t gesture_to_key(uint8_t idx) {
-    switch (idx) {
-        case 0: return KEY_NONE;   // idle
-        case 1: return KEY_F5;     // flick_up → F5
-        case 2: return KEY_LEFT;     // wave_left → Arrow Left
-        case 3: return KEY_RIGHT;   // wave_right → Arrow Right
-        case 4: return KEY_ESC;      // flick_down → Escape
-        default: return KEY_NONE;
-    }
-}
-
 // ─── Hardware ─────────────────────────────────────────────────
 static Adafruit_MPU6050 mpu;
 
-// ─── IMU buffers ──────────────────────────────────────────────
+// ─── IMU circular buffer ──────────────────────────────────────
 static float imu_buf[WINDOW_SIZE][NUM_AXES];
 static int buf_idx = 0;
 static bool buf_full = false;
 static int samples_since_infer = 0;
-static float feat_buf[MODEL_NUM_FEATURES];  // 36
-static unsigned long last_fired_ms[5] = {0};
+
+// ─── Model I/O ───────────────────────────────────────────────
+static float feat_buf[MODEL_NUM_FEATURES];   // 36
+static int last_shown = -1;                  // last printed class (-1 = none yet)
+static unsigned long last_gesture_ms = 0;    // time of last non-idle trigger (cooldown anchor)
 static unsigned long last_sample_us = 0;
 
 // ─── Measurement Stats ────────────────────────────────────────
 static InferenceStats inf_stats;
 
-// ─── Feature extraction (36 features, in-place normalize) ─────
+// ─── Feature extraction (36 features, in-place normalize via scaler) ────
 static inline void extract_features(int start) {
     for (int a = 0; a < NUM_AXES; a++) {
         float sum = 0, sumSq = 0;
-        float mn = 1e6f, mx = -1e6f;
+        float mn = 1e6, mx = -1e6;
 
         for (int i = 0; i < WINDOW_SIZE; i++) {
             float v = imu_buf[(start + i) % WINDOW_SIZE][a];
@@ -196,14 +120,10 @@ void setup() {
     // Init measurement stats
     stats_init(&inf_stats);
 
-    // Print startup info
-    Serial.printf("[INFO] Model: RF | Trees: %d | Features: %d
-", MODEL_NUM_TREES, MODEL_NUM_FEATURES);
-    Serial.printf("[INFO] Heap: %d / %d bytes
-", ESP.getFreeHeap(), ESP.getHeapSize());
-
-    // Init BLE HID keyboard
-    init_ble_hid();
+    // Print startup info (RF = pure C, no tensor arena)
+    Serial.printf("[INFO] Model: RF | Features: %d | Arena: 0 KB (pure C)\n",
+                  MODEL_NUM_FEATURES);
+    Serial.printf("[INFO] Heap: %d / %d bytes\n", ESP.getFreeHeap(), ESP.getHeapSize());
 
     Serial.println("[OK] RF Ready");
     beep_n(1);  // startup confirmation: 1 beep
@@ -233,54 +153,58 @@ void loop() {
     if (!buf_full || samples_since_infer < STEP_SIZE) return;
     samples_since_infer = 0;
 
-    // ── Feature extraction ──
+    // ── Feature extraction & normalization ──
     extract_features(buf_idx);
 
-    // ── Inference with timing ──
+    // --- Inference timing (Model Only - comparable to PC benchmark) ---
     int64_t t0 = esp_timer_get_time();
     float confidence = 0.0f;
     int predicted = rf_predict(feat_buf, &confidence);
     int64_t t1 = esp_timer_get_time();
     int64_t latency_us = t1 - t0;
-    bool ok = true;  // RF never fails
-    stats_record(&inf_stats, latency_us, ok);
+    stats_record(&inf_stats, latency_us, true);  // RF never fails
 
-    // ── Periodic stats (every 100 inferences) ──
+    // --- Periodic stats (every 100 inferences) ---
     if (inf_stats.total_count > 0 && inf_stats.total_count % 100 == 0) {
         float avg_lat = stats_avg_latency(&inf_stats);
         float fps = stats_avg_fps(&inf_stats);
         Serial.printf(
-            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld
-",
+            "[STATS] count=%u ok=%u fail=%u min=%lldus max=%lldus avg=%.0fus fps=%.0f heap=%ld\n",
             inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             inf_stats.latency_min, inf_stats.latency_max,
             avg_lat, fps, ESP.getFreeHeap()
         );
     }
 
-    // ── Stability report (every 30,000 inferences ≈ 5 min @ 100Hz) ──
+    // --- Stability report (every 30,000 inferences) ---
     if (inf_stats.total_count > 0 && inf_stats.total_count % 30000 == 0) {
         int64_t dur = (esp_timer_get_time() - inf_stats.test_start_us) / 1000000;
         float sr = 100.0f * (float)inf_stats.ok_count / inf_stats.total_count;
         Serial.printf(
-            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld
-",
+            "[STABILITY] dur=%ds total=%u ok=%u fail=%u rate=%.2f%% avg=%.0fus fps=%.0f heap_min=%lld\n",
             (int)dur, inf_stats.total_count, inf_stats.ok_count, inf_stats.fail_count,
             sr, stats_avg_latency(&inf_stats), stats_avg_fps(&inf_stats), inf_stats.heap_min
         );
     }
 
-    // ── Buzzer + BLE output ──
-    if (confidence >= CONF_THRESH && predicted != 0) {
-        unsigned long now = millis();
-        if (now - last_fired_ms[predicted] > DEBOUNCE_MS) {
-            // ── Serial output: confident prediction only ──
+    // --- Prediction output (idle included) with gesture cooldown ---
+    // Print only on a class CHANGE. Idle is always shown (no beep). A non-idle
+    // gesture only fires if OUTPUT_COOLDOWN_MS has passed since the last gesture,
+    // so one physical motion triggers once and quick repeats are suppressed.
+    // Low-confidence readings fall back to idle (class 0).
+    int shown = (confidence >= CONF_THRESH) ? predicted : 0;
+    unsigned long now = millis();
+    if (shown != last_shown) {
+        last_shown = shown;
+        if (shown == 0) {
             Serial.printf("[PRED] %s %.2f %lld %ld\n",
-                MODEL_GESTURE_NAMES[predicted], confidence,
-                latency_us, ESP.getFreeHeap());
-            beep_n(predicted);                        // buzzer beep
-            ble_send_key(gesture_to_key(predicted));   // BLE HID key
-            last_fired_ms[predicted] = now;
+                MODEL_GESTURE_NAMES[shown], confidence, latency_us, ESP.getFreeHeap());
+        } else if (now - last_gesture_ms >= OUTPUT_COOLDOWN_MS) {
+            Serial.printf("[PRED] %s %.2f %lld %ld\n",
+                MODEL_GESTURE_NAMES[shown], confidence, latency_us, ESP.getFreeHeap());
+            beep_n(shown);
+            last_gesture_ms = now;
         }
+        // gesture within cooldown: suppressed (no print, no beep)
     }
 }

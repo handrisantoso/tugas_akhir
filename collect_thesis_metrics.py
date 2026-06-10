@@ -92,15 +92,17 @@ def train_all_models(X, y):
     return results
 
 
-def measure_latency(results, X, y, n_runs=100, n_warmup=10):
+def measure_latency(results, X, y, n_runs=100, n_warmup=50):
     """Measure PC-side pure model inference latency.
 
     Steps:
     1. Pre-process ALL samples BEFORE timing (no preprocessing in benchmark)
-    2. Warmup: discard first n_warmup calls (remove session/graph overhead)
-    3. Time ONLY model.predict() per SAMPLE (batch_size=1, same as ESP32)
-    4. Record comprehensive stats: mean, std, min, max, P95
-    5. Log system conditions for reproducibility
+    2. For Keras models: wrap in tf.function so only the graph kernel is timed,
+       matching ESP32 which measures only the TFLite invoke() kernel.
+    3. Warmup: discard first n_warmup calls to trigger JIT compilation.
+    4. Time ONLY the model forward pass per sample (batch_size=1, same as ESP32)
+    5. Record comprehensive stats: mean, std, min, max, P95
+    6. Log system conditions for reproducibility
     """
     print("\n[5] Measuring Inference Latency (Model Only)...")
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -139,15 +141,21 @@ def measure_latency(results, X, y, n_runs=100, n_warmup=10):
             flat_all = X_test_raw[:n_samples].reshape(n_samples, -1)
             scaled_all = scaler.transform(flat_all).reshape(n_samples, WINDOW_SIZE, NUM_AXES)
 
-        # Warmup: discard first n_warmup calls to remove session/graph overhead
+        # Build inference callable — tf.function JIT-compiles the graph so only
+        # the kernel execution is timed, equivalent to ESP32's TFLite invoke().
+        if name in ("MLP", "CNN1D"):
+            infer = tf.function(model, reduce_retracing=True)
+        else:
+            infer = None  # RF uses sklearn, no JIT needed
+
+        # Warmup: trigger JIT compilation (first few calls compile the graph)
         print(f"  {name}: warming up ({n_warmup} calls)...")
         for i in range(n_warmup):
+            idx = i % n_samples
             if name == "RF":
-                model.predict(scaled_all[i:i+1])
-            elif name == "MLP":
-                model.predict(scaled_all[i:i+1], verbose=0)
-            elif name == "CNN1D":
-                model.predict(scaled_all[i:i+1], verbose=0)
+                model.predict(scaled_all[idx:idx+1])
+            else:
+                infer(scaled_all[idx:idx+1], training=False)
 
         # Pure benchmark: batch_size=1 per call (same as ESP32)
         latencies = []
@@ -156,10 +164,8 @@ def measure_latency(results, X, y, n_runs=100, n_warmup=10):
             t0 = time.perf_counter()
             if name == "RF":
                 model.predict(scaled_all[i:i+1])
-            elif name == "MLP":
-                model.predict(scaled_all[i:i+1], verbose=0)
-            elif name == "CNN1D":
-                model.predict(scaled_all[i:i+1], verbose=0)
+            else:
+                infer(scaled_all[i:i+1], training=False)
             latencies.append((time.perf_counter() - t0) * 1000)  # ms
 
         elapsed_sec = time.perf_counter() - t0_total
@@ -184,16 +190,22 @@ def measure_latency(results, X, y, n_runs=100, n_warmup=10):
 def get_model_sizes(results):
     """Get model file sizes and ESP32 flash usage."""
     print("\n[6] Collecting Model Sizes...")
+
+    # ESP32 flash = ukuran MODEL int8 yang tertanam (.tflite binary).
+    # RF di-export m2cgen sebagai kode C, ukuran flash-nya hanya dari output
+    # build Arduino IDE ("Sketch uses N bytes") -> tidak bisa dihitung di sini.
     size_map = {
-        "RF":   ("rf_model.joblib", "rf_model_data.h"),
-        "MLP":  ("mlp_model.keras", "mlp_model.tflite"),
-        "CNN1D":("cnn1d_model.keras", "cnn1d_model.tflite"),
+        "RF":    ("rf_model.joblib",   None),
+        "MLP":   ("mlp_model.keras",   os.path.join(MODELS_DIR, "mlp_model.tflite")),
+        "CNN1D": ("cnn1d_model.keras", os.path.join(MODELS_DIR, "cnn1d_model.tflite")),
     }
-    for name, (pc_file, esp_file) in size_map.items():
+    for name, (pc_file, esp_path) in size_map.items():
         pc_path = os.path.join(MODELS_DIR, pc_file)
-        esp_path = os.path.join(MODELS_DIR, esp_file)
         results[name]["pc_model_kb"] = os.path.getsize(pc_path) / 1024 if os.path.exists(pc_path) else 0
-        results[name]["esp_model_kb"] = os.path.getsize(esp_path) / 1024 if os.path.exists(esp_path) else 0
+        if esp_path and os.path.exists(esp_path):
+            results[name]["esp_model_kb"] = os.path.getsize(esp_path) / 1024
+        else:
+            results[name]["esp_model_kb"] = 0  # RF: isi manual dari build Arduino
         print(f"    {name}: PC={results[name]['pc_model_kb']:.1f}KB, ESP32={results[name]['esp_model_kb']:.1f}KB")
 
     # Tensor arena sizes from firmware
