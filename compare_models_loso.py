@@ -30,7 +30,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from recorder import GestureRecorder
 from models import (
-    augment_windows, extract_features, fit_scaler, build_mlp, build_cnn1d,
+    extract_features, fit_scaler, build_mlp, build_cnn1d,
 )
 from config import (
     GESTURE_NAMES, WINDOW_SIZE, NUM_AXES,
@@ -110,8 +110,6 @@ def main():
     random.seed(args.seed)
     np.random.seed(args.seed)
     tf.random.set_seed(args.seed)
-    # Single Generator consumed across folds — augmentation now follows args.seed
-    aug_rng = np.random.default_rng(args.seed)
 
     if args.csv:
         csv_path = args.csv
@@ -149,7 +147,9 @@ def main():
         y_tr, y_te = y[tr], y[te]
         print(f"\n  FOLD {k}  held-out={held}  (train={len(y_tr)} test={len(y_te)})")
 
-        X_tr_aug, y_tr_aug = augment_windows(X_tr, y_tr, rng=aug_rng, n_copies=5)
+        # NO data augmentation — train on raw windows, identical to deployment
+        # pipeline so the float32->int8 drop is measured on the real model.
+        X_tr_aug, y_tr_aug = X_tr, y_tr
         early = K.callbacks.EarlyStopping(monitor="loss", patience=10,
                                           restore_best_weights=True, verbose=0)
 
@@ -247,9 +247,10 @@ def main():
     print("  AKURASI PER-FOLD")
     print(SEP)
 
-    # header row
+    # header row — last 5 digits of subject ID (unique per fold; first digits
+    # collide between some subjects). Consistent with thesis_all_metrics.py.
     fold_hdr = f"  {'Model':<7} {'Format':<8} " + " ".join(
-        f"{'Fold'+str(i)+' ('+fold_subjects[i][:6]+')':>{col_w}}" for i in range(n_folds)
+        f"{'Fold'+str(i)+' ('+fold_subjects[i][-5:]+')':>{col_w}}" for i in range(n_folds)
     )
     print(fold_hdr)
     print("  " + "-" * (len(fold_hdr) - 2))

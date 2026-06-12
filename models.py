@@ -902,23 +902,36 @@ def evaluate_model_loso(
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
 
-        # CNN1D is expensive on CPU — use fewer aug copies; MLP/RF can afford more
-        aug_copies = 1 if model_type == "cnn1d" else 3
-        X_train_aug, y_train_aug = augment_windows(X_train, y_train, n_copies=aug_copies)
-        X_train_n = normalize_windows(X_train_aug)
-        X_test_n  = normalize_windows(X_test)
+        # Carve 10% validation (stratified) from the TRAINING subjects for
+        # val_loss early stopping (overfitting guard). The held-out test
+        # subject is never touched. RF needs no validation set.
+        if model_type in ("cnn1d", "mlp"):
+            X_tr_raw, X_val_raw, y_tr_raw, y_val_raw = train_test_split(
+                X_train, y_train, test_size=0.1, random_state=42, stratify=y_train)
+        else:
+            X_tr_raw, y_tr_raw, X_val_raw, y_val_raw = X_train, y_train, None, None
 
-        # Feature extraction & scaling
+        # NO data augmentation — train on raw windows, identical to the
+        # deployment pipeline (train_keras_model / train_random_forest full_train)
+        # so LOSO numbers honestly reflect the deployed model.
+        X_train_aug, y_train_aug = X_tr_raw, y_tr_raw
+
+        # Feature extraction & scaling — NO per-window normalization: it strips
+        # the per-axis mean (gravity direction), which is what distinguishes
+        # flick_up from flick_down. StandardScaler only (consistent with deploy).
         if model_type == "cnn1d":
-            scaler = fit_scaler(X_train_n)
-            X_tr_in = scaler.transform(X_train_n).reshape(-1, WINDOW_SIZE, NUM_AXES)
-            X_te_in = scaler.transform(X_test_n).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            scaler = fit_scaler(X_train_aug)
+            X_tr_in = scaler.transform(X_train_aug).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            X_te_in = scaler.transform(X_test).reshape(-1, WINDOW_SIZE, NUM_AXES)
+            X_val_in = scaler.transform(X_val_raw).reshape(-1, WINDOW_SIZE, NUM_AXES)
         else:  # mlp or rf
-            X_tr_f = extract_features(X_train_n)
-            X_te_f = extract_features(X_test_n)
+            X_tr_f = extract_features(X_train_aug)
+            X_te_f = extract_features(X_test)
             scaler = fit_scaler(X_tr_f)
             X_tr_in = scaler.transform(X_tr_f)
             X_te_in = scaler.transform(X_te_f)
+            X_val_in = scaler.transform(extract_features(X_val_raw)) if X_val_raw is not None else None
+        val_data = (X_val_in, y_val_raw) if X_val_raw is not None else None
 
         # Build per-epoch Keras callback that reports progress to the GUI
         keras_callbacks = []
@@ -927,7 +940,7 @@ def evaluate_model_loso(
             from tensorflow import keras as Keras
 
             early_stop = Keras.callbacks.EarlyStopping(
-                monitor="loss", patience=8, restore_best_weights=True, verbose=0)
+                monitor="val_loss", patience=8, restore_best_weights=True, verbose=0)
             keras_callbacks.append(early_stop)
 
             if epoch_callback is not None:
@@ -945,7 +958,8 @@ def evaluate_model_loso(
             model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
                           loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             model.fit(X_tr_in, y_train_aug, epochs=epochs,
-                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks)
+                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks,
+                      validation_data=val_data)
             y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
 
         elif model_type == "mlp":
@@ -953,7 +967,8 @@ def evaluate_model_loso(
             model.compile(optimizer=Keras.optimizers.Adam(learning_rate=1e-3),
                           loss="sparse_categorical_crossentropy", metrics=["accuracy"])
             model.fit(X_tr_in, y_train_aug, epochs=epochs,
-                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks)
+                      batch_size=batch_size, verbose=0, callbacks=keras_callbacks,
+                      validation_data=val_data)
             y_pred = np.argmax(model.predict(X_te_in, verbose=0), axis=1)
 
         elif model_type == "rf":
@@ -1102,6 +1117,12 @@ def train_model(model_type, X, y, epochs=DEFAULT_EPOCHS, batch_size=DEFAULT_BATC
             result["header_path"] = header_path
         except Exception as e:
             result["header_error"] = str(e)
+
+        # Free Keras global state so subsequent model training starts clean
+        try:
+            _import_tensorflow().keras.backend.clear_session()
+        except Exception:
+            pass
 
     elif model_type == "rf":
         result = train_random_forest(

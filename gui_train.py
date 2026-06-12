@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import seaborn as sns
 from config import (
-    GESTURE_NAMES, DEFAULT_CSV, HEADERS_DIR, MODELS_DIR, FIRMWARE_RF_DIR,
+    GESTURE_NAMES, DEFAULT_CSV, HEADERS_DIR, MODELS_DIR,
     DEFAULT_EPOCHS, DEFAULT_BATCH_SIZE, DEFAULT_RF_TREES
 )
 import os
@@ -30,7 +30,8 @@ class TrainTab(ctk.CTkFrame):
         # ── Dataset Row ──
         ds_row = ctk.CTkFrame(top, fg_color="transparent")
         ds_row.pack(fill="x", padx=12, pady=(10,4))
-        ctk.CTkLabel(ds_row, text="📂 Dataset:", font=("Inter", 13, "bold")).pack(side="left")
+        self.ds_label = ctk.CTkLabel(ds_row, text="📂 Dataset CSV:", font=("Inter", 13, "bold"))
+        self.ds_label.pack(side="left")
         self.csv_var = ctk.StringVar(value=DEFAULT_CSV)
         ctk.CTkEntry(ds_row, textvariable=self.csv_var, width=300, font=("Inter", 10)).pack(side="left", padx=6, expand=True, fill="x")
         ctk.CTkButton(ds_row, text="Browse", width=70, command=self._browse_csv).pack(side="left")
@@ -41,11 +42,11 @@ class TrainTab(ctk.CTkFrame):
         cfg_row = ctk.CTkFrame(top, fg_color="transparent")
         cfg_row.pack(fill="x", padx=12, pady=4)
 
-        ctk.CTkLabel(cfg_row, text="Model:", font=("Inter", 12, "bold")).pack(side="left")
-        self.model_var = ctk.StringVar(value="mlp")
-        self.model_seg = ctk.CTkSegmentedButton(cfg_row, values=["mlp", "cnn1d", "rf"],
-                                                  variable=self.model_var, command=self._on_model_change)
-        self.model_seg.pack(side="left", padx=8)
+        ctk.CTkLabel(cfg_row, text="Models:", font=("Inter", 12, "bold")).pack(side="left")
+        ctk.CTkLabel(cfg_row, text="MLP + CNN1D + RF (trained together)",
+                     font=("Inter", 11), text_color="#22C55E").pack(side="left", padx=8)
+        # Retained for plot file naming / back-compat; training always covers all 3.
+        self.model_var = ctk.StringVar(value="all")
 
         ctk.CTkLabel(cfg_row, text="Epochs:", font=("Inter", 11)).pack(side="left", padx=(16,2))
         self.epochs_var = ctk.StringVar(value=str(DEFAULT_EPOCHS))
@@ -66,13 +67,6 @@ class TrainTab(ctk.CTkFrame):
         self.quant_cb = ctk.CTkCheckBox(cfg_row, text="Int8 Quantize", variable=self.quant_var, font=("Inter", 11))
         self.quant_cb.pack(side="left", padx=12)
 
-        self.full_train_var = ctk.BooleanVar(value=True)
-        self.full_train_cb = ctk.CTkCheckBox(
-            cfg_row, text="Train on all data",
-            variable=self.full_train_var, font=("Inter", 11),
-        )
-        self.full_train_cb.pack(side="left", padx=8)
-
         # ── LOSO / CV Mode Row ──────────────────────────────────────
         cv_row = ctk.CTkFrame(top, fg_color="transparent")
         cv_row.pack(fill="x", padx=12, pady=(4, 4))
@@ -80,7 +74,7 @@ class TrainTab(ctk.CTkFrame):
         self.loso_var = ctk.BooleanVar(value=False)
         self.loso_cb = ctk.CTkCheckBox(
             cv_row,
-            text="LOSO Cross-Validation (multi-subject)",
+            text="LOSO eval only (skip deployment export)",
             variable=self.loso_var,
             font=("Inter", 11, "bold"),
             command=self._on_loso_toggle,
@@ -88,16 +82,19 @@ class TrainTab(ctk.CTkFrame):
         self.loso_cb.pack(side="left", padx=(0, 8))
 
         self.loso_info_lbl = ctk.CTkLabel(
-            cv_row, text="", font=("Inter", 10), text_color="#6B7280",
+            cv_row, text="  Train 100% + export 3 models, then LOSO eval", font=("Inter", 10), text_color="#22C55E",
         )
         self.loso_info_lbl.pack(side="left", padx=4)
 
         # ── Train + Export Buttons ──
         btn_row = ctk.CTkFrame(top, fg_color="transparent")
         btn_row.pack(fill="x", padx=12, pady=(4,10))
-        self.train_btn = ctk.CTkButton(btn_row, text="🚀 Train Model", fg_color="#8B5CF6",
-                                        hover_color="#7C3AED", command=self.start_training, width=140)
+        self.train_btn = ctk.CTkButton(btn_row, text="🚀 Train All (MLP+CNN+RF)", fg_color="#8B5CF6",
+                                        hover_color="#7C3AED", command=self.start_training, width=190)
         self.train_btn.pack(side="left", padx=(0,8))
+        self.thesis_btn = ctk.CTkButton(btn_row, text="📊 Thesis Metrics", fg_color="#0EA5E9",
+                                         hover_color="#0284C7", command=self.start_thesis_metrics, width=140)
+        self.thesis_btn.pack(side="left", padx=(0,8))
         self.export_btn = ctk.CTkButton(btn_row, text="📦 Export C Header", fg_color="#3B82F6",
                                          hover_color="#2563EB", command=self._export_header, width=140, state="disabled")
         self.export_btn.pack(side="left", padx=(0,8))
@@ -115,7 +112,7 @@ class TrainTab(ctk.CTkFrame):
         bottom = ctk.CTkFrame(self, corner_radius=12)
         bottom.pack(fill="both", expand=True, padx=10, pady=(5,10))
 
-        self.fig = Figure(figsize=(12, 4.5), dpi=100, facecolor="#1a1a2e")
+        self.fig = Figure(figsize=(12, 8.5), dpi=100, facecolor="#1a1a2e")
         gs = self.fig.add_gridspec(1, 3, wspace=0.35)
         self.ax_loss = self.fig.add_subplot(gs[0, 0])
         self.ax_acc = self.fig.add_subplot(gs[0, 1])
@@ -138,35 +135,38 @@ class TrainTab(ctk.CTkFrame):
         self.report_text.pack(fill="x", padx=8, pady=(0,8))
 
         self._last_result = None
+        self._refresh_loso_info(DEFAULT_CSV)
 
     def _browse_csv(self):
         from tkinter import filedialog
-        path = filedialog.askopenfilename(filetypes=[("CSV", "*.csv")])
+        path = filedialog.askopenfilename(
+            filetypes=[("CSV", "*.csv")], initialdir=os.path.dirname(self.csv_var.get()))
         if path:
             self.csv_var.set(path)
-            _, counts = GestureRecorder.load_csv(path)
+            self._refresh_loso_info(path)
+
+    def _refresh_loso_info(self, csv_path):
+        try:
+            _, counts = GestureRecorder.load_csv(csv_path)
             total = sum(counts.values())
             self.ds_info.configure(text=f"{total} samples loaded")
-
-            # Check subject count for LOSO readiness
-            try:
-                _, _, subj_ids = GestureRecorder.load_dataset(path)
-                unique_subjects = np.unique(subj_ids)
-                if len(unique_subjects) > 1:
-                    self.loso_info_lbl.configure(
-                        text=f"  {len(unique_subjects)} subjects detected — LOSO ready",
-                        text_color="#22C55E"
-                    )
-                else:
-                    self.loso_info_lbl.configure(
-                        text="  Single subject — standard split will be used",
-                        text_color="#6B7280"
-                    )
-                    if self.loso_var.get():
-                        self.loso_var.set(False)
-                        self._on_loso_toggle()
-            except Exception:
-                self.loso_info_lbl.configure(text="", text_color="#6B7280")
+            _, _, subj_ids = GestureRecorder.load_dataset(csv_path)
+            unique_subjects = np.unique(subj_ids)
+            if len(unique_subjects) > 1:
+                self.loso_info_lbl.configure(
+                    text=f"  {len(unique_subjects)} subjects detected — LOSO ready",
+                    text_color="#22C55E"
+                )
+            else:
+                self.loso_info_lbl.configure(
+                    text="  Single subject — standard split will be used",
+                    text_color="#6B7280"
+                )
+                if self.loso_var.get():
+                    self.loso_var.set(False)
+                    self._on_loso_toggle()
+        except Exception:
+            self.loso_info_lbl.configure(text="", text_color="#6B7280")
 
     def _on_model_change(self, val):
         is_keras = val in ("mlp", "cnn1d")
@@ -177,24 +177,27 @@ class TrainTab(ctk.CTkFrame):
         self.trees_entry.configure(state="normal" if val == "rf" else "disabled")
 
     def _on_loso_toggle(self):
-        """Disable 'Train on all data' when LOSO mode is active."""
+        # Data source is always the CSV; the checkbox only toggles whether the
+        # 3 deployment models are trained+exported before the LOSO evaluation.
         if self.loso_var.get():
-            self.full_train_cb.configure(state="disabled")
             self.loso_info_lbl.configure(
-                text="  'Train on all data' disabled in LOSO mode",
+                text="  LOSO evaluation only — no deployment export (faster)",
                 text_color="#F59E0B"
             )
         else:
-            self.full_train_cb.configure(state="normal")
-            self.loso_info_lbl.configure(text="", text_color="#6B7280")
+            self.loso_info_lbl.configure(
+                text="  Train 100% + export 3 models, then LOSO eval",
+                text_color="#22C55E"
+            )
 
     def start_training(self):
         csv_path = self.csv_var.get()
         if not os.path.isfile(csv_path):
-            self.status_lbl.configure(text="Dataset not found!", text_color="#EF4444")
+            self.status_lbl.configure(text="Dataset CSV not found!", text_color="#EF4444")
             return
 
         self.train_btn.configure(state="disabled")
+        self.thesis_btn.configure(state="disabled")
         self.export_btn.configure(state="disabled")
         self.status_lbl.configure(text="Training...", text_color="#F59E0B")
 
@@ -203,45 +206,106 @@ class TrainTab(ctk.CTkFrame):
         self._poll_progress()
 
     def _train_worker(self):
+        """Train ALL 3 models (MLP+CNN1D+RF) in one run, then LOSO-eval all 3.
+
+        Non-LOSO mode: train each model on 100% data + export C header, THEN run
+        one LOSO pass (all 3 models per fold via run_loso) for the honest report.
+        LOSO mode: skip deployment, just run the LOSO evaluation.
+        """
         try:
-            X, y, subject_ids = GestureRecorder.load_dataset(self.csv_var.get())
-            model_type = self.model_var.get()
+            import thesis_all_metrics as tam
+            path = self.csv_var.get()
+            loso_mode = self.loso_var.get()   # True = skip deployment, LOSO eval only
+            X, y, subject_ids = GestureRecorder.load_dataset(path)
             epochs = int(self.epochs_var.get())
             batch = int(self.batch_var.get())
             trees = int(self.trees_var.get())
             quant = self.quant_var.get()
-            full_train = self.full_train_var.get()
-            loso_mode = self.loso_var.get()
+            model_types = ["mlp", "cnn1d", "rf"]
 
-            # Unified progress callback — LOSO folds dispatch differently
-            if loso_mode:
-                def on_progress(fold_idx, n_folds, held_out, fold_result):
-                    self.progress_queue.put(("loso_fold", fold_idx, n_folds, held_out, fold_result))
-                def on_epoch(fold_idx, n_folds, held_out, epoch, logs):
-                    self.progress_queue.put(("loso_epoch", fold_idx, n_folds, held_out, epoch, logs))
-            elif model_type == "rf":
-                def on_progress(tree_idx, total_trees):
-                    self.progress_queue.put(("rf_progress", tree_idx, total_trees))
-                on_epoch = None
-            else:
-                def on_progress(epoch, logs):
-                    self.progress_queue.put(("epoch", epoch, logs))
-                on_epoch = None
+            # ── 1. Deployment: train + export all 3 on 100% data ──────────
+            train_results = {}
+            if not loso_mode:
+                for i, mt in enumerate(model_types):
+                    self.progress_queue.put((
+                        "status_update",
+                        f"[deploy {i+1}/3] Training {mt.upper()} on 100% data + export..."))
+                    cb = None
+                    if mt == "rf":
+                        def cb(t, tot):
+                            self.progress_queue.put((
+                                "status_update", f"[deploy 3/3] RF {t}/{tot} trees"))
+                    train_results[mt] = train_model(
+                        mt, X, y, epochs=epochs, batch_size=batch,
+                        n_estimators=trees, quantize_int8=quant,
+                        full_train=True, progress_callback=cb,
+                    )
+                    # Surface any export errors immediately
+                    res = train_results[mt]
+                    if res.get("header_path"):
+                        self.progress_queue.put((
+                            "status_update",
+                            f"[deploy {i+1}/3] {mt.upper()} header exported OK"))
+                    else:
+                        err = res.get("header_error") or res.get("tflite_error") or "unknown"
+                        self.progress_queue.put((
+                            "status_update",
+                            f"[deploy {i+1}/3] {mt.upper()} export FAILED: {err[:60]}"))
 
-            result = train_model(
-                model_type, X, y,
-                epochs=epochs, batch_size=batch,
-                n_estimators=trees, quantize_int8=quant,
-                full_train=full_train,
-                progress_callback=on_progress,
-                loso_mode=loso_mode,
-                subject_ids=subject_ids,
-                epoch_callback=on_epoch,
-            )
-            self.progress_queue.put(("done", result))
+            # ── 2. LOSO evaluation: all 3 models in a single pass ─────────
+            def loso_progress(text):
+                self.progress_queue.put(("status_update", text))
+            raw = tam.run_loso(X, y, subject_ids, progress_cb=loso_progress)
+            agg = tam.aggregate_loso(raw)
+            esp = tam.esp32_profile()
+            protocol = f"LOSO {len(np.unique(subject_ids))}-fold, cross-subject"
+            report_text = "\n".join(tam.build_report_lines(agg, None, esp, protocol=protocol))
+
+            self.progress_queue.put(
+                ("train_all_done", agg, esp, report_text, protocol, train_results))
         except Exception as e:
             import traceback
             self.progress_queue.put(("error", f"{e}\n{traceback.format_exc()}"))
+
+    # ── Thesis Metrics (all 3 models, full report) ──────────────────────
+    def start_thesis_metrics(self):
+        path = self.csv_var.get()
+        if not os.path.isfile(path):
+            self.status_lbl.configure(text="Dataset CSV not found!", text_color="#EF4444")
+            return
+
+        self.train_btn.configure(state="disabled")
+        self.thesis_btn.configure(state="disabled")
+        self.export_btn.configure(state="disabled")
+        self.status_lbl.configure(
+            text="Thesis metrics: training RF/MLP/CNN1D (this takes a few minutes)...",
+            text_color="#F59E0B")
+
+        self.train_thread = threading.Thread(target=self._thesis_worker, daemon=True)
+        self.train_thread.start()
+        self._poll_progress()
+
+    def _thesis_worker(self):
+        try:
+            import thesis_all_metrics as tam
+            path = self.csv_var.get()
+            X, y, subj = GestureRecorder.load_dataset(path)
+
+            def progress_cb(text):
+                self.progress_queue.put(("thesis_progress", text))
+
+            # Thesis metrics are always reported on the honest LOSO protocol.
+            agg, pc, esp, protocol = tam.compute_thesis_metrics(
+                X, y, subj, loso_mode=True, progress_cb=progress_cb,
+                include_pc=True, include_esp=True,
+            )
+            report_lines = tam.build_report_lines(agg, pc, esp, protocol=protocol)
+            report_text = "\n".join(report_lines)
+            self.progress_queue.put(
+                ("thesis_done", agg, esp, report_text, protocol))
+        except Exception as e:
+            import traceback
+            self.progress_queue.put(("thesis_error", f"{e}\n{traceback.format_exc()}"))
 
     def _poll_progress(self):
         try:
@@ -271,12 +335,30 @@ class TrainTab(ctk.CTkFrame):
                              f"held out: {held_out} — acc: {acc:.1%}",
                         text_color="#F59E0B"
                     )
+                elif msg[0] == "status_update":
+                    self.status_lbl.configure(text=msg[1][:90], text_color="#F59E0B")
+                elif msg[0] == "train_all_done":
+                    self._on_train_all_done(msg[1], msg[2], msg[3], msg[4], msg[5])
+                    return
+                elif msg[0] == "thesis_progress":
+                    self.status_lbl.configure(text=msg[1][:90], text_color="#38BDF8")
+                elif msg[0] == "thesis_done":
+                    self._on_thesis_done(msg[1], msg[2], msg[3], msg[4])
+                    return
+                elif msg[0] == "thesis_error":
+                    self.status_lbl.configure(text=f"Thesis error: {msg[1][:70]}", text_color="#EF4444")
+                    self.report_text.delete("1.0", "end")
+                    self.report_text.insert("end", msg[1])
+                    self.train_btn.configure(state="normal")
+                    self.thesis_btn.configure(state="normal")
+                    return
                 elif msg[0] == "done":
                     self._on_training_done(msg[1])
                     return
                 elif msg[0] == "error":
                     self.status_lbl.configure(text=f"Error: {msg[1][:80]}", text_color="#EF4444")
                     self.train_btn.configure(state="normal")
+                    self.thesis_btn.configure(state="normal")
                     return
         except Exception:
             pass
@@ -285,6 +367,7 @@ class TrainTab(ctk.CTkFrame):
     def _on_training_done(self, result):
         self._last_result = result
         self.train_btn.configure(state="normal")
+        self.thesis_btn.configure(state="normal")
 
         # ── LOSO result ────────────────────────────────────────────────
         if "per_fold" in result and "aggregated" in result:
@@ -392,6 +475,34 @@ class TrainTab(ctk.CTkFrame):
             self.report_text.insert("end",
                 f"{'Val Accuracy':<14} {val_acc:>29.2f}\n")
             self.report_text.insert("end", "─" * 45 + "\n")
+
+    def _on_train_all_done(self, agg, esp, report_text, protocol, train_results):
+        """All 3 models trained (+exported if non-LOSO) and LOSO-evaluated."""
+        self._last_result = {"thesis": True, "train_results": train_results,
+                             "agg": agg, "esp": esp}
+        self.train_btn.configure(state="normal")
+        self.thesis_btn.configure(state="normal")
+        self.save_plot_btn.configure(state="normal")
+
+        models = ["RF", "MLP", "CNN1D"]
+        if train_results:
+            self.export_btn.configure(state="normal", text="📦 Show Export Paths")
+        else:
+            self.export_btn.configure(state="disabled")
+
+        best = max(models, key=lambda m: agg[m]["mean_acc"])
+        if train_results:
+            n_exported = sum(1 for r in train_results.values() if r.get("header_path"))
+            prefix = f"✅ {n_exported}/3 headers exported"
+        else:
+            prefix = "✅ LOSO eval done (3 models)"
+        self.status_lbl.configure(
+            text=(f"{prefix} — best LOSO {best}: "
+                  f"{agg[best]['mean_acc']:.1%} ± {agg[best]['std_acc']:.1%}"),
+            text_color="#22C55E" if not train_results or n_exported == 3 else "#F59E0B",
+        )
+        self.size_lbl.configure(text="")
+        self._render_thesis_results(agg, esp, report_text, protocol)
 
     def _render_loso_results(self, result):
         """Render full LOSO cross-validation results in the GUI."""
@@ -515,10 +626,134 @@ class TrainTab(ctk.CTkFrame):
             f"{'':>22}  ±{acc_s:>6.2f} ±{agg['precision_std']:>6.2f} "
             f"±{agg['recall_std']:>6.2f} ±{agg['f1_std']:>6.2f}\n")
 
+    # ── Thesis Metrics rendering ─────────────────────────────────────────
+    def _on_thesis_done(self, agg, esp, report_text, protocol):
+        self._last_result = {"thesis": True}
+        self.train_btn.configure(state="normal")
+        self.thesis_btn.configure(state="normal")
+        self.export_btn.configure(state="disabled")   # no single deployable model in this mode
+        self.save_plot_btn.configure(state="normal")
+        self.size_lbl.configure(text="")
+
+        models = ["RF", "MLP", "CNN1D"]
+        best = max(models, key=lambda m: agg[m]["mean_acc"])
+        self.status_lbl.configure(
+            text=(f"Thesis [{protocol}] — best {best}: "
+                  f"{agg[best]['mean_acc']:.1%} ± {agg[best]['std_acc']:.1%}"),
+            text_color="#22C55E",
+        )
+        self._render_thesis_results(agg, esp, report_text, protocol)
+
+    def _render_thesis_results(self, agg, esp, report_text, protocol):
+        """Clean 2×3 panel comparison across RF / MLP / CNN1D + per-model CM + text report."""
+        models = ["RF", "MLP", "CNN1D"]
+        model_colors = {"RF": "#22C55E", "MLP": "#3B82F6", "CNN1D": "#F59E0B"}
+        x = np.arange(len(models))
+
+        self.fig.clear()
+        # 2 rows: top = summary metrics, bottom = per-model confusion matrices
+        gs = self.fig.add_gridspec(2, 3, wspace=0.38, hspace=0.45)
+
+        def _style(ax):
+            ax.set_facecolor("#16213e")
+            ax.tick_params(colors="#9CA3AF", labelsize=7)
+            for sp in ax.spines.values():
+                sp.set_color("#374151")
+
+        # ── Row 0, Panel 0: Accuracy & F1 (macro) per model ──────────
+        ax_acc = self.fig.add_subplot(gs[0, 0]); _style(ax_acc)
+        accs    = [agg[m]["mean_acc"] for m in models]
+        acc_std = [agg[m]["std_acc"] for m in models]
+        f1s     = [agg[m]["mean_f1_macro"] for m in models]
+        f1_std  = [agg[m]["std_f1_macro"] for m in models]
+        w = 0.36
+        ax_acc.bar(x - w/2, accs, w, yerr=acc_std, capsize=3, color="#22C55E",
+                   edgecolor="#374151", linewidth=0.5, label="Accuracy")
+        ax_acc.bar(x + w/2, f1s, w, yerr=f1_std, capsize=3, color="#8B5CF6",
+                   edgecolor="#374151", linewidth=0.5, label="F1 (macro)")
+        ax_acc.set_xticks(x); ax_acc.set_xticklabels(models, color="#D1D5DB", fontsize=8)
+        ax_acc.set_ylim(0, 1.08)
+        ax_acc.set_ylabel("Score", color="#D1D5DB", fontsize=9)
+        ax_acc.set_title("Accuracy & F1", color="#D1D5DB", fontsize=10)
+        ax_acc.legend(fontsize=7, facecolor="#1a1a2e", edgecolor="#374151", labelcolor="#D1D5DB")
+        for i, a in enumerate(accs):
+            ax_acc.text(i - w/2, a + 0.02, f"{a:.2f}", ha="center", va="bottom",
+                        color="#D1D5DB", fontsize=7)
+
+        # ── Row 0, Panel 1: Per-gesture F1 (grouped bars per model) ──
+        ax_f1 = self.fig.add_subplot(gs[0, 1]); _style(ax_f1)
+        xg = np.arange(len(GESTURE_NAMES))
+        bw = 0.26
+        for j, m in enumerate(models):
+            vals = [agg[m]["per_class"][g]["f1"] for g in GESTURE_NAMES]
+            ax_f1.bar(xg + (j - 1) * bw, vals, bw, color=model_colors[m],
+                      edgecolor="#374151", linewidth=0.4, label=m)
+        ax_f1.set_xticks(xg)
+        ax_f1.set_xticklabels(GESTURE_NAMES, color="#D1D5DB", fontsize=6.5,
+                              rotation=20, ha="right")
+        ax_f1.set_ylim(0, 1.12)
+        ax_f1.set_ylabel("F1 Score", color="#D1D5DB", fontsize=9)
+        ax_f1.set_title("Per-Gesture F1", color="#D1D5DB", fontsize=10)
+        ax_f1.legend(fontsize=6.5, facecolor="#1a1a2e", edgecolor="#374151", labelcolor="#D1D5DB")
+
+        # ── Row 0, Panel 2: ESP32 on-device latency ──────────────────
+        ax_lat = self.fig.add_subplot(gs[0, 2]); _style(ax_lat)
+        if esp is not None:
+            lat = [esp[m]["latency_mean_ms"] for m in models]
+            bars = ax_lat.bar(x, lat, 0.55, color=[model_colors[m] for m in models],
+                              edgecolor="#374151", linewidth=0.5)
+            ax_lat.set_yscale("log")
+            ax_lat.set_xticks(x); ax_lat.set_xticklabels(models, color="#D1D5DB", fontsize=8)
+            ax_lat.set_ylabel("Latency (ms, log)", color="#D1D5DB", fontsize=9)
+            ax_lat.set_title("ESP32 Latency & FPS", color="#D1D5DB", fontsize=10)
+            for i, m in enumerate(models):
+                ax_lat.text(i, lat[i] * 1.1, f"{lat[i]:.2f}ms\n{esp[m]['fps']:.0f} FPS",
+                            ha="center", va="bottom", color="#D1D5DB", fontsize=6.5)
+        else:
+            ax_lat.set_title("ESP32 (n/a)", color="#D1D5DB", fontsize=10)
+
+        # ── Row 1: Per-model Confusion Matrix ────────────────────────
+        cm_colormaps = {"RF": "Greens", "MLP": "Blues", "CNN1D": "Oranges"}
+        for col, m in enumerate(models):
+            ax_cm = self.fig.add_subplot(gs[1, col])
+            ax_cm.set_facecolor("#16213e")
+            cm = agg[m].get("confusion")
+            if cm is not None:
+                sns.heatmap(cm, annot=True, fmt="d", cmap=cm_colormaps[m], ax=ax_cm,
+                            xticklabels=GESTURE_NAMES, yticklabels=GESTURE_NAMES,
+                            cbar=False, linewidths=0.5, linecolor="#374151",
+                            annot_kws={"fontsize": 7})
+                # Compute accuracy from CM for subtitle
+                cm_acc = np.trace(cm) / cm.sum() if cm.sum() > 0 else 0
+                ax_cm.set_title(f"CM — {m}  (acc {cm_acc:.1%})", color="#D1D5DB", fontsize=9)
+            else:
+                ax_cm.set_title(f"CM — {m}  (n/a)", color="#D1D5DB", fontsize=9)
+                ax_cm.text(0.5, 0.5, "No data", transform=ax_cm.transAxes,
+                           ha="center", va="center", color="#6B7280", fontsize=10)
+            ax_cm.set_xlabel("Predicted", color="#9CA3AF", fontsize=7)
+            ax_cm.set_ylabel("True", color="#9CA3AF", fontsize=7)
+            ax_cm.tick_params(colors="#9CA3AF", labelsize=6)
+
+        self.fig.suptitle(f"Thesis Metrics — {protocol}", color="#E5E7EB", fontsize=11)
+        self.fig.tight_layout(pad=2, rect=(0, 0, 1, 0.95))
+        self.canvas.draw_idle()
+
+        # ── Full text report into the report box ──────────────────────
+        self.report_text.delete("1.0", "end")
+        self.report_text.insert("end", report_text)
+        self.report_text.see("1.0")
+
+
     def _save_plot(self):
         from tkinter import filedialog
         is_loso = self._last_result and "per_fold" in self._last_result
-        default_name = "loso_results.png" if is_loso else f"{self.model_var.get()}_training.png"
+        is_thesis = self._last_result and self._last_result.get("thesis")
+        if is_thesis:
+            default_name = "thesis_metrics.png"
+        elif is_loso:
+            default_name = "loso_results.png"
+        else:
+            default_name = f"{self.model_var.get()}_training.png"
         path = filedialog.asksaveasfilename(
             defaultextension=".png",
             filetypes=[("PNG image", "*.png"), ("PDF", "*.pdf"), ("SVG", "*.svg")],
@@ -532,21 +767,24 @@ class TrainTab(ctk.CTkFrame):
                                    text_color="#22C55E")
 
     def _export_header(self):
-        if self._last_result and "header_path" in self._last_result:
-            header = self._last_result["header_path"]
-            model_type = self.model_var.get()
-            # Show firmware output paths
-            esp32_path = os.path.join(
-                os.path.dirname(FIRMWARE_RF_DIR), "gesture_glove_esp32",
-                f"{model_type}_model_data.h" if model_type != "rf" else "rf_model_data.h"
-            )
-            self.status_lbl.configure(
-                text=f"✅ Exported → {os.path.relpath(header)}", text_color="#22C55E")
+        # Multi-model export (Train All) — show C-header path for every model
+        train_results = (self._last_result or {}).get("train_results")
+        if train_results:
             self.report_text.delete("1.0", "end")
-            self.report_text.insert("end", "Export targets:\n")
-            self.report_text.insert("end", f"  • output_headers/   ← {os.path.relpath(header)}\n")
-            if os.path.isfile(esp32_path):
-                self.report_text.insert("end", f"  • firmware/esp32/   ← {os.path.relpath(esp32_path)}\n")
-            self.report_text.insert("end", "\nTo use on ESP32: flash firmware/gesture_glove_esp32/\n")
-        else:
-            self.status_lbl.configure(text="Train a model first!", text_color="#EF4444")
+            self.report_text.insert("end", "Exported deployment models (trained on 100% data):\n\n")
+            n_ok = 0
+            for mt, res in train_results.items():
+                hp = res.get("header_path", "")
+                if hp:
+                    n_ok += 1
+                    self.report_text.insert("end",
+                        f"  • {mt.upper():<6} → {os.path.relpath(hp)}\n")
+                err = res.get("header_error")
+                if err:
+                    self.report_text.insert("end", f"  • {mt.upper():<6} ✗ {err[:60]}\n")
+            self.report_text.insert("end",
+                "\nAll headers also copied to firmware/gesture_glove_esp32/\n")
+            self.status_lbl.configure(
+                text=f"✅ {n_ok}/3 model headers exported", text_color="#22C55E")
+            return
+        self.status_lbl.configure(text="Train models first!", text_color="#EF4444")

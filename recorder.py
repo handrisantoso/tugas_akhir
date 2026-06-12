@@ -391,6 +391,62 @@ class GestureRecorder:
             return df, counts
 
     @staticmethod
+    def load_dataset_from_folders(dataset_dir=None):
+        """Load dataset from per-gesture subdirectories (one CSV file per window).
+
+        File naming: {gesture}_{subject_id}_{index}.csv
+        Each CSV has columns: timestamp_ms, ax, ay, az, gx, gy, gz (WINDOW_SIZE rows)
+
+        Returns:
+            X           : np.ndarray, shape (N, NUM_FEATURES), dtype float32
+            y           : np.ndarray, shape (N,), dtype int32
+            subject_ids : np.ndarray, shape (N,), dtype object
+        """
+        import re as _re
+        if dataset_dir is None:
+            dataset_dir = DATASET_DIR
+
+        X, y, subject_ids = [], [], []
+        label_map = {name: i for i, name in enumerate(GESTURE_NAMES)}
+
+        for gesture_name, label_idx in label_map.items():
+            folder = os.path.join(dataset_dir, gesture_name)
+            if not os.path.isdir(folder):
+                continue
+            for fname in sorted(os.listdir(folder)):
+                if not fname.endswith('.csv'):
+                    continue
+                fpath = os.path.join(folder, fname)
+                try:
+                    df = pd.read_csv(fpath)
+                    if len(df) < WINDOW_SIZE:
+                        continue
+                    data = df[['ax', 'ay', 'az', 'gx', 'gy', 'gz']].iloc[:WINDOW_SIZE].values.flatten()
+                    m = _re.match(rf'^{_re.escape(gesture_name)}_(\d+)_\d+\.csv$', fname)
+                    subj = m.group(1) if m else 'unknown'
+                    X.append(data)
+                    y.append(label_idx)
+                    subject_ids.append(subj)
+                except Exception:
+                    continue
+
+        return (
+            np.array(X, dtype=np.float32),
+            np.array(y, dtype=np.int32),
+            np.array(subject_ids, dtype=object),
+        )
+
+    @staticmethod
+    def count_folder_samples(dataset_dir):
+        """Return total number of gesture window CSV files across all gesture subfolders."""
+        total = 0
+        for name in GESTURE_NAMES:
+            subdir = os.path.join(dataset_dir, name)
+            if os.path.isdir(subdir):
+                total += sum(1 for f in os.listdir(subdir) if f.endswith('.csv'))
+        return total
+
+    @staticmethod
     def load_dataset(filepath=None):
         """Load dataset CSV and return X (features), y (labels), and subject_ids.
 
