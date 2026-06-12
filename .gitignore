@@ -20,3 +20,17 @@ thesis/
 # Dataset files
 gesture_dataset*.csv
 dataset/gesture_dataset*.csv
+
+# Explicitly allow these dataset folders
+!dataset/flick_down/
+!dataset/flick_up/
+!dataset/idle/
+!dataset/wave_left/
+!dataset/wave_right/
+
+
+# Ignored Folders
+pc_bench/
+replay_all/
+Python/
+thesis_figures/
