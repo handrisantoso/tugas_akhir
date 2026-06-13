@@ -1,0 +1,22 @@
+1. Melakukan testing terhadap semua model pose untuk membandingkan inference time secara detail untuk mempertimbangkan model yang lebih sesuai antara kecepatan dan akurasi nya
+
+Testing run model terhadap 1 screen langsung vs ke pasangan ROI p1 dan p2 untuk setiap model yang dicoba:
+
+MoveNet SinglePose ROI pair: 48.47 ms
+MoveNet MultiPose ROI pair: 55.78 ms
+YOLO11m-pose 384 ROI pair: 32.82 ms
+YOLO11l-pose 384 ROI pair: 36.65 ms
+YOLO11x-pose 384 ROI pair: 66.48 ms
+
+2. Menyelesaikan pipeline real time inference dengan pipeline berupa: YOLO detector -> OC-SORT player IDs -> YOLO-pose on each ROI -> rolling ST-GCN++ prediction -> output video overlay
+
+3. Training STGCN++ dengan scope 5 gerakan terlebih dahulu, yaitu:
+INCLUDED_MOVE_LABELS = [
+    "Bryan 1",
+    "Bryan 4, 1",
+    "Bryan b+1",
+    "Bryan df+2",
+    "Bryan f, b+2",
+]
+
+Namun hasilnya masih kurang baik, terdapat banyak sekali prediksi yang melenceng, dan sebab gerakan 4, 1 adalah yang paling unik, sebagian besar gerakan dikategorikan sebagai 4, 1

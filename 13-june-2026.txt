@@ -1,0 +1,41 @@
+1. Kembali melakukan testing terhadap semua model pose untuk membandingkan inference time dan trade-off antara kecepatan serta akurasi.
+
+Testing dilakukan pada dua skenario: full screen dan ROI pair p1-p2. Median inference time ROI pair:
+
+Model	Median Time
+MoveNet SinglePose	48.47 ms
+MoveNet MultiPose	55.78 ms
+YOLO11m-pose 384	32.82 ms
+YOLO11l-pose 384	36.65 ms
+YOLO11x-pose 384	66.48 ms
+
+Dari eksperimen, hanya YOLO11l dan YOLO11x yang menghasilkan keypoint stabil dan berkualitas tinggi. Model lain lebih cepat, tetapi sering mengalami broken sequences. Dengan trade-off tersebut, YOLO11l-pose imgsz=384 dipilih sebagai model terbaik karena tetap stabil dengan latency yang jauh lebih rendah dari YOLO11x.
+
+2. Percobaan Awal Dengan 5 Gerakan
+
+Training ST-GCN++ pertama dilakukan dengan scope kecil, yaitu hanya menggunakan 5 gerakan standing yang relatif stabil:
+
+INCLUDED_MOVE_LABELS = [
+    "Bryan 1",
+    "Bryan 4, 1",
+    "Bryan b+1",
+    "Bryan df+2",
+    "Bryan f, b+2",
+]
+Tujuan dari percobaan ini adalah untuk membuktikan terlebih dahulu bahwa pipeline keypoint extraction menggunakan YOLO-Pose dan klasifikasi gerakan menggunakan ST-GCN++ dapat berjalan. Dengan membatasi jumlah kelas menjadi 5 gerakan, proses debugging menjadi lebih mudah karena jumlah variasi gerakan lebih kecil.
+
+Namun, hasil video inference masih kurang baik. Walaupun akurasi validasi pada dataset 5 gerakan sempat terlihat cukup tinggi, performa pada video panjang masih menghasilkan banyak prediksi yang melenceng. Hal ini terjadi karena model hanya mengenal 5 kelas tersebut, sehingga setiap input yang masuk akan selalu dipaksa masuk ke salah satu dari 5 label, meskipun frame tersebut sebenarnya merupakan idle, transisi, atau gerakan lain yang tidak termasuk dalam dataset.
+
+Selain itu, gerakan Bryan 4, 1 memiliki pola skeleton yang paling unik dan mudah dibedakan dibandingkan gerakan lain. Akibatnya, ketika model ragu terhadap suatu input, prediksi sering condong ke label 4, 1. Ini menunjukkan bahwa scope 5 gerakan terlalu sempit untuk digunakan pada video inference yang lebih realistis.
+
+3. Percobaan Dengan Seluruh 16 Gerakan Anotasi
+
+Setelah percobaan 5 gerakan, training dilanjutkan dengan menggunakan seluruh 16 gerakan Bryan yang sudah dianotasi, ditambah satu kelas idle. Keputusan ini dilakukan karena video panjang tidak hanya berisi 5 gerakan awal, tetapi juga berisi variasi gerakan lain seperti stance, while standing, low stance, dan gerakan transisi.
+
+Dengan memasukkan semua gerakan yang sudah dianotasi, model tidak lagi dipaksa mengklasifikasikan gerakan lain ke dalam 5 label awal. Penambahan kelas idle juga membantu model membedakan kondisi ketika karakter tidak sedang melakukan gerakan utama, sehingga tampilan prediksi dapat dikosongkan saat tidak ada move yang valid.
+
+Perbaikan tambahan dilakukan dengan membuat semua sequence menjadi window tetap 30 frame dan menambahkan temporal offset augmentation, yaitu mengambil window sebelum, tepat di tengah, dan setelah anotasi gerakan. Metode ini membuat model lebih tahan terhadap perbedaan timing antara anotasi manual dan window inference real-time.
+
+Hasil terbaik diperoleh pada percobaan v10 all moves + idle + temporal augmentation. Berdasarkan log training, model mencapai top-1 validation accuracy 97.06% pada epoch 14, dengan top-5 accuracy 98.04%. Pada hasil video inference, prediksi juga terlihat jauh lebih stabil dibandingkan percobaan 5 gerakan, tidak lagi didominasi oleh kelas 4, 1, dan lebih mampu mengikuti gerakan aktual yang muncul di video. Masih terdapat beberapa kesalahan prediksi, tetapi secara keseluruhan hasil ini menjadi versi terbaik dan paling layak digunakan sebagai hasil akhir sistem.
+
+Percobaan v11 menggunakan temporal offset yang lebih kecil, yaitu -3,0,+3. Percobaan ini mengurangi beberapa kesalahan prediksi ke kelas Bryan 1, tetapi hasil video inference menjadi lebih jittery dan akurasi validasi lebih rendah dibanding v10. Oleh karena itu, v10 dipilih sebagai model akhir karena memberikan keseimbangan terbaik antara akurasi dan stabilitas tampilan prediksi.

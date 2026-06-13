@@ -1,0 +1,1 @@
+1. Percobaan yolov11s-pose dan yolov11m-pose memiliki inference time yang kurang lebih walau yolov11m-pose memiliki akurasi yang lebih baik
