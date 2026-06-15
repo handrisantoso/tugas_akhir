@@ -36,11 +36,13 @@ async def start():
                 "- 🔍 Search for books by topic, genre, or keywords\n"
                 "- 📖 Get book recommendations\n"
                 "- ℹ️ Find publication details and acquisition information\n"
+                "- 🖼️ **Upload a book cover image** to find visually similar books\n"
                 "- 🗣️ Answer questions about library services\n\n"
                 "**Example searches:**\n"
                 "- \"I'm looking for mystery novels from the 1990s\"\n"
                 "- \"Find books about artificial intelligence\"\n"
-                "- \"Recommend some Spanish literature\"\n\n"
+                "- \"Recommend some Spanish literature\"\n"
+                "- *Upload a book cover image* to find visually similar titles\n\n"
                 "Just ask me anything about books!"
     ).send()
     
@@ -53,8 +55,10 @@ async def start():
         
         if status['config_valid']:
             await cl.Message(
-                content="✅ **System Ready!** Connected to library database with "
-                       f"**{status['database_collection']}** collection.",
+                content="✅ **System Ready!** Connected to multimodal library database.\n"
+                       f"📚 Text collection: **{status.get('text_doc_count', '?')}** chunks | "
+                       f"🖼️ Image collection: **{status.get('image_doc_count', '?')}** covers\n"
+                       f"🔢 Embedding: **{RAGConfig.EMBEDDING_DISPLAY_NAME}**",
                 author="System"
             ).send()
         else:
@@ -85,7 +89,21 @@ async def main(message: cl.Message):
         return
     
     user_message = message.content
-    
+
+    # Extract uploaded image from message elements (if any)
+    image_bytes = None
+    mime_type = None
+    for el in (message.elements or []):
+        if isinstance(el, cl.Image):
+            try:
+                with open(el.path, 'rb') as f:
+                    image_bytes = f.read()
+                mime_type = getattr(el, 'mime', 'image/jpeg') or 'image/jpeg'
+                logger.info(f"Image upload detected: {el.name}, mime={mime_type}, {len(image_bytes)/1024:.1f} KB")
+            except Exception as img_err:
+                logger.warning(f"Could not read uploaded image: {img_err}")
+            break  # Only process the first image
+
     # Show thinking indicator
     thinking_msg = cl.Message(
         content="🤔 **Thinking...**\n\nLet me search through the library collection and process your request.",
@@ -94,8 +112,10 @@ async def main(message: cl.Message):
     await thinking_msg.send()
     
     try:
-        # Process the query through RAG engine
-        response_data = await rag_engine.process_query(user_message)
+        # Process the query through RAG engine (pass image if uploaded)
+        response_data = await rag_engine.process_query(user_message,
+                                                        image_bytes=image_bytes,
+                                                        mime_type=mime_type)
         
         # Extract components
         thinking_process = response_data.get('thinking', '')
@@ -106,10 +126,17 @@ async def main(message: cl.Message):
         # Update the thinking message with detailed process
         thinking_content = f"🧠 **My Thinking Process:**\n\n{thinking_process}\n\n"
         
+        search_mode = response_data.get('search_mode', 'TEXT')
+        mode_badge = {
+            'TEXT':   '🔤 TEXT search',
+            'IMAGE':  '🖼️ IMAGE search',
+            'HYBRID': '🔀 HYBRID search (text + image)',
+        }.get(search_mode, search_mode)
+
         if search_results:
-            thinking_content += f"📊 **Search Stats:** Found {len(search_results)} relevant books | Intent: {intent}"
+            thinking_content += f"📊 **Search Stats:** Found {len(search_results)} relevant books | Intent: {intent} | Mode: {mode_badge}"
         else:
-            thinking_content += f"💭 **Processing:** Handled as {intent} intent"
+            thinking_content += f"💭 **Processing:** Handled as {intent} intent | Mode: {mode_badge}"
         
         thinking_msg.content = thinking_content
         await thinking_msg.update()
@@ -149,6 +176,16 @@ async def show_search_details(search_results: list):
     # Create detailed results display
     details_content = "📚 **Detailed Search Results:**\n\n"
     
+    # Show search mode badge
+    if search_results:
+        mode = search_results[0].get('search_mode', 'TEXT')
+        mode_labels = {
+            'TEXT':   '🔤 TEXT',
+            'IMAGE':  '🖼️ IMAGE',
+            'HYBRID': '🔀 HYBRID',
+        }
+        details_content += f"**Search mode:** {mode_labels.get(mode, mode)}\n\n"
+
     # Show applied filters if any
     if search_results and 'applied_filters' in search_results[0]:
         filters = search_results[0]['applied_filters']
@@ -183,6 +220,8 @@ async def show_search_details(search_results: list):
                     details_content += f"   🏷️ Content: Books with subject information\n"
             details_content += "\n"
     
+    elements = []  # Chainlit image elements to attach
+
     for i, result in enumerate(search_results[:5], 1):
         doc = result['document']
         metadata = result.get('metadata', {})
@@ -208,8 +247,23 @@ async def show_search_details(search_results: list):
         # Show if book has rich content
         if metadata.get('has_description'):
             details_content += f"   📝 Has detailed description\n"
-        if metadata.get('has_subjects'):
-            details_content += f"   🏷️ Has subject information\n"
+        if metadata.get('has_toc'):
+            details_content += f"   📋 Has table of contents\n"
+        
+        # Attach cover image if available
+        cover_path = metadata.get('cover_image_path', '')
+        if metadata.get('has_cover_image') and cover_path and os.path.exists(cover_path):
+            try:
+                elements.append(
+                    cl.Image(
+                        name=f"cover_{i}",
+                        path=cover_path,
+                        display="inline"
+                    )
+                )
+                details_content += f"   🖼️ Cover: see image below (cover_{i})\n"
+            except Exception:
+                pass  # Silently skip if image can't be loaded
         
         # Show LLM explanation if available
         if result.get('llm_explanation'):
@@ -217,9 +271,10 @@ async def show_search_details(search_results: list):
         
         details_content += f"   📄 Preview: {doc[:200]}...\n\n"
     
-    # Send as a collapsible details message
+    # Send as a collapsible details message with optional cover images
     await cl.Message(
         content=details_content,
+        elements=elements,
         author="Search Results"
     ).send()
 
@@ -283,8 +338,10 @@ async def system_status(action):
         
         status_content = f"🔧 **System Status:**\n\n"
         status_content += f"✅ Configuration: {'Valid' if status['config_valid'] else 'Invalid'}\n"
-        status_content += f"🗃️ Database: {status['database_collection']}\n"
+        status_content += f"📚 Text collection: {status.get('text_collection', '?')} ({status.get('text_doc_count', '?')} docs)\n"
+        status_content += f"🖼️ Image collection: {status.get('image_collection', '?')} ({status.get('image_doc_count', '?')} covers)\n"
         status_content += f"🤖 Models: {status['models_used']['llm']}\n"
+        status_content += f"🔢 Embedding: {status['models_used']['embedding']} ({RAGConfig.EMBEDDING_BACKEND})\n"
         status_content += f"💬 Current Session: {stats.get('total_turns', 0)} turns\n"
         
         if status['config_issues']:

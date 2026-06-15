@@ -10,7 +10,7 @@ def analyze_all_fields():
     try:
         print("Loading and analyzing all book records...")
         
-        with open('cleaned_data/books_updated_cleaned.json', 'r', encoding='utf-8') as f:
+        with open('cleaned_data/books_with_content.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         print(f"Total books: {len(data)}")

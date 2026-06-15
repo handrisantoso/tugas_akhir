@@ -1,22 +1,18 @@
-LIBRARY CHATBOT CHUNK SAMPLES
-==================================================
-Showing 10 sample chunks for quality review
-
-SAMPLE CHUNK #1
-------------------------------
-TITLE: Andrea's Complete Wine Course for Everyone
-
-FORMAT & DETAILS: Format: CD-ROM
-
-IDENTIFIERS: ISBN-13: 9780977103218; ISBN-10: 0977103218; OCLC: 71042518
-
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 6}
+LIBRARY CHATBOT CHUNK SAMPLES (Approach A: Separate Embeddings)
+=================================================================
+Showing up to 10 sample text chunks + matching image chunks
 
 ================================================================================
+SAMPLE #1 — Book ID: isbn13_9781880089101
+================================================================================
 
-SAMPLE CHUNK #2
-------------------------------
+[TEXT CHUNK]
+----------------------------------------
 TITLE: One Flesh: God's Gift of Passion: Love, Sex and Romance in Marriage
+
+DESCRIPTION: Best Friends--Passionate Lovers! In an open, straightforward style, popular author and pastor Bob Yandian shares God's exciting blueprint for sex, love and intimacy. "Godly passion is a supernatural gift of God," he writes. "When you have a strong relationship with your mate's soul, the relationship with his or her body becomes something fantastic!" Yandian's practical wisdom on relationships, the story of his own troubled marriage that was restored, and his exceptional insights into sex and the Bible will stimulate both husband and wife to become One Flesh--best friends and passionate lovers.
+
+SUBJECTS & TOPICS: Subjects: Religion / Inspirational, Religion / Christian Living / Inspirational, Religion / Christian Living / Love & Marriage, Religion / Spirituality, Self-Help / Sexual Instruction, Sex -- Religious aspects -- Christianity
 
 PUBLICATION: Publisher: Pillar Books & Publishing Co; Published: 1993
 
@@ -24,43 +20,45 @@ FORMAT & DETAILS: Format: Hardcover
 
 LANGUAGE: {'key': 'english'}
 
+CONTENT PREVIEW: Contents: CONTENTS
+Foreword
+Introduction
+1 In the Beginning There Was Godly Passion
+2 A Famous Father Speaks Frankly to His Son About Sex
+Part One: What Not to Do
+3 A Famous Father Speaks Frankly to His Son About Sex
+Part Two: The Righteous Way
+4 Husbands, Love Your Wives
+5 Wives, Submit Yourselves
+6 Are Singles Complete?
+7 The Labor of Love
+8 God Has Called You to Peace
+9 The Husband’s Heart — Her Signature
+Notes
+
 IDENTIFIERS: ISBN-13: 9781880089101; ISBN-10: 1880089106
 
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 9}
+Metadata: {'book_id': 'isbn13_9781880089101', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': True, 'cover_image_path': "E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\One_Flesh_God's_Gift_of_Passion.png", 'field_count': 16, 'title': "One Flesh: God's Gift of Passion"}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\One_Flesh_God's_Gift_of_Passion.png
+Metadata:   {'book_id': 'isbn13_9781880089101', 'chunk_type': 'image', 'title': "One Flesh: God's Gift of Passion", 'authors': ''}
 
 ================================================================================
-
-SAMPLE CHUNK #3
-------------------------------
-TITLE: Rājar̥shi Purushottamadāsa Ṭaṇḍana
-
-DESCRIPTION: Festschrift honoring Purushottamadāsa Ṭaṇḍana, 1882-1962, Hindi author and freedom fighter, on his birth centenary; comprises articles on his life and works.
-
-SUBJECTS & TOPICS: Subjects: Ṭaṇḍana, Purushottamadāsa, 1882-1962 -- Criticism and interpretation.
-
-PUBLICATION: Publisher: Uttara Pradeśa Hindī Saṃsthāna; Published: 1992; Place: Lakhanaū; Country: ii
-
-FORMAT & DETAILS: Pages: 188
-
-LANGUAGE: {'key': 'hindi'}
-
-SERIES: Hindī Samiti Prabhāga ;, granthāṅka 276, Hindī Samiti Prabhāga (Series) ;, granthāṅka 276.
-
-IDENTIFIERS: OCLC: 30668266
-
-NOTES: In Hindi.
-
-Metadata: {'book_id': '', 'has_description': True, 'has_subjects': True, 'has_toc': False, 'field_count': 12}
-
+SAMPLE #2 — Book ID: book_1_Cyclic_tests_of_P_bulb_end_seal_designs_for_a_shut
 ================================================================================
 
-SAMPLE CHUNK #4
-------------------------------
+[TEXT CHUNK]
+----------------------------------------
 TITLE: Cyclic tests of P-bulb end-seal designs for a shuttle-type wing-elevon cove membrane seal
 
 AUTHOR(S): L. Roane Hunt
 
-SUBJECTS & TOPICS: Subjects: Reusable space vehicles -- Design and construction
+DESCRIPTION: Shuttle-type entry vehicles require a seal in the spanwise cove between the wing and elevon to prevent ingestion of aerodynamically heated gases. A silicone-rubber membrane seal has been incorporated into the Shuttle base-line design and provides an absolute seal along the wing span; however, the ends cannot be rigidly attached without significant twisting and stretching of the membrane. Consequently, the end closure is the most critical part of the design. A P-bulb end seal which is molded into the membrane has been identified as the best design approach.
+Four P-bulb end seal designs were tested at room temperature in a cyclic seal test apparatus. Test results show that all the P-bulb end seals have the durability required for a 100 mission life (neglecting possible elevated-temperature effects) and three of the four P-bulbs provide an adequate seal against a 7.0-kPa air pressure differential. Antifriction material attached to the P-bulb rub surface reduced friction slightly but could degrade the sealing effectiveness. A flat rub surface molded into the P-bulb discouraged wrinkling and rolling and thereby reduced leakage. However, the P-bulbs lacked resilience, as indicated by increased leakage when P-bulb compression was reduced. The best P-bulb design tested included an antifriction interface bonded to a flat surface molded into the P-bulb.
+
+SUBJECTS & TOPICS: Subjects: Reusable space vehicles -- Design and construction, Spacecraft Design, Testing And Performance
 
 PUBLICATION: Publisher: National Aeronautics and Space Administration, Scientific and Technical Information Branch, For sale by the National Technical Information Service]; Published: 1979; Place: Washington, D.C, [Spingfield, Va; Country: dcu
 
@@ -74,89 +72,34 @@ NOTES: "July 1979"--Cover
 
 Bibliography: p. 8
 
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 11}
+Metadata: {'book_id': 'book_1_Cyclic_tests_of_P_bulb_end_seal_designs_for_a_shut', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Cyclic_tests_of_P-bulb_end-seal_designs_for_a_shuttle-type_wing-elevon_cove_membrane_seal.png', 'field_count': 16, 'title': 'Cyclic tests of P-bulb end-seal designs for a shuttle-type wing-elevon cove membrane seal'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Cyclic_tests_of_P-bulb_end-seal_designs_for_a_shuttle-type_wing-elevon_cove_membrane_seal.png
+Metadata:   {'book_id': 'book_1_Cyclic_tests_of_P_bulb_end_seal_designs_for_a_shut', 'chunk_type': 'image', 'title': 'Cyclic tests of P-bulb end-seal designs for a shuttle-type wing-elevon cove membrane seal', 'authors': 'L. Roane Hunt'}
 
 ================================================================================
-
-SAMPLE CHUNK #5
-------------------------------
-TITLE: Census of population, 1960.
-
-SUBJECTS & TOPICS: Subjects: United States -- Census, 18th, 1960, Florida -- Population, Florida -- Census, 1960; Genres: Census, 18th, 1960., Census, 1960.
-
-PUBLICATION: Publisher: U.S. Dept. of Commerce, Bureau of the Census, For sale by the Supt. of Docs., U.S. Govt. Print. Off.; Published: 1963; Place: Washington; Country: dcu
-
-FORMAT & DETAILS: Pages: 678
-
-LANGUAGE: {'key': 'english'}
-
-IDENTIFIERS: OCLC: 43868708
-
-NOTES: "May 1963"--P. iii.
-
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 13}
-
+SAMPLE #3 — Book ID: isbn13_9781101110898
 ================================================================================
 
-SAMPLE CHUNK #6
-------------------------------
-TITLE: Commento alla Metafisica di Aristotele e testo integrale di Aristotele
-
-AUTHOR(S): Thomas Aquinas
-
-PUBLICATION: Publisher: ESD; Published: 2004; Place: Bologna; Country: it
-
-LANGUAGE: {'key': 'italian'}
-
-CONTENT PREVIEW: Contents: v. 1. Libri 1-4; v. 2. Libri 5-8; v. 3. Libri 9-12 /; a cura di Lorenzo Perotto
-
-CLASSIFICATION: Dewey Decimal: 110
-
-IDENTIFIERS: ISBN-10: 887094526X, 8870945340, 8870945359; OCLC: 57184097
-
-NOTES: Includes introduction (p. 5-29) by the editor, bibliography, bibl. references and notes.
-
-With facing Latin text.
-
-Aristoteles (384-322 B.C.).
-
-Includes bibliographical references.
-
-Italian, Latin.
-
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': True, 'field_count': 12}
-
-================================================================================
-
-SAMPLE CHUNK #7
-------------------------------
-TITLE: Le chat proverbial
-
-AUTHOR(S): Hans-Jürgen Greif
-
-SUBJECTS & TOPICS: Subjects: Cats -- Fiction; Genres: Fiction
-
-PUBLICATION: Publisher: L'Instant même; Published: 2009; Place: Québec, Québec; Country: quc
-
-FORMAT & DETAILS: Pages: 290
-
-LANGUAGE: {'key': 'french'}
-
-CONTENT PREVIEW: Contents: Bon chat n'a pas besoin de collier d'or; Dans un pays sans chien on ferait aboyer le chat; À chat repu le derrière de la souris pue; Un chat perd ses poils, mais pas ses manières; Deux femmes dans la même maison, deux chats dans le même sac; À bon chat bon rat; Propriétaire heureux, chat heureux; Propriétaire indifférent, chat reclus; Le chat est son meilleur conseiller; Le lait couvert n'est pas lapé par le chat; N'appelle pas le chat pour mettre d'accord deux oiseaux; Aucun chat ne prend de souris pour l'amour de Dieu.
-
-CLASSIFICATION: Dewey Decimal: 843/.914
-
-IDENTIFIERS: ISBN-13: 9782895022794; OCLC: 319691762
-
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': True, 'field_count': 14}
-
-================================================================================
-
-SAMPLE CHUNK #8
-------------------------------
+[TEXT CHUNK]
+----------------------------------------
 TITLE: Confessions
 
 AUTHOR(S): Augustine of Hippo
+
+DESCRIPTION: "God is our home but many of us have strayed from our native land.
+The venerable authors of these Spiritual Classics are expert guides–
+may we follow their directions home."  –Archbishop Desmond Tutu
+
+Writing in the last years of the fourth century a.d., Saint Augustine of Hippo created what is at once the first true autobiography in Western literature and among the most sophisticated yet accessible theological arguments in the history of Christianity. With extraordinary candor and psychological acumen, Augustine recounts his passage from a life of sensuality, Manichaean superstition, and empty careerism to a genuine spiritual awakening, and he articulates views on marriage, morality, and faith that have shaped our discourse ever since. The Confessions allows us to appreciate both the startling modernity of Augustine’s insights and the imperishable poetry of his voice. With a new Preface by MacArthur Fellow Patricia Hampl,
+author of Virgin Time and A Romantic Education.
+
+
+In the annals of spirituality, certain books stand out both for their historical importance and for their continued relevance. The Vintage Spiritual Classics series offers the greatest of these works in authoritative new editions, with specially commissioned essays by noted contemporary commentators. Filled with eloquence and fresh insight, encouragement and solace, Vintage Spiritual Classics are incomparable resources for all readers who seek a more substantive understanding of mankind’s relation to the divine.
+
+SUBJECTS & TOPICS: Subjects: Biography & Autobiography / Cultural & Regional, Biography & Autobiography / General, Biography & Autobiography / Religious, Religion / Christian Living / Spiritual Growth, Religion / Christian Theology / General, Religion / Christian Theology / History, Religion / Christian Theology / Soteriology, Religion / Christianity / History, Religion / Christianity / Literature & the Arts, Religion / Inspirational
 
 PUBLICATION: Publisher: Penguin USA, Inc.; Published: 2009; Place: New York; Country: nyu
 
@@ -166,41 +109,32 @@ LANGUAGE: {'key': 'english'}
 
 IDENTIFIERS: ISBN-13: 9781101110898, 9781101117736, 9781101116029
 
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': False, 'has_toc': False, 'field_count': 10}
+Metadata: {'book_id': 'isbn13_9781101110898', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Confessions.png', 'field_count': 16, 'title': 'Confessions'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Confessions.png
+Metadata:   {'book_id': 'isbn13_9781101110898', 'chunk_type': 'image', 'title': 'Confessions', 'authors': 'Augustine of Hippo'}
 
 ================================================================================
-
-SAMPLE CHUNK #9
-------------------------------
-TITLE: Selbstverwirklichung: Chancen, Grenzen, Wege
-
-SUBJECTS & TOPICS: Subjects: Self-acceptance -- Religious aspects -- Christianity., Self-realization -- Religious aspects -- Christianity.
-
-PUBLICATION: Publisher: Matthias-Grünewald-Verlag; Published: 1987; Place: Mainz; Country: gw
-
-FORMAT & DETAILS: Pages: 177
-
-LANGUAGE: {'key': 'german'}
-
-SERIES: Moraltheologie interdisziplinär
-
-CLASSIFICATION: Dewey Decimal: 233
-
-IDENTIFIERS: ISBN-10: 3786712832; OCLC: 16863777
-
-NOTES: Includes bibliographical references.
-
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': False, 'field_count': 14}
-
+SAMPLE #4 — Book ID: oclc_12791898
 ================================================================================
 
-SAMPLE CHUNK #10
-------------------------------
+[TEXT CHUNK]
+----------------------------------------
 TITLE: A new philosophy of life
 
 AUTHOR(S): John Herman Randall Sr.
 
-SUBJECTS & TOPICS: Subjects: New Thought
+DESCRIPTION: In this groundbreaking work, John Herman Randall offers a fresh perspective on some of life's most enduring questions. Drawing on his extensive knowledge of philosophy and theology, Randall provides thoughtful and compelling insights into the meaning of life, the nature of reality, and the role of the individual in society. A New Philosophy of Life is an essential read for anyone seeking a deeper understanding of the world around us.
+
+This work has been selected by scholars as being culturally important, and is part of the knowledge base of civilization as we know it.
+
+This work is in the "public domain in the United States of America, and possibly other nations. Within the United States, you may freely copy and distribute this work, as no entity (individual or corporate) has a copyright on the body of the work.
+
+Scholars believe, and we concur, that this work is important enough to be preserved, reproduced, and made generally available to the public. We appreciate your support of the preservation process, and thank you for being an important part of keeping this knowledge alive and relevant.
+
+SUBJECTS & TOPICS: Subjects: New Thought, Philosophy / General
 
 PUBLICATION: Publisher: Dodge Pub. Co.; Published: 1909; Place: New York; Country: nyu
 
@@ -208,7 +142,21 @@ FORMAT & DETAILS: Pages: 563
 
 LANGUAGE: {'key': 'english'}
 
-CONTENT PREVIEW: Contents: Foreword.; The universal mind.; The divinity of man.; The powers and possibilities of the subconscious mind.; Faith as a vital force.; The law of suggestion.; Auto-suggestion.; Mind and medicine.; Physical wholeness.; Awakening latent mental powers.; The achievement of character.; The conquest of fear and worry.; The psychology of prayer.; Spiritual consciousness.; The rediscovery of Jesus.
+CONTENT PREVIEW: Contents: Foreword.
+The universal mind.
+The divinity of man.
+The powers and possibilities of the subconscious mind.
+Faith as a vital force.
+The law of suggestion.
+Auto-suggestion.
+Mind and medicine.
+Physical wholeness.
+Awakening latent mental powers.
+The achievement of character.
+The conquest of fear and worry.
+The psychology of prayer.
+Spiritual consciousness.
+The rediscovery of Jesus.
 
 CLASSIFICATION: Dewey Decimal: 289.9
 
@@ -216,6 +164,349 @@ IDENTIFIERS: OCLC: 12791898
 
 NOTES: Various pagings.
 
-Metadata: {'book_id': '', 'has_description': False, 'has_subjects': True, 'has_toc': True, 'field_count': 15}
+Metadata: {'book_id': 'oclc_12791898', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': True, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\A_new_philosophy_of_life.png', 'field_count': 20, 'title': 'A new philosophy of life'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\A_new_philosophy_of_life.png
+Metadata:   {'book_id': 'oclc_12791898', 'chunk_type': 'image', 'title': 'A new philosophy of life', 'authors': 'John Herman Randall Sr.'}
 
 ================================================================================
+SAMPLE #5 — Book ID: isbn13_9780691601267
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: Ethnobiological Classification Principles of Categorization of Plants and Animals in Traditional Societies
+
+AUTHOR(S): Brent Berlin
+
+DESCRIPTION: A founder of and leading thinker in the field of modern ethnobiology looks at the widespread regularities in the classification and naming of plants and animals among peoples of traditional, nonliterate societies--regularities that persist across local environments, cultures, societies, and languages. Brent Berlin maintains that these patterns can best be explained by the similarity of human beings' largely unconscious appreciation of the natural affinities among groupings of plants and animals: people recognize and name a grouping of organisms quite independently of its actual or potential usefulness or symbolic significance in human society. Berlin's claims challenge those anthropologists who see reality as a "set of culturally constructed, often unique and idiosyncratic images, little constrained by the parameters of an outside world." Part One of this wide-ranging work focuses primarily on the structure of ethnobiological classification inferred from an analysis of descriptions of individual systems. Part Two focuses on the underlying processes involved in the functioning and evolution of ethnobiological systems in general.
+
+Originally published in 1992.
+
+The Princeton Legacy Library uses the latest print-on-demand technology to again make available previously out-of-print books from the distinguished backlist of Princeton University Press. These editions preserve the original texts of these important books while presenting them in durable paperback and hardcover editions. The goal of the Princeton Legacy Library is to vastly increase access to the rich scholarly heritage found in the thousands of books published by Princeton University Press since its founding in 1905.
+
+SUBJECTS & TOPICS: Subjects: Ethnobotany, Plants, classification, Animals, classification, Science / Life Sciences / Ecology, Science / Life Sciences / Taxonomy, Nature / Cultural Botany
+
+PUBLICATION: Publisher: Princeton University Press; Published: 2014
+
+FORMAT & DETAILS: Pages: 354
+
+LANGUAGE: {'key': 'english'}
+
+CONTENT PREVIEW: Contents: Contents
+Preface
+
+PART ONE: Plan
+CHAPTER ONE
+On the Making of a Comparative Ethnobiology
+1.1 Intellectualist and Utilitarian Approaches in Ethnobiology
+1.2 Why Is It Notable That Nonliterates "Know So Much" about Nature?
+1.3 The Bases of Ethnobiological Classification
+1.4 Relativist and Comparativist Approaches in Ethnobiology
+1.5 General Principles of Ethnobiological Classification, 1966–1976
+1.6 Band-aids or Tune-up? General Principles, 1989
+1.7 Summary of General Principles
+1.8 The Changing Conventions of Data Presentation as a Reflection of Changing Theory in Ethnobiological Classification
+
+CHAPTER TWO
+The Primacy of Generic Taxa in Ethnobiological Classification
+2.1 The Selected Subset of Plants and Animals
+2.2 The Concept of the Genus: Historical Antecedents
+2.3 Evidence for the Perceptual Salience of Generic Taxa
+2.4 Generic Taxa, Ethnobiological Rank, and Analytic Terminology
+2.5 On Predicting the Subset of Generic Taxa
+2.6 The Internal Structure of Folk Generic Taxa
+2.7 Nature's Fortune 500+: Empirical Generalizations on the Upper Numbers of Generic Taxa in Systems of Ethnobiological Classification
+
+CHAPTER THREE
+The Nature of Specific Taxa
+3.1 Distinctive Biological Properties of Specific Taxa
+3.2 The Internal Structure of Specific Contrast Sets
+3.3 Residual Categories?
+3.4 General Nomenclatural Properties of Specific Taxa
+3.5 Cultural Factors Contributing to the Recognition of Specific Taxa
+3.6 Patterns in the Distribution and Size of Specific Contrast Sets
+
+CHAPTER FOUR
+Natural and Not So Natural Higher-Order Categories
+4.1 Higher-Order Categories in Ethnobiological Classification
+4.2 Taxa of Intermediate Rank
+4.3 Taxa of Life-Form Rank
+4.4 The Nature of Unaffiliated Generic Taxa and the Life-Form Debate
+4.5 Covert Groupings of Unaffiliated Generics = Covert Life Forms?
+4.6 The Bases of Life-Form Taxa: Utilitarian vs. Perceptual Motivations
+4.7 The Plant and Animal Kingdoms
+
+PART TWO: Process
+CHAPTER FIVE
+Patterned Variation in Ethnobiological Knowledge
+5.1 Werner's Gray-haired Omniscient Native Speaker-Hearer
+5.2 The Basic Data of Ethnobiological Description and the Search for Patterns
+5.3 Collecting the Basic Data from Which Patterns Might Emerge
+5.4 Some Significant Types of Variation in Ethnobiological Knowledge
+5.5 Discovering the Patterns Underlying the Biological Ranges of Folk Taxa
+5.6 Some Factors Contributing to Cognitive Variation
+
+CHAPTER SIX
+Manchúng and Bíkua: The Nonarbitrariness of Ethnobiological Nomenclature
+6.1 Early Experiments on Sound Symbolism
+6.2 Ethnobiological Sound Symbolism in Huambisa: Birds and Fish
+6.3 Universal Sound Symbolism or Simple Onomatopoeia?
+6.4 Comparison with Other Ethnoornithological Vocabularies
+6.5 Fish, Again
+6.6 Closing Observations on Huambisa Sound Symbolism
+6.7 "-r-" is for FROG
+6.8 Lexical Reflections of Cultural Significance
+
+CHAPTER SEVEN
+The Substance and Evolution of Ethnobiological Categories
+7.1 Toward a Substantive Inventory of Ethnobiological Categories
+7.2 The Evolution of Ethnobiological Categories: Typological Speculations
+7.3 Epilogue
+
+References
+Author Index
+Index of Scientific Names
+Index of Ethnobiological Names
+Subject Index
+
+IDENTIFIERS: ISBN-13: 9780691601267
+
+Metadata: {'book_id': 'isbn13_9780691601267', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': True, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Ethnobiological_Classification.png', 'field_count': 16, 'title': 'Ethnobiological Classification'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Ethnobiological_Classification.png
+Metadata:   {'book_id': 'isbn13_9780691601267', 'chunk_type': 'image', 'title': 'Ethnobiological Classification', 'authors': 'Brent Berlin'}
+
+================================================================================
+SAMPLE #6 — Book ID: isbn13_9798514787005
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: Her Unexpected Catch A Clean, Small Town Romance
+
+AUTHOR(S): Laura Ann
+
+DESCRIPTION: SYNOPSIS:
+
+A college professor looking for acceptance and a moody ship captain searching for freedom.
+
+When a rumor sparks a dangerous debate, can these two find love on the high seas?
+Dr. Hadlee Ford is on track to be the youngest Associate Professor at the college she teaches at, despite being the only female and the obvious prejudice of her faculty board. A past mistake makes it difficult to get the funding she needs, but she eventually convinces her colleagues her final project has merit. Hadlee takes off, excited for the opportunity to prove herself once and for all. Little does she know that a vicious rumor has proceeded her to Seaside Bay, and if the town fishermen have their way, her project will never leave the shoreline.
+
+Captain Felix Mendez is finally free. He spent most of his adult life raising his little sister after the death of their parents. Now that she's married and out of his house, he's eager to enjoy life without any ties. His plans are disrupted, however, when he's roped into driving a marine biologist around in his boat all summer. His job is to make sure she gets all the information she needs to complete her research, NOT to protect her from the town's inhabitants. Yet, no matter how much he fights it, Felix is intrigued by the beautiful scientist and soon staying close to keep her safe isn't as horrible as he'd thought.
+
+When their plans for the future clash, can these two find enough common ground to give their attraction a chance? Or will gossip and fear send them sailing in different directions?
+
+SUBJECTS & TOPICS: Subjects: Fiction / Romance / Contemporary, Fiction / Romance / General
+
+PUBLICATION: Publisher: Independently Published; Published: 2021
+
+FORMAT & DETAILS: Weight: 0.473
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9798514787005
+
+Metadata: {'book_id': 'isbn13_9798514787005', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Her_Unexpected_Catch.png', 'field_count': 15, 'title': 'Her Unexpected Catch'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Her_Unexpected_Catch.png
+Metadata:   {'book_id': 'isbn13_9798514787005', 'chunk_type': 'image', 'title': 'Her Unexpected Catch', 'authors': 'Laura Ann'}
+
+================================================================================
+SAMPLE #7 — Book ID: isbn13_9783656740308
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: Assessment of the Experiences of Women in the Third Reich (1933-1945)
+
+AUTHOR(S): Dörte Ridder
+
+DESCRIPTION: Seminar paper from the year 2004 in the subject History Europe - Germany - National Socialism, World War II, grade: 2,1, University of Sunderland (School of Arts, Design, Media and Culture), 14 entries in the bibliography, language: English, abstract: Introduction "Women have the task of being beautiful and bringing children into the world, and this is by no means as coarse and old-fashioned as one might think." The aims of the National Socialist women policy have not been as simple as Goebbels puts it in 1939. On the contrary, they were contradictory. Firstly, the regime wanted to reduce women to their biological function. Their central task was breeding. This procreation policy bore two major advantages: It helped the Nazis in pursuing their racial policy of purifying the Aryan race and it provided a means for a decrease in the mass unemployment, as married women were supposed to give up their jobs. Secondly, this family-orientated policy aimed at recording women and girls as party members and to organise them for this purpose in Frauenverbaende (women's associations). A complete change of this policy took place by the outbreak of World War II and during the war years. 'Total war' forced the Nazis to abandon the domestic ideal for women; hence a total mobilization of female labour was attempted although this led to a contradiction within Nazi ideology. "The intention of the conservative revolution to return women to the home had to be subordinated to other ideological goals - industrial expansion and war preparation." The following essay will examine the development of Nazi policy towards women and will, on the basis of primary sources, assess the experiences of women in the Third Reich from 1933 until 1945.
+
+SUBJECTS & TOPICS: Subjects: History / Europe / General, History / Modern / 20th Century / General
+
+PUBLICATION: Publisher: GRIN Verlag GmbH; Published: 2014
+
+FORMAT & DETAILS: Weight: 0.045
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9783656740308
+
+Metadata: {'book_id': 'isbn13_9783656740308', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Assessment_of_the_Experiences_of_Women_in_the_Third_Reich_(1933-1945).png', 'field_count': 13, 'title': 'Assessment of the Experiences of Women in the Third Reich (1933-1945)'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Assessment_of_the_Experiences_of_Women_in_the_Third_Reich_(1933-1945).png
+Metadata:   {'book_id': 'isbn13_9783656740308', 'chunk_type': 'image', 'title': 'Assessment of the Experiences of Women in the Third Reich (1933-1945)', 'authors': 'Dörte Ridder'}
+
+================================================================================
+SAMPLE #8 — Book ID: isbn13_9781461239314
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: {2}-Inverses and Their Statistical Application
+
+AUTHOR(S): Albert J Getson, Francis C Hsuan
+
+DESCRIPTION: Much of the traditional approach to linear model analysis is bound up in complex matrix expressions revolving about the usual generalized inverse. Motivated by this important role of the generalized inverse. the research summarized here began as an interest in understanding. in geometric terms. the four conditions defining the qnique Moore-Penrose Inverse. Such an investigation. it was hoped. might lead to a better understanding. and possibly a simplification of. the usual matrix expressions. Initially this research was begun by Francis Hsuan and Pat Langenberg, without knowledge of Kruskal's paper published in 1975. This oversight was perhaps fortu nate. since if they had read his paper they may not have continued their effort. A summary of this early research appears in Hsuan. Langenberg and Getson (1985). This monograph is a summary of the research on {2}-inverses continued by Al Getson. while a graduate student. in collaboration with Francis Hsuan of the Depart ment of Statistics. School of Business Administration. at Temple University. Philadelphia. The literature on generalized inverses and related topics is extensive and some of what is present here has appeared elsewhere. Generally. this literature is not presented from the point of view of {2}-inverses. We have tried to do justice to . the relevant published works and appologize for those we have either overlooked or possibly misrepresented.
+
+SUBJECTS & TOPICS: Subjects: Mathematics / Algebra / General
+
+PUBLICATION: Publisher: Island Press; Published: 1988
+
+FORMAT & DETAILS: Weight: 0.209
+
+LANGUAGE: {'key': 'english'}
+
+CONTENT PREVIEW: Contents: TABLE OF CONTENTS
+
+CHAPTER I
+INTRODUCTION
+
+CHAPTER II
+TIME FOR {2}-INVERSES
+2.0 Introduction
+2.1 The Three Phase Inversion Procedure
+2.2 Constrained Inverses
+2.3 {2}- and {1,2}-Inverses: The Null Augmented Mappings
+2.4 {1,5}-Inverses: The Nonnull Augmented Mappings
+2.5 Construction of Moore-Penrose Type Generalized Inverses
+2.6 A Geometric Representation of {2}-Inverses
+2.7 {1,5}-Inverses and Projections
+2.8 {1,5}-Inverses and Solutions to Linear Equations
+2.9 Decomposition of {2}-Inverses
+2.10 Spectral Decomposition in Terms of {2}-Inverses
+2.11 Computation of {2}-Inverses
+
+CHAPTER III
+{2}-INVERSES, QUADRATIC FORMS AND SECOND DEGREE POLYNOMIALS
+3.0 Introduction
+3.1 $\chi^2$ Distribution and Independence of Quadratic Forms and Second Degree Polynomials
+3.2 Generalized Inverses and Quadratic Forms
+3.3 {2}-Inverses and $\chi^2$ Distributed Quadratic Forms
+3.4 On The Uniqueness of the {2}-Inverse Representation of $\chi^2$ Distributed Quadratic Forms
+3.5 A Minimal Sufficient Set of Coefficient Matrices for All $\chi^2$ Distributed Quadratic Forms
+3.6 Independence of $\chi^2$ Distributed Quadratic Forms
+3.7 A Canonical Representation of Second Degree Polynomials
+3.8 $\chi^2$ Distributed Second Degree Polynomials
+3.9 {2}-Inverses and the Distribution and Independence of Second Degree Polynomials  
+
+CHAPTER IV
+{2}-INVERSES AND LEAST SQUARES SOLUTIONS
+4.0 Introduction
+4.1 The Least Squares Problem
+4.1 Strategies For Obtaining Least Squares Solutions
+4.3 Symmetric {1,2}-Inverses and Sets of Nonestimable Constraints
+4.4 Bott-Duffin Inverses and Constrained LSS’s
+4.5 {1,5}-Inverses and LSS’s
+4.6 Relationships Among LSS’s
+4.7 Minimum Norm LSS’s
+4.8 A General Theorem on Constrained LSS’s
+4.9 Residual Sum of Squares and Their Difference
+4.10 Computing Constrained LSS’s and Residual Sum of Squares
+
+CHAPTER V
+{2}-INVERSES IN LINEAR MODELS
+5.0 Introduction
+5.1 The Models
+5.2 The Distribution and Relationships Among the LSS’s For the Prameters in Various Models
+5.3 Hypothesis Testing in Linear Models
+5.4 Equivalent Numerator Sum of Squares for a Test of Hypothesis
+5.5 Hypotheses Invariant to Cell Sizes
+5.6 The R Approach and SAS Type I and Type II Sums of Squares
+5.7 The R* Approach and the SAS Type III Sum of Squares  
+
+REFERENCES
+
+IDENTIFIERS: ISBN-13: 9781461239314
+
+Metadata: {'book_id': 'isbn13_9781461239314', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': True, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\{2}-Inverses_and_Their_Statistical_Application.png', 'field_count': 15, 'title': '{2}-Inverses and Their Statistical Application'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\{2}-Inverses_and_Their_Statistical_Application.png
+Metadata:   {'book_id': 'isbn13_9781461239314', 'chunk_type': 'image', 'title': '{2}-Inverses and Their Statistical Application', 'authors': 'Albert J Getson, Francis C Hsuan'}
+
+================================================================================
+SAMPLE #9 — Book ID: isbn13_9781977231291
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: Whisper from Noelle
+
+AUTHOR(S): Deirdre Breakenridge Skrobola, Mark C. Skrobola, Daniel Klein
+
+DESCRIPTION: One night while lying in bed, Ashley-Ann receives a very special visit. An angel named Noelle comes to her with a series of loving whispers, each with an important message. As Ashley-Ann shares the angel's whispers with her mommy, readers are given the gift of wisdom that Noelle brings to Ashley-Ann. We learn that knowing how to feel will bring kindness, compassion, courage, and the ability to be true to ourselves. This nurturing, insightful story is sure to be a favorite with readers of all ages.
+
+SUBJECTS & TOPICS: Subjects: Juvenile Fiction / Family / General, Juvenile Fiction / Social Themes / Values & Virtues
+
+PUBLICATION: Publisher: Outskirts Press, Incorporated; Published: 2020
+
+FORMAT & DETAILS: Weight: 0.305
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9781977231291
+
+Metadata: {'book_id': 'isbn13_9781977231291', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Whisper_from_Noelle.png', 'field_count': 13, 'title': 'Whisper from Noelle'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Whisper_from_Noelle.png
+Metadata:   {'book_id': 'isbn13_9781977231291', 'chunk_type': 'image', 'title': 'Whisper from Noelle', 'authors': 'Deirdre Breakenridge Skrobola, Mark C. Skrobola, Daniel Klein'}
+
+================================================================================
+SAMPLE #10 — Book ID: isbn13_9781956897432
+================================================================================
+
+[TEXT CHUNK]
+----------------------------------------
+TITLE: Penn & Ava
+
+AUTHOR(S): Susan Victoria Becher
+
+DESCRIPTION: SYNOPSIS:
+
+Growing up in Westwood, Pennsylvania, Ava Pierson is perfectly content to exist in the shadow of her older sister Jacklyn. That is until Jacklyn unexpectedly stops speaking to her and leaves for college. It takes only weeks into Ava's Junior of high school for her to realize she's trapped in a life that doesn't feel like her own.
+
+Paired with the class know-it-all Penn Abrams for an English project, Ava wishes he'd kindly go back to scribbling in his day planner. She quickly learns Penn has no intention of minding his own business. Instead, he leans in and invites her on a path filled with community, creativity, and adventure.
+
+Just as Ava feels she's discovering a life of her own, Jacklyn arrives back in Westwood. Her sister's arrival triggers memories of the very incident that tore the two of them apart. While Ava reveals to Jacklyn what actually happened the previous summer, Ava can't admit to herself how much pain she is still in.
+
+As Ava continues to hide her truth from Penn, he welcomes her further into his world. He insists she meet his best friend Kaysar, but Kaysar can't see past Ava's privilege. When Kaysar pushes too far, Ava musters the courage to stick up for herself. It's not until Ava finds herself face-to-face with her abuser does Kaysar prove to be the best kind of friend to have around.
+
+With healing on the horizon, Ava begins to take back her narrative by building her support system and exploring interests in art and mental health. As devastating as it is when her father leaves their family behind, Aunt Brene shows up to be the loving presence the remaining Piersons are in desperate need of.
+
+Through all of this, Ava discovers she cares for Penn as more than just a friend. Feelings abound as they go on their first official date, but it doesn't end with the kiss they hoped for. Ava's worst fears are confirmed as Penn opens a college acceptance letter, knowing she'll have to tuck away her feelings once more as he sets off to follow his dreams.
+
+With Ava still processing Penn's plan to leave Westwood, Mrs. Pierson addresses the family, promising to try to be a better mother. Strengthened by this shift, Ava goes to her mom to report her assault. With their decision to sue both her abuser and the Westwood Police Department, Ava feels in control of her life for the first time. But this doesn't make it any easier to wave goodbye as Penn heads off to Stanford.
+
+A year passes before Penn and Ava meet again to celebrate Ava's graduation and acceptance into college. With a heartfelt speech at dinner to her abundant community of friends and family, Ava can't quite convey how much Penn has impacted her life. After the meal they revisit their favorite spot and Penn brings up the acquittal of both the Westwood Police Department and her abuser. Though Ava tries to deny her impact on Westwood, Penn reminds her, once again, just how much value she brings to the town.
+
+Before they part ways, Ava shares a small but vulnerable piece of herself with Penn, hoping it will hold the two of them together as their lives carry them apart.
+
+SUBJECTS & TOPICS: Subjects: Fiction, general, Young Adult Fiction / Coming of Age, Young Adult Fiction / Family / Multigenerational, Young Adult Fiction / Girls & Women
+
+PUBLICATION: Publisher: Pen & Publish, LLC; Published: 2024
+
+LANGUAGE: {'key': 'english'}
+
+IDENTIFIERS: ISBN-13: 9781956897432
+
+Metadata: {'book_id': 'isbn13_9781956897432', 'chunk_type': 'text', 'has_cover_image': True, 'has_description': True, 'has_toc': False, 'cover_image_path': 'E:\\D backup\\Compressed\\Cleaned_data\\cover_images\\Penn_&_Ava.png', 'field_count': 12, 'title': 'Penn & Ava'}
+
+[IMAGE CHUNK]
+----------------------------------------
+Image path: E:\D backup\Compressed\Cleaned_data\cover_images\Penn_&_Ava.png
+Metadata:   {'book_id': 'isbn13_9781956897432', 'chunk_type': 'image', 'title': 'Penn & Ava', 'authors': 'Susan Victoria Becher'}

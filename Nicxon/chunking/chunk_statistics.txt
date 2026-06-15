@@ -1,45 +1,48 @@
-LIBRARY CHATBOT CHUNKING STATISTICS
-==================================================
-Processing Date: 2025-06-04 02:45:37
-Processing Time: 0:00:00.197666
+LIBRARY CHATBOT CHUNKING STATISTICS (Approach A: Separate Embeddings)
+=================================================================
+Processing Date: 2026-05-22 14:46:52
+Processing Time: 0:00:00.011027
 
 PROCESSING SUMMARY:
-Total books processed: 8,992
-Chunks created: 8,992
+  Total books processed:   318
+  Text chunks created:     318
+  Image chunks created:    50
+  Books without cover:     268
+  Cover image coverage:    15.7%
 
-CHUNK LENGTH STATISTICS:
-Average chunk length: 395 characters
-Minimum chunk length: 17 characters
-Maximum chunk length: 10,378 characters
+TEXT CHUNK LENGTH STATISTICS:
+  Average chunk length: 1352 characters
+  Minimum chunk length: 208 characters
+  Maximum chunk length: 22,507 characters
 
 FIELD INCLUSION STATISTICS:
-(How many chunks included each field)
-title                    :  8992 chunks (100.0%)
-publish_date             :  8699 chunks ( 96.7%)
-publishers               :  8542 chunks ( 95.0%)
-authors                  :  7881 chunks ( 87.6%)
-languages                :  7733 chunks ( 86.0%)
-number_of_pages          :  5604 chunks ( 62.3%)
-isbn_13                  :  4896 chunks ( 54.4%)
-subjects                 :  4379 chunks ( 48.7%)
-publish_country          :  4221 chunks ( 46.9%)
-publish_places           :  4178 chunks ( 46.5%)
-notes                    :  3101 chunks ( 34.5%)
-isbn_10                  :  3021 chunks ( 33.6%)
-oclc_numbers             :  2957 chunks ( 32.9%)
-weight                   :  1955 chunks ( 21.7%)
-physical_format          :  1631 chunks ( 18.1%)
-series                   :  1434 chunks ( 15.9%)
-dewey_decimal_class      :  1169 chunks ( 13.0%)
-subject_places           :  1049 chunks ( 11.7%)
-physical_dimensions      :   489 chunks (  5.4%)
-description              :   260 chunks (  2.9%)
-subject_times            :   249 chunks (  2.8%)
-genres                   :   225 chunks (  2.5%)
-table_of_contents        :   185 chunks (  2.1%)
-subject_people           :   175 chunks (  1.9%)
-first_sentence           :    89 chunks (  1.0%)
-copyright_date           :    18 chunks (  0.2%)
-lexile                   :     1 chunks (  0.0%)
+(How many text chunks included each field)
+  title                    :   318 chunks (100.0%)
+  languages                :   318 chunks (100.0%)
+  publish_date             :   316 chunks ( 99.4%)
+  publishers               :   302 chunks ( 95.0%)
+  subjects                 :   278 chunks ( 87.4%)
+  authors                  :   270 chunks ( 84.9%)
+  publish_country          :   261 chunks ( 82.1%)
+  publish_places           :   245 chunks ( 77.0%)
+  number_of_pages          :   232 chunks ( 73.0%)
+  description              :   212 chunks ( 66.7%)
+  oclc_numbers             :   196 chunks ( 61.6%)
+  notes                    :   194 chunks ( 61.0%)
+  isbn_13                  :   178 chunks ( 56.0%)
+  dewey_decimal_class      :   177 chunks ( 55.7%)
+  isbn_10                  :   164 chunks ( 51.6%)
+  table_of_contents        :   147 chunks ( 46.2%)
+  series                   :    78 chunks ( 24.5%)
+  subject_places           :    69 chunks ( 21.7%)
+  physical_format          :    33 chunks ( 10.4%)
+  genres                   :    31 chunks (  9.7%)
+  weight                   :    22 chunks (  6.9%)
+  subject_times            :    21 chunks (  6.6%)
+  subject_people           :    13 chunks (  4.1%)
+  physical_dimensions      :     8 chunks (  2.5%)
+  copyright_date           :     3 chunks (  0.9%)
+  first_sentence           :     1 chunks (  0.3%)
+  lexile                   :     1 chunks (  0.3%)
 
 CHUNKING PROCESS COMPLETE ✅

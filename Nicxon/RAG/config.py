@@ -9,17 +9,75 @@ class RAGConfig:
     
     # API Configuration
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-    EMBEDDING_MODEL = "gemini-embedding-001"
-    LLM_MODEL = "gemini-2.5-flash"
+    LLM_MODEL = "gemini-3.1-flash-lite"
+    
+    # ------------------------------------------------------------------
+    # Embedding backend selection
+    # ------------------------------------------------------------------
+    # Set EMBEDDING_BACKEND env var to "google" (default) or "qwen"
+    # before launching the app to choose which embedding model & vector
+    # database to use.  LLM calls always go through Google Gemini.
+    EMBEDDING_BACKEND = os.getenv('EMBEDDING_BACKEND', 'google').lower()
+    
+    BACKEND_PROFILES = {
+        'google': {
+            'embedding_model': 'gemini-embedding-2',
+            'embedding_dim': 3072,
+            'vector_db_path': 'vector_db/chroma_db_multimodal_google',
+            'query_embed_type': 'gemini_api',    # uses Google GenAI SDK
+            'display_name': 'Google gemini-embedding-2',
+        },
+        'qwen': {
+            'embedding_model': 'Qwen/Qwen3-VL-Embedding-2B',
+            'embedding_dim': 2048,
+            'vector_db_path': 'vector_db/chroma_db_multimodal_qwen',
+            'query_embed_type': 'qwen_local',    # runs locally via sentence-transformers
+            'display_name': 'Qwen3-VL-Embedding-2B (local)',
+        },
+        'jina': {
+            'embedding_model': 'jinaai/jina-clip-v2',
+            'embedding_dim': 1024,
+            'vector_db_path': 'vector_db/chroma_db_multimodal_jina',
+            'query_embed_type': 'jina_local',    # AutoModel: encode_text + encode_image
+            'display_name': 'Jina CLIP v2 (local)',
+        },
+    }
+    
+    # Resolve active profile
+    _profile = BACKEND_PROFILES.get(EMBEDDING_BACKEND)
+    if _profile is None:
+        raise ValueError(
+            f"Unknown EMBEDDING_BACKEND='{EMBEDDING_BACKEND}'. "
+            f"Valid values: {list(BACKEND_PROFILES.keys())}"
+        )
+    
+    EMBEDDING_MODEL = _profile['embedding_model']
+    EMBEDDING_DIM = _profile['embedding_dim']
+    VECTOR_DB_PATH = _profile['vector_db_path']
+    QUERY_EMBED_TYPE = _profile['query_embed_type']
+    EMBEDDING_DISPLAY_NAME = _profile['display_name']
     
     # Database Configuration
-    VECTOR_DB_PATH = "vector_db/chroma_db"
-    COLLECTION_NAME = "library_books"
+    TEXT_COLLECTION_NAME = "library_books_text"
+    IMAGE_COLLECTION_NAME = "library_books_image"
     
     # Search Configuration
     DEFAULT_SEARCH_LIMIT = 10
     MAX_SEARCH_LIMIT = 50
-    SIMILARITY_THRESHOLD = 0.1
+    # Cosine similarity floor for keeping a candidate. The collections
+    # are now built with `hnsw:space=cosine`, so similarity =
+    # `1 - distance` is true cosine in [-1, 1]. 0.4 is a conservative
+    # cross-modal floor — same-modal relevant hits typically score
+    # above 0.6, cross-modal relevant hits often sit in 0.4–0.7. Lower
+    # this if you'd rather see weak matches than empty results.
+    # NOTE: not currently enforced anywhere in the engine; reserved for
+    # future filtering. Tune before wiring up.
+    SIMILARITY_THRESHOLD = 0.4
+
+    # Multimodal Search Configuration
+    TEXT_SEARCH_WEIGHT = 0.7   # Weight for text similarity in hybrid scoring
+    IMAGE_SEARCH_WEIGHT = 0.3  # Weight for image similarity in hybrid scoring
+    MAX_UPLOAD_IMAGE_DIMENSION = 512  # Max px for uploaded query images (same as embedding pipeline)
     
     # Response Configuration
     MAX_CONTEXT_LENGTH = 8000
@@ -57,6 +115,17 @@ class RAGConfig:
     
     # Response Templates
     SYSTEM_PROMPTS = {
+        'search_mode_classifier': """You are classifying what type of search to perform for a library chatbot.
+
+The user has uploaded an IMAGE and also written this text message: "{user_message}"
+
+Classify the search mode as exactly one of:
+- IMAGE: The text is empty, generic ("find books like this", "similar books", "what is this"), or only refers to the uploaded image. Use the image to find visually similar books.
+- TEXT: The text contains specific search terms, topics, genres, authors, or keywords that should drive the search. The image is supplementary context.
+- HYBRID: The text adds meaningful search context beyond just "find similar" AND the image should also influence results.
+
+Respond with ONLY one word: IMAGE, TEXT, or HYBRID""",
+
         'intent_classifier': """You are an intent classifier for a library chatbot. Analyze the user's message and classify it into one of these categories:
 
 SEARCH - User wants to find books (keywords: "find", "recommend", "looking for", "about", "book on", etc.)
@@ -139,9 +208,12 @@ RESPONSE: [Your helpful response to the user]"""
             'valid': len(issues) == 0,
             'issues': issues,
             'config_summary': {
+                'embedding_backend': cls.EMBEDDING_BACKEND,
+                'embedding_display_name': cls.EMBEDDING_DISPLAY_NAME,
                 'embedding_model': cls.EMBEDDING_MODEL,
                 'llm_model': cls.LLM_MODEL,
                 'vector_db_path': cls.VECTOR_DB_PATH,
-                'collection_name': cls.COLLECTION_NAME
+                'text_collection': cls.TEXT_COLLECTION_NAME,
+                'image_collection': cls.IMAGE_COLLECTION_NAME
             }
         } 

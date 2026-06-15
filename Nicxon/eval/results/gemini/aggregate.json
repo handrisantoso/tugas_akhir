@@ -1,0 +1,18 @@
+{
+  "n_queries": 50,
+  "mean_recall@1": 0.98,
+  "mean_recall@5": 0.98,
+  "mean_recall@10": 0.98,
+  "mrr": 0.98,
+  "hit_rate@1": 0.98,
+  "hit_rate@5": 0.98,
+  "hit_rate@10": 0.98,
+  "ndcg@10": 0.98,
+  "mean_latency_ms": 733.0604000000002,
+  "label": "gemini",
+  "db_path": "E:\\D backup\\Compressed\\vector_db\\chroma_db_multimodal_google",
+  "embedding_model": "gemini-embedding-2",
+  "dataset_path": "E:\\D backup\\Compressed\\eval\\eval_dataset.csv",
+  "judge_used": false,
+  "judge_model": null
+}

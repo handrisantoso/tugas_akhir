@@ -1,9 +1,16 @@
 # Library Chatbot RAG System Environment Variables
 # Copy this file to .env and add your actual values
 
-# Google AI API Key (required)
+# Google AI API Key (required — used for LLM calls and Gemini embeddings)
 # Get this from: https://makersuite.google.com/app/apikey
 GOOGLE_API_KEY=your_google_api_key_here
+
+# Embedding backend: "google" (default) or "qwen"
+#   google — uses Google gemini-embedding-2 API (3072-dim, requires API key)
+#   qwen   — uses local Qwen3-VL-Embedding-2B via sentence-transformers
+#            (2048-dim, no API key needed for embeddings, ~4 GB model download)
+# Each backend uses its own ChromaDB vector database automatically.
+# EMBEDDING_BACKEND=google
 
 # Optional: Override default model names
 # EMBEDDING_MODEL=models/text-embedding-004

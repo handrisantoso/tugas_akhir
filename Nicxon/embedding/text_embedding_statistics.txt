@@ -1,0 +1,23 @@
+LIBRARY CHATBOT — TEXT EMBEDDING STATISTICS (OpenRouter)
+============================================================
+Processing Date: 2026-05-22 17:05:03
+Processing Time: 0:03:27.763500
+
+PROCESSING SUMMARY:
+  Total text chunks:        318
+  Successfully embedded:    318
+  Failed:                   0
+  Success rate:             100.0%
+
+API USAGE:
+  Total API calls:          318
+  Rate limit hits:          0
+  Total tokens processed:   60,537
+  Avg tokens per call:      190.4
+
+EMBEDDING DETAILS:
+  Model:                    google/gemini-embedding-2-preview
+  Dimensions:               3072
+  Avg chunk length:         1352 chars
+
+TEXT EMBEDDING GENERATION COMPLETE ✅

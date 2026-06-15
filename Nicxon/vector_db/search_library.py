@@ -1,364 +1,452 @@
 #!/usr/bin/env python3
 """
-Library Search Utility
-Interactive search tool for the library chatbot vector database
+Library retrieval tester for the multimodal ChromaDB.
+
+Goal
+----
+A small CLI that mirrors the exact embedding path used by the live RAG
+engine (`RAG/rag_engine.py`) so you can probe what each collection
+returns for a given query, without going through any of the LLM steps.
+
+It:
+  - reads GOOGLE_API_KEY from the environment (.env in this folder, the
+    project root, or RAG/.env — first one wins),
+Supports two embedding backends, selected with --model:
+  gemini  — Google GenAI gemini-embedding-2  (requires GOOGLE_API_KEY)
+  qwen    — Local Qwen/Qwen3-VL-Embedding-2B (no API key, ~4 GB download)
+
+Usage
+-----
+    # Gemini backend (default DB: chroma_db_multimodal_google)
+    python vector_db/search_library.py --model gemini --text "books about birds"
+
+    # Qwen backend (default DB: chroma_db_multimodal_qwen)
+    python vector_db/search_library.py --model qwen --text "books about birds"
+
+    # Override DB path explicitly
+    python vector_db/search_library.py --model qwen --db-path vector_db/my_db --text "..."
+
+    # Image query
+    python vector_db/search_library.py --model qwen --image path/to/cover.png
+
+    # Combined
+    python vector_db/search_library.py --model gemini --text "..." --image path/to/cover.png -k 10
+
+Run from the project root so the default DB paths resolve correctly.
 """
+from __future__ import annotations
 
-import json
+import argparse
+import io
 import os
-import sys
 import re
-from typing import List, Dict, Any, Optional
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-# Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-try:
-    import chromadb
-    from chromadb.config import Settings
-except ImportError:
-    print("❌ Error: ChromaDB not installed")
-    print("Please install: pip install -r vector_db/requirements.txt")
-    sys.exit(1)
+# ----------------------------------------------------------------------
+# Config — DB paths per model (used as argparse defaults)
+# ----------------------------------------------------------------------
 
-class LibrarySearcher:
-    def __init__(self, db_path: str = "vector_db/chroma_db"):
-        """Initialize the search interface"""
-        self.db_path = db_path
-        self.client = None
-        self.collection = None
-        self.collection_name = "library_books"
-        
-        self.connect_to_database()
-    
-    def connect_to_database(self):
-        """Connect to existing ChromaDB"""
-        try:
-            print("🔗 Connecting to vector database...")
-            
-            if not os.path.exists(self.db_path):
-                print(f"❌ Database not found at {self.db_path}")
-                print("Please run 'python vector_db/create_vector_db.py' first")
-                sys.exit(1)
-            
-            # Connect to persistent client
-            self.client = chromadb.PersistentClient(
-                path=self.db_path,
-                settings=Settings(
-                    anonymized_telemetry=False
-                )
-            )
-            
-            # Get collection
-            self.collection = self.client.get_collection(self.collection_name)
-            doc_count = self.collection.count()
-            
-            print(f"✅ Connected to database with {doc_count:,} books")
-            
-        except Exception as e:
-            print(f"❌ Error connecting to database: {e}")
-            sys.exit(1)
-    
-    def search_books(self, query: str, n_results: int = 10, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """Search for books using semantic similarity"""
-        try:
-            print(f"🔍 Searching for: '{query}'")
-            
-            # Perform search
-            search_params = {
-                'query_texts': [query],
-                'n_results': n_results,
-                'include': ['documents', 'metadatas', 'distances']
-            }
-            
-            # Add filters if provided
-            if filters:
-                search_params['where'] = filters
-                print(f"🎯 Using filters: {filters}")
-            
-            results = self.collection.query(**search_params)
-            
-            # Process results
-            processed_results = []
-            
-            if results['documents'] and results['documents'][0]:
-                for i, (doc, metadata, distance) in enumerate(
-                    zip(results['documents'][0], 
-                        results['metadatas'][0], 
-                        results['distances'][0])
-                ):
-                    # Extract key information
-                    title_match = re.search(r'TITLE:\s*([^\n]+)', doc)
-                    title = title_match.group(1) if title_match else "Unknown Title"
-                    
-                    author_match = re.search(r'AUTHOR\(S\):\s*([^\n]+)', doc)
-                    author = author_match.group(1) if author_match else "Unknown Author"
-                    
-                    desc_match = re.search(r'DESCRIPTION:\s*([^\n]+)', doc)
-                    description = desc_match.group(1) if desc_match else "No description available"
-                    
-                    similarity_score = 1 - distance  # Convert distance to similarity
-                    
-                    processed_results.append({
-                        'rank': i + 1,
-                        'title': title,
-                        'author': author,
-                        'description': description,
-                        'similarity': similarity_score,
-                        'language': metadata.get('language', 'Unknown'),
-                        'publish_year': metadata.get('publish_year'),
-                        'page_count': metadata.get('page_count'),
-                        'format': metadata.get('format'),
-                        'has_description': metadata.get('has_description', False),
-                        'full_text': doc,
-                        'metadata': metadata
-                    })
-            
-            return processed_results
-            
-        except Exception as e:
-            print(f"❌ Search error: {e}")
-            return []
-    
-    def display_results(self, results: List[Dict[str, Any]], detailed: bool = False):
-        """Display search results in a user-friendly format"""
-        
-        if not results:
-            print("📭 No results found")
-            return
-        
-        print(f"\n📚 Found {len(results)} results:")
-        print("=" * 80)
-        
-        for result in results:
-            print(f"\n{result['rank']}. {result['title']}")
-            print(f"   Author: {result['author']}")
-            print(f"   Language: {result['language']}")
-            
-            if result['publish_year']:
-                print(f"   Published: {result['publish_year']}")
-            
-            if result['page_count']:
-                print(f"   Pages: {result['page_count']}")
-            
-            if result['format']:
-                print(f"   Format: {result['format']}")
-            
-            print(f"   Similarity: {result['similarity']:.3f}")
-            
-            if detailed:
-                # Show description
-                description = result['description']
-                if len(description) > 200:
-                    description = description[:200] + "..."
-                print(f"   Description: {description}")
-                
-                # Show subjects if available
-                subjects_match = re.search(r'SUBJECTS & TOPICS:\s*([^\n]+)', result['full_text'])
-                if subjects_match:
-                    subjects = subjects_match.group(1)
-                    if len(subjects) > 150:
-                        subjects = subjects[:150] + "..."
-                    print(f"   Topics: {subjects}")
-            
-            print("-" * 60)
-    
-    def advanced_search_interface(self):
-        """Interactive advanced search with filters"""
-        print("\n🎯 Advanced Search Interface")
-        print("=" * 40)
-        
-        # Get search query
-        query = input("📝 Enter search query: ").strip()
-        if not query:
-            return
-        
-        # Get optional filters
-        filters = {}
-        
-        # Language filter
-        language = input("🌍 Filter by language (e.g., English, Spanish) [Enter to skip]: ").strip()
-        if language:
-            filters['language'] = language
-        
-        # Year filter
-        year_input = input("📅 Filter by publication year (e.g., 2000, >1990, <2010) [Enter to skip]: ").strip()
-        if year_input:
-            if year_input.startswith('>'):
-                filters['publish_year'] = {"$gt": int(year_input[1:])}
-            elif year_input.startswith('<'):
-                filters['publish_year'] = {"$lt": int(year_input[1:])}
-            elif year_input.isdigit():
-                filters['publish_year'] = int(year_input)
-        
-        # Page count filter
-        pages_input = input("📄 Filter by page count (e.g., >300, <200) [Enter to skip]: ").strip()
-        if pages_input:
-            if pages_input.startswith('>'):
-                filters['page_count'] = {"$gt": int(pages_input[1:])}
-            elif pages_input.startswith('<'):
-                filters['page_count'] = {"$lt": int(pages_input[1:])}
-        
-        # Has description filter
-        desc_filter = input("📝 Only books with descriptions? (y/n) [Enter to skip]: ").strip().lower()
-        if desc_filter == 'y':
-            filters['has_description'] = True
-        
-        # Number of results
-        try:
-            n_results = int(input("🔢 Number of results (default 10): ").strip() or "10")
-        except ValueError:
-            n_results = 10
-        
-        # Detailed output
-        detailed = input("📋 Show detailed results? (y/n) [default n]: ").strip().lower() == 'y'
-        
-        # Perform search
-        results = self.search_books(query, n_results, filters if filters else None)
-        self.display_results(results, detailed)
-    
-    def quick_search_interface(self):
-        """Simple quick search interface"""
-        print("\n🔍 Quick Search")
-        print("=" * 30)
-        
-        query = input("📝 Search for books: ").strip()
-        if not query:
-            return
-        
-        results = self.search_books(query, n_results=5)
-        self.display_results(results)
-    
-    def example_searches(self):
-        """Run example searches to demonstrate capabilities"""
-        print("\n🎪 Example Searches")
-        print("=" * 40)
-        
-        examples = [
-            {
-                'query': 'mystery detective novels',
-                'description': 'Mystery and detective fiction'
-            },
-            {
-                'query': 'space science fiction adventure',
-                'description': 'Science fiction with space themes'
-            },
-            {
-                'query': 'historical romance',
-                'description': 'Romance novels with historical settings'
-            },
-            {
-                'query': 'children fantasy magic',
-                'description': 'Fantasy books for children'
-            }
-        ]
-        
-        for example in examples:
-            print(f"\n🔍 Example: {example['description']}")
-            print(f"Query: '{example['query']}'")
-            
-            results = self.search_books(example['query'], n_results=3)
-            self.display_results(results[:3])  # Show top 3 results
-            
-            input("\nPress Enter to continue...")
-    
-    def database_stats(self):
-        """Show database statistics"""
-        print("\n📊 Database Statistics")
-        print("=" * 40)
-        
-        try:
-            total_docs = self.collection.count()
-            print(f"Total books: {total_docs:,}")
-            
-            # Get sample for analysis
-            sample = self.collection.get(limit=min(100, total_docs), include=['metadatas'])
-            
-            if sample['metadatas']:
-                # Language distribution
-                languages = {}
-                formats = {}
-                years = []
-                desc_count = 0
-                
-                for metadata in sample['metadatas']:
-                    # Languages
-                    lang = metadata.get('language', 'Unknown')
-                    languages[lang] = languages.get(lang, 0) + 1
-                    
-                    # Formats
-                    fmt = metadata.get('format', 'Unknown')
-                    if fmt != 'Unknown':
-                        formats[fmt] = formats.get(fmt, 0) + 1
-                    
-                    # Years
-                    year = metadata.get('publish_year')
-                    if year:
-                        years.append(year)
-                    
-                    # Descriptions
-                    if metadata.get('has_description'):
-                        desc_count += 1
-                
-                # Display statistics
-                print(f"\n📚 Sample Analysis (from {len(sample['metadatas'])} books):")
-                
-                print(f"\nTop Languages:")
-                for lang, count in sorted(languages.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    print(f"  {lang}: {count}")
-                
-                if formats:
-                    print(f"\nFormats:")
-                    for fmt, count in sorted(formats.items(), key=lambda x: x[1], reverse=True)[:3]:
-                        print(f"  {fmt}: {count}")
-                
-                if years:
-                    print(f"\nPublication Years:")
-                    print(f"  Range: {min(years)} - {max(years)}")
-                    print(f"  Average: {sum(years) / len(years):.0f}")
-                
-                print(f"\nContent Quality:")
-                desc_percentage = (desc_count / len(sample['metadatas'])) * 100
-                print(f"  Books with descriptions: {desc_percentage:.1f}%")
-            
-        except Exception as e:
-            print(f"❌ Error getting statistics: {e}")
+DB_PATH_BY_MODEL = {
+    "gemini": "vector_db/chroma_db_multimodal_google",
+    "qwen":   "vector_db/chroma_db_multimodal_qwen",
+    "jina":   "vector_db/chroma_db_multimodal_jina",
+}
 
-def main():
-    """Main interactive interface"""
-    print("🚀 Library Chatbot Search Interface")
-    print("=" * 50)
-    
-    # Initialize searcher
+TEXT_COLLECTION  = "library_books_text"
+IMAGE_COLLECTION = "library_books_image"
+MAX_IMAGE_DIM    = 512  # mirrors RAGConfig.MAX_UPLOAD_IMAGE_DIMENSION
+
+# Model names per backend
+GEMINI_MODEL_NAME = "gemini-embedding-2"
+QWEN_MODEL_NAME   = "Qwen/Qwen3-VL-Embedding-2B"
+JINA_MODEL_NAME   = "jinaai/jina-clip-v2"
+
+
+# ----------------------------------------------------------------------
+# Environment / API key loading
+# ----------------------------------------------------------------------
+
+def _load_env_files() -> None:
+    """Load GOOGLE_API_KEY from any nearby .env file.
+
+    Search order (first existing wins): script dir, parent (project root),
+    parent's RAG folder. dotenv is optional — if it isn't installed we
+    fall back to a tiny manual parser.
+    """
+    here = Path(__file__).resolve().parent
+    candidates = [here / ".env", here.parent / ".env", here.parent / "RAG" / ".env",
+                  here.parent / "embedding" / ".env"]
+
     try:
-        searcher = LibrarySearcher()
-    except Exception as e:
-        print(f"❌ Failed to initialize searcher: {e}")
+        from dotenv import load_dotenv  # type: ignore
+        for path in candidates:
+            if path.exists():
+                load_dotenv(path, override=False)
         return
-    
-    while True:
-        print("\n🎮 Choose an option:")
-        print("1. Quick Search")
-        print("2. Advanced Search (with filters)")
-        print("3. Example Searches")
-        print("4. Database Statistics")
-        print("5. Exit")
-        
-        choice = input("\n📝 Enter choice (1-5): ").strip()
-        
-        if choice == '1':
-            searcher.quick_search_interface()
-        elif choice == '2':
-            searcher.advanced_search_interface()
-        elif choice == '3':
-            searcher.example_searches()
-        elif choice == '4':
-            searcher.database_stats()
-        elif choice == '5':
-            print("👋 Goodbye!")
-            break
+    except ImportError:
+        pass
+
+    for path in candidates:
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            os.environ.setdefault(key, val)
+
+
+# ----------------------------------------------------------------------
+# Gemini embedding helpers
+# ----------------------------------------------------------------------
+
+def _gemini_embed_text(client, text: str) -> List[float]:
+    """Embed a text query via Gemini."""
+    response = client.models.embed_content(
+        model=GEMINI_MODEL_NAME,
+        contents=text,
+    )
+    return list(response.embeddings[0].values)
+
+
+def _gemini_embed_image(client, image_path: Path) -> List[float]:
+    """Embed an image via Gemini.
+
+    Preprocessing: RGB → thumbnail 512px (LANCZOS) → JPEG q=85 → typed Part.
+    Mirrors `_preprocess_and_embed_image` in rag_engine.py exactly.
+    """
+    from PIL import Image
+    from google.genai import types
+
+    img = Image.open(image_path).convert("RGB")
+    if max(img.size) > MAX_IMAGE_DIM:
+        img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    jpeg_bytes = buf.getvalue()
+
+    part = types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg")
+    response = client.models.embed_content(
+        model=GEMINI_MODEL_NAME,
+        contents=part,
+    )
+    return list(response.embeddings[0].values)
+
+
+# ----------------------------------------------------------------------
+# Qwen embedding helpers
+# ----------------------------------------------------------------------
+
+def _load_qwen_model():
+    """Load the Qwen sentence-transformers model (cached after first run)."""
+    return _load_local_model(QWEN_MODEL_NAME)
+
+
+def _load_local_model(model_name: str):
+    """Load any sentence-transformers model by name (works for Qwen, Jina, etc.)."""
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError:
+        print("ERROR: sentence-transformers not installed.",
+              "  conda install -c conda-forge sentence-transformers", file=sys.stderr)
+        sys.exit(1)
+
+    # Jina CLIP v2 compat: clip_loss was removed in transformers >= 4.49
+    try:
+        import torch
+        import torch.nn as nn
+        import transformers.models.clip.modeling_clip as _clip_module
+        if not hasattr(_clip_module, "clip_loss"):
+            def _clip_loss(similarity: torch.Tensor) -> torch.Tensor:
+                caption_loss = nn.functional.cross_entropy(
+                    similarity, torch.arange(len(similarity), device=similarity.device))
+                image_loss = nn.functional.cross_entropy(
+                    similarity.t(), torch.arange(len(similarity), device=similarity.device))
+                return (caption_loss + image_loss) / 2.0
+            _clip_module.clip_loss = _clip_loss
+    except Exception:
+        pass
+
+    print(f"Loading model: {model_name}  (uses local cache if already downloaded)")
+    model = SentenceTransformer(model_name, trust_remote_code=True)
+    print(f"  model ready — dim={model.get_sentence_embedding_dimension()}")
+    return model
+
+
+
+def _qwen_embed_text(model, text: str) -> List[float]:
+    """Embed a text query via Qwen (local)."""
+    embeddings = model.encode(
+        [text],
+        batch_size=1,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    )
+    return embeddings[0].tolist()
+
+
+def _qwen_embed_image(model, image_path: Path) -> List[float]:
+    """Embed an image via Qwen (local).
+
+    Preprocessing mirrors create_image_embeddings_qwen.py:
+    RGB → thumbnail 512px (LANCZOS) — PIL Image passed directly to model.
+    """
+    from PIL import Image
+
+    img = Image.open(image_path).convert("RGB")
+    if max(img.size) > MAX_IMAGE_DIM:
+        img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
+
+    embeddings = model.encode(
+        [img],
+        batch_size=1,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    )
+    return embeddings[0].tolist()
+
+
+# ----------------------------------------------------------------------
+# Title extraction — handles both collections' shapes
+# ----------------------------------------------------------------------
+
+_TITLE_RE = re.compile(r"TITLE:\s*([^\n]+)")
+
+
+def _title_from_record(metadata: Optional[Dict[str, Any]],
+                       document: Optional[str]) -> str:
+    """Best-effort title resolution.
+
+    Image collection records carry `title` directly. Text collection
+    records embed it inside the document body as `TITLE: <value>`. Some
+    records may also stash it in metadata.
+    """
+    if isinstance(metadata, dict) and metadata.get("title"):
+        return str(metadata["title"]).strip()
+    if document:
+        m = _TITLE_RE.search(document)
+        if m:
+            return m.group(1).strip()
+        # Fall back to the first non-empty line of the document.
+        for line in document.split("\n"):
+            line = line.strip()
+            if line:
+                return line[:120]
+    if isinstance(metadata, dict) and metadata.get("book_id"):
+        return f"<no title — book_id={metadata['book_id']}>"
+    return "<unknown title>"
+
+
+# ----------------------------------------------------------------------
+# Search + print
+# ----------------------------------------------------------------------
+
+def _query_and_print(label: str, collection, embedding: List[float],
+                     k: int) -> None:
+    print(f"\n[{label}]  collection={collection.name}  count={collection.count():,}")
+    try:
+        results = collection.query(
+            query_embeddings=[embedding],
+            n_results=k,
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        return
+
+    docs  = (results.get("documents") or [[]])[0]
+    metas = (results.get("metadatas") or [[]])[0]
+    dists = (results.get("distances") or [[]])[0]
+
+    if not docs and not metas:
+        print("  (no results)")
+        return
+
+    for rank, (doc, meta, dist) in enumerate(zip(docs, metas, dists), start=1):
+        title = _title_from_record(meta, doc)
+        sim   = 1 - dist
+        bid   = (meta or {}).get("book_id", "?")
+        print(f"  {rank:>2}. {title}    [sim={sim:.3f}, book_id={bid}]")
+
+
+# ----------------------------------------------------------------------
+# Main
+# ----------------------------------------------------------------------
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Probe the multimodal ChromaDB with a text query and/or a "
+            "cover image. Supports --model gemini (Google API), "
+            "--model qwen (local Qwen3-VL-Embedding), or "
+            "--model jina (local Jina CLIP v2)."
+        )
+    )
+    parser.add_argument(
+        "--model", "-m",
+        choices=["gemini", "qwen", "jina"],
+        default="gemini",
+        help="Embedding backend: 'gemini' (default), 'qwen', or 'jina'.",
+    )
+    parser.add_argument("--text",  "-t", default=None,
+                        help="Text query.")
+    parser.add_argument("--image", "-i", default=None,
+                        help="Path to a cover image (jpg/png/webp/...).")
+    parser.add_argument("--top-k", "-k", type=int, default=5,
+                        help="Top-K results per collection (default 5).")
+    parser.add_argument("--db-path", default=None,
+                        help=(
+                            "ChromaDB path. Defaults to "
+                            f"{DB_PATH_BY_MODEL['gemini']} for gemini, "
+                            f"{DB_PATH_BY_MODEL['qwen']} for qwen, or "
+                            f"{DB_PATH_BY_MODEL['jina']} for jina."
+                        ))
+    args = parser.parse_args()
+
+    if not args.text and not args.image:
+        parser.error("Provide --text and/or --image.")
+
+    if args.image and not Path(args.image).exists():
+        parser.error(f"--image not found: {args.image}")
+
+    # Resolve DB path
+    db_path = args.db_path or DB_PATH_BY_MODEL[args.model]
+    if not Path(db_path).exists():
+        print(f"ERROR: ChromaDB not found at {db_path}. "
+              "Run from the project root, or check --db-path.", file=sys.stderr)
+        return 1
+
+    model_labels = {'gemini': 'Google GenAI', 'qwen': 'local Qwen', 'jina': 'local Jina CLIP v2'}
+    print(f"Model:   {args.model}  ({model_labels[args.model]})")
+    print(f"DB path: {db_path}")
+
+    # ChromaDB
+    try:
+        import chromadb
+    except ImportError:
+        print("ERROR: chromadb not installed. pip install chromadb", file=sys.stderr)
+        return 1
+
+    chroma    = chromadb.PersistentClient(path=db_path)
+    text_col  = chroma.get_collection(name=TEXT_COLLECTION)
+    image_col = chroma.get_collection(name=IMAGE_COLLECTION)
+
+    # ---- Set up embedding backend ----
+    if args.model == "gemini":
+        _load_env_files()
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            print("ERROR: GOOGLE_API_KEY not set in env or any .env file.",
+                  file=sys.stderr)
+            return 1
+        try:
+            from google import genai
+        except ImportError:
+            print("ERROR: google-genai not installed. pip install google-genai",
+                  file=sys.stderr)
+            return 1
+        client = genai.Client(api_key=api_key)
+        embed_text  = lambda text:  _gemini_embed_text(client, text)
+        embed_image = lambda path:  _gemini_embed_image(client, path)
+
+    elif args.model == "qwen":
+        qwen_model  = _load_qwen_model()
+        embed_text  = lambda text:  _qwen_embed_text(qwen_model, text)
+        embed_image = lambda path:  _qwen_embed_image(qwen_model, path)
+
+    else:  # jina
+        # clip_loss patch
+        try:
+            import torch as _t
+            import torch.nn as nn
+            import transformers.models.clip.modeling_clip as _clip_module
+            if not hasattr(_clip_module, "clip_loss"):
+                def _clip_loss(similarity: _t.Tensor) -> _t.Tensor:
+                    caption_loss = nn.functional.cross_entropy(
+                        similarity, _t.arange(len(similarity), device=similarity.device))
+                    image_loss = nn.functional.cross_entropy(
+                        similarity.t(), _t.arange(len(similarity), device=similarity.device))
+                    return (caption_loss + image_loss) / 2.0
+                _clip_module.clip_loss = _clip_loss
+        except Exception:
+            pass
+
+        # Single AutoModel handles both encode_text() and encode_image()
+        from transformers import AutoModel as _AutoModel
+        import numpy as _np
+        print(f"Loading model: {JINA_MODEL_NAME}  (uses local cache if already downloaded)")
+        jina_image_model = _AutoModel.from_pretrained(JINA_MODEL_NAME, trust_remote_code=True)
+        if _t.cuda.is_available():
+            jina_image_model = jina_image_model.to("cuda")
+            print("  model on GPU (encode_text + encode_image)")
         else:
-            print("❌ Invalid choice. Please enter 1-5.")
+            print("  model on CPU (slow — enable CUDA)")
+
+        def _jina_embed_text(text: str) -> List[float]:
+            # AutoModel.encode_text() — no prompt, matches stored embeddings
+            with _t.no_grad():
+                emb = jina_image_model.encode_text([text])
+            if hasattr(emb, "cpu"):
+                emb = emb.cpu()
+            arr = _np.array(emb).flatten().astype(_np.float32)
+            norm = _np.linalg.norm(arr)
+            if norm > 0:
+                arr = arr / norm
+            return arr.tolist()
+
+        def _jina_embed_image(path: Path) -> List[float]:
+            from PIL import Image
+            img = Image.open(path).convert("RGB")
+            if max(img.size) > MAX_IMAGE_DIM:
+                img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
+            with _t.no_grad():
+                emb = jina_image_model.encode_image([img])
+            if hasattr(emb, "cpu"):
+                emb = emb.cpu()
+            arr = _np.array(emb).flatten().astype(_np.float32)
+            norm = _np.linalg.norm(arr)
+            if norm > 0:
+                arr = arr / norm
+            return arr.tolist()
+
+        embed_text  = _jina_embed_text
+        embed_image = _jina_embed_image
+
+    # --- Text branch ---
+    if args.text:
+        print(f"\n=== Text query: {args.text!r} ===")
+        try:
+            t_emb = embed_text(args.text)
+        except Exception as e:
+            print(f"  text embedding failed: {e}")
+        else:
+            print(f"  text embedding dim={len(t_emb)}")
+            _query_and_print("text->TEXT",  text_col,  t_emb, args.top_k)
+            _query_and_print("text->IMAGE", image_col, t_emb, args.top_k)
+
+    # --- Image branch ---
+    if args.image:
+        print(f"\n=== Image query: {args.image} ===")
+        try:
+            i_emb = embed_image(Path(args.image))
+        except Exception as e:
+            print(f"  image embedding failed: {e}")
+        else:
+            print(f"  image embedding dim={len(i_emb)}")
+            _query_and_print("image->TEXT",  text_col,  i_emb, args.top_k)
+            _query_and_print("image->IMAGE", image_col, i_emb, args.top_k)
+
+    return 0
+
 
 if __name__ == "__main__":
-    main() 
+    sys.exit(main())

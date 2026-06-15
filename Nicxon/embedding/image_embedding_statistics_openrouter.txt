@@ -1,0 +1,23 @@
+LIBRARY CHATBOT — IMAGE EMBEDDING STATISTICS (OpenRouter)
+============================================================
+Processing Date: 2026-05-22 17:48:20
+Processing Time: 0:01:41.530149
+
+PROCESSING SUMMARY:
+  Total image chunks:       50
+  Successfully embedded:    48
+  Failed:                   2
+  Skipped (missing file):   0
+  Skipped (bad format):     0
+  Skipped (too large):      0
+  Success rate:             96.0%
+
+API USAGE:
+  Total API calls:          54
+  Rate limit hits:          0
+
+EMBEDDING DETAILS:
+  Model:                    google/gemini-embedding-2-preview
+  Dimensions:               3072
+
+IMAGE EMBEDDING GENERATION COMPLETE ✅

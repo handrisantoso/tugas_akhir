@@ -11,7 +11,7 @@ def examine_data_structure():
         print("Loading cleaned book data...")
         
         # Load the cleaned data with proper encoding
-        with open('cleaned_data/books_updated_cleaned.json', 'r', encoding='utf-8') as f:
+        with open('cleaned_data/books_with_content.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         print(f"Total books: {len(data)}")

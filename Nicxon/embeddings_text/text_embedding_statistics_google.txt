@@ -1,0 +1,24 @@
+LIBRARY CHATBOT — TEXT EMBEDDING STATISTICS (Google GenAI SDK)
+============================================================
+Date:       2026-05-30 14:40:12
+Duration:   0:00:01.379922
+Model:      gemini-embedding-2
+Output:     E:\D backup\Compressed\embeddings_text\text_embeddings_google.json
+
+PROCESSING SUMMARY:
+  Total text chunks:      318
+  Already done (resume):  317
+  Newly embedded:         1
+  Failed:                 0
+  Truncated to 7000 chars:  0
+  Avg input length:       1567 chars
+  Embedding dim:          3072
+
+RATE-LIMIT WINDOW (final):
+  Requests in last 60s:   1 / 100
+  Tokens   in last 60s:   448 / 30,000
+  Requests today:         1 / 1000
+
+SAMPLE EMBEDDING:
+  mean=-0.000355  std=0.018039
+  min=-0.190156  max=0.144490

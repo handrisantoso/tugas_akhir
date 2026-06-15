@@ -1,0 +1,19 @@
+LIBRARY CHATBOT — TEXT EMBEDDING STATISTICS (Qwen local)
+============================================================
+Date:       2026-06-10 19:40:19
+Duration:   0:00:53.897155
+Model:      Qwen/Qwen3-VL-Embedding-2B
+Output:     E:\D backup\Compressed\embeddings_text\text_embeddings_qwen.json
+
+PROCESSING SUMMARY:
+  Total text chunks:      318
+  Already done (resume):  0
+  Newly embedded:         318
+  Failed:                 0
+  Skipped (empty text):   0
+  Avg input length:       1352 chars
+  Embedding dim:          2048
+
+SAMPLE EMBEDDING:
+  mean=0.000416  std=0.022059
+  min=-0.093750  max=0.080078

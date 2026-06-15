@@ -1,0 +1,7 @@
+query_id,query_text,image_path,expected_book_ids,expected_search_mode,notes
+text_001,books about colour theory and visual perception,,REPLACE_WITH_REAL_BOOK_ID,TEXT,replace expected_book_ids with real ids from your corpus before running
+text_002,short philosophy books with descriptions,,REPLACE_WITH_REAL_BOOK_ID,TEXT,page_count + has_description filter test
+text_003,Spanish literature from before 1980,,REPLACE_WITH_REAL_BOOK_ID,TEXT,language + year filter test
+img_001,,Cleaned_data/cover_images/Black_Angel.png,REPLACE_WITH_REAL_BOOK_ID,IMAGE,round-trip self-retrieval
+img_002,,Cleaned_data/cover_images/Confessions.png,REPLACE_WITH_REAL_BOOK_ID,IMAGE,round-trip self-retrieval
+hybrid_001,biographies similar to this cover,Cleaned_data/cover_images/Confessions.png,REPLACE_WITH_REAL_BOOK_ID,HYBRID,visual similarity + topical narrowing

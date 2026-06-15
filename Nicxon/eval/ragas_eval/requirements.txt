@@ -1,0 +1,10 @@
+# Optional dependencies for the RAGAS-based evaluation runner.
+# Install only when you actually want to run `eval/ragas_eval/run_ragas_eval.py`.
+#
+#   pip install -r eval/ragas_eval/requirements.txt
+#
+# The main `eval/` harness does NOT depend on any of these.
+
+ragas>=0.2.0
+datasets>=2.18.0
+langchain-google-genai>=2.0.0

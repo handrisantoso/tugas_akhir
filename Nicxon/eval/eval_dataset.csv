@@ -1,0 +1,51 @@
+query_id,query_text,image_path,expected_book_ids,expected_search_mode,notes
+text_001,crime thriller about a dark angel in murder mystery,,isbn13_9780340837665,TEXT,Black Angel - John Connolly
+text_002,spiritual autobiography confession of sins and faith,,isbn13_9781101110898,TEXT,Confessions - Augustine/Beah
+text_003,how to protect marital assets and property in a Texas divorce,,isbn13_9780974946146,TEXT,Protecting your assets from a Texas divorce
+text_004,C++ standard template library data structures and algorithms,,isbn13_9781835468555,TEXT,Data Structures and Algorithms with C++ STL
+text_005,numerical methods for scientists and engineers using MATLAB,,isbn13_9780201308600,TEXT,Introduction to Numerical Methods and MATLAB
+text_006,introductory algebra textbook for college students,,isbn13_9780321870483,TEXT,Introductory algebra
+text_007,high school statistics and probability textbook,,isbn13_9781319244323,TEXT,Statistics and Probability with Applications
+text_008,environmental chemistry of organic pollutants in water and soil,,isbn13_9781118767191,TEXT,Environmental Organic Chemistry
+text_009,vegetarian nutrition guide for bodybuilding and muscle building,,isbn13_9781533094377,TEXT,Vegetarian Bodybuilding Nutrition
+text_010,qualitative research methods collecting and interpreting data,,isbn10_0761926879,TEXT,Collecting and interpreting qualitative materials
+text_011,working from home remote office telecommuting productivity,,isbn10_0471939757,TEXT,Teleworking explained
+text_012,ancient Jewish historian Josephus complete writings,,isbn13_9781434641250,TEXT,Collected Works of Flavius Josephus
+text_013,heraldry coats of arms Norfolk churches England,,isbn13_9780342672790,TEXT,Church Heraldry of Norfolk
+text_014,color theory for artists painters and designers,,isbn10_1856694194,TEXT,Colour
+text_015,quick guide to art history for non-experts,,isbn13_9781538156599,TEXT,12-Hour Art Expert
+text_016,fashion photography and visual culture study,,isbn13_9781845115173,TEXT,Fashion as Photograph
+text_017,dream interpretation and Jungian psychology analysis,,isbn13_9781315105604,TEXT,Working with Dreams
+text_018,social justice education storytelling pedagogy,,isbn13_9780415960809,TEXT,Telling Stories to Change the World
+text_019,marriage sexuality and Christian faith,,isbn13_9781880089101,TEXT,One Flesh God's Gift of Passion
+text_020,questioning religious doubt and spiritual journey memoir,,isbn13_9781433589232,TEXT,Questioning Faith
+text_021,theology Old Testament commentary for pastors,,isbn13_9781433501357,TEXT,On the Old Testament
+text_022,dinosaur coloring activity book for young children,,isbn13_9798576515356,TEXT,Dinosaur Coloring Book for Kids
+text_023,children's picture book about a hidden animal mystery,,isbn13_9781606347607,TEXT,Who's in the shed
+text_024,horseback riding adventure story for kids,,isbn13_9781434232946,TEXT,Horseback hurdles
+text_025,children's story about butterflies nature lifecycle,,oclc_43318957,TEXT,Born to be a butterfly
+text_026,ethnobiology indigenous classification of plants and animals,,isbn13_9780691601267,TEXT,Ethnobiological Classification
+text_027,body image self-perception and social psychology,,isbn13_9781461269588,TEXT,Body and Social Psychology
+text_028,epistemology autonomy and knowledge philosophy,,isbn13_9781003003465,TEXT,Epistemic Autonomy
+text_029,post-humanist philosophy ethics and animals,,isbn13_9788869771545,TEXT,Beyond Anthropocentrims
+text_030,Go programming language practical projects tutorial,,isbn13_9781484296653,TEXT,Go Crazy
+text_031,foreign aid political reform Congo Africa,,isbn13_9781351368520,TEXT,Aid Relations Congo
+text_032,building materials selection guide architects,,isbn13_9780080949598,TEXT,Materials for Architects and Builders
+text_033,extradition law international treaties United States,,isbn13_9781604565881,TEXT,Extradition to and from the United States
+text_034,confidentiality law privacy restatement legal guide,,isbn13_9781841138114,TEXT,The Law of Confidentiality
+text_035,business security economics risk management,,isbn13_9781909287686,TEXT,Economic Security of Business Transactions
+text_036,government contracting performance work statement guide,,isbn13_9781539812678,TEXT,How to Create a Performance Work Statement
+text_037,romance novel small town love story contemporary fiction,,isbn13_9798514787005,TEXT,Her Unexpected Catch
+text_038,young adult paranormal romance novel,,isbn13_9781977231291,TEXT,Whisper from Noelle
+img_001,,Cleaned_data/cover_images/Black_Angel.png,isbn13_9780340837665,IMAGE,self-retrieval round-trip
+img_002,,Cleaned_data/cover_images/Confessions.png,isbn13_9781101110898,IMAGE,self-retrieval round-trip
+img_003,,Cleaned_data/cover_images/Data_Structures_and_Algorithms_with_the_C++_STL.png,isbn13_9781835468555,IMAGE,self-retrieval round-trip
+img_004,,Cleaned_data/cover_images/Dinosaur_Coloring_Book_for_Kids.png,isbn13_9798576515356,IMAGE,self-retrieval round-trip
+img_005,,Cleaned_data/cover_images/Go_Crazy.png,isbn13_9781484296653,IMAGE,self-retrieval round-trip
+img_006,,Cleaned_data/cover_images/Colour.png,isbn10_1856694194,IMAGE,self-retrieval round-trip
+img_007,,Cleaned_data/cover_images/Statistics_and_Probability_with_Applications_(High_School).png,isbn13_9781319244323,IMAGE,self-retrieval round-trip
+hybrid_001,ancient archaeological mystery conspiracy megalith,Cleaned_data/cover_images/Uriel's_Machine.png,isbn13_9781446410448,HYBRID,Uriel's Machine
+hybrid_002,young adult romance novel couple,Cleaned_data/cover_images/Penn_&_Ava.png,isbn13_9781956897432,HYBRID,Penn & Ava
+hybrid_003,philosophy of knowledge and belief,Cleaned_data/cover_images/Epistemic_Autonomy.png,isbn13_9781003003465,HYBRID,Epistemic Autonomy
+hybrid_004,religious doubt faith spiritual questioning,Cleaned_data/cover_images/Questioning_Faith.png,isbn13_9781433589232,HYBRID,Questioning Faith
+hybrid_005,materials for building and construction,Cleaned_data/cover_images/Materials_for_Architects_and_Builders.png,isbn13_9780080949598,HYBRID,Materials for Architects
