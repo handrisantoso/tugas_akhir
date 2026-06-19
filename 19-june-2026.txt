@@ -1,0 +1,59 @@
+Update Pembahasan 19 Juni 2026: Eksperimen v12 dan v13
+
+Setelah eksperimen v10 dan v11, penelitian dilanjutkan ke versi v12 dan v13 untuk memperbaiki stabilitas hasil inferensi video. Pada tahap sebelumnya, v10 sudah memberikan hasil validasi yang sangat baik, yaitu akurasi top-1 sebesar 97.06%. Namun, ketika model digunakan pada video penuh, masih ditemukan beberapa prediksi yang kurang stabil. Hal ini menunjukkan bahwa akurasi validasi saja belum cukup untuk menentukan versi terbaik, karena model juga harus diuji secara kualitatif pada video inferensi sebenarnya.
+
+1. Eksperimen v12: No Interpolation
+
+Pada versi v12, perubahan utama yang dilakukan adalah menghilangkan interpolasi keypoint pada proses inferensi. Sebelumnya, keypoint yang hilang atau rusak dapat diisi kembali melalui proses interpolasi. Meskipun interpolasi dapat membuat data skeleton terlihat lebih lengkap, pendekatan ini memiliki risiko karena model dapat menerima skeleton buatan yang tidak benar-benar berasal dari pose asli pemain.
+
+Masalah ini penting karena pada video Tekken, keypoint bisa rusak akibat beberapa kondisi, seperti karakter saling menutupi, pose terlalu ekstrem, efek serangan, motion blur, atau bounding box yang menangkap bagian tubuh lawan. Jika bagian yang rusak langsung diinterpolasi, maka model bisa saja belajar atau memprediksi berdasarkan pola skeleton yang sebenarnya tidak valid.
+
+Oleh karena itu, v12 dibuat dengan pendekatan yang lebih ketat, yaitu keypoint yang hilang tidak lagi dipaksa untuk diisi secara halus. Keypoint yang tidak tersedia dipertahankan sebagai nilai kosong atau nol dengan confidence score rendah. Dengan cara ini, model dan sistem inferensi tidak terlalu bergantung pada data pose buatan.
+
+Hasil training v12 tetap sangat baik. Model mencapai akurasi validasi top-1 sebesar 97.06% pada epoch 12, dengan top-5 mencapai 100%. Checkpoint terbaik tersimpan sebagai best_acc_top1_epoch_12.pth. Hasil ini menunjukkan bahwa penghapusan interpolasi tidak merusak kemampuan model secara signifikan. Bahkan, secara metodologis, v12 lebih realistis karena sistem tidak lagi menyembunyikan kelemahan ekstraksi keypoint dengan interpolasi.
+
+Namun, pada pengujian video, v12 masih belum menjadi versi akhir. Walaupun hasilnya lebih realistis, prediksi masih dapat terlihat kurang stabil pada beberapa bagian, terutama saat gerakan masuk ke fase transisi, saat pemain saling berdekatan, atau saat sistem belum cukup yakin terhadap kelas gerakan tertentu. Karena itu, eksperimen dilanjutkan ke v13.
+
+2. Eksperimen v13: No Interpolation dengan Offset -3, 0, +6
+
+Versi v13 merupakan pengembangan dari v12. Pendekatan no interpolation tetap dipertahankan, tetapi strategi augmentasi temporal pada dataset diperbaiki. Pada v13, digunakan offset temporal -3, 0, dan +6 untuk setiap sequence gerakan.
+
+Pemilihan offset ini dilakukan karena dalam video asli, posisi window 30 frame saat inferensi tidak selalu tepat berada di tengah gerakan. Kadang window dimulai sedikit sebelum gerakan aktif, kadang tepat pada inti gerakan, dan kadang sedikit setelah gerakan utama terjadi. Oleh karena itu, model perlu dilatih agar tidak hanya mengenali satu posisi temporal yang terlalu spesifik.
+
+Offset -3 digunakan untuk memberi toleransi kecil sebelum gerakan utama dimulai. Offset 0 digunakan sebagai representasi utama dari anotasi asli. Offset +6 digunakan untuk menangkap bagian lanjutan atau recovery dari gerakan. Dibandingkan offset yang terlalu jauh ke awal, seperti -6, offset -3 dinilai lebih aman karena tidak terlalu banyak mengambil frame sebelum gerakan benar-benar dimulai. Sementara itu, offset +6 membantu model mengenali gerakan ketika window inferensi sedikit terlambat menangkap aksi.
+
+Dataset v13 menggunakan 17 kelas, yaitu 16 gerakan Bryan dan 1 kelas idle. Jumlah total clip adalah 510, dengan pembagian 408 data train dan 102 data validasi. Setiap clip menggunakan window 30 frame. Kelas idle tetap digunakan agar model tidak dipaksa untuk selalu memilih salah satu gerakan ketika pemain sedang diam atau tidak melakukan move yang termasuk label.
+
+Hasil training v13 menjadi yang terbaik dibandingkan versi sebelumnya. Model mencapai akurasi validasi top-1 sebesar 100% pada epoch 16, dengan top-5 juga sebesar 100%. Checkpoint terbaik tersimpan sebagai best_acc_top1_epoch_16.pth. Secara kuantitatif, v13 lebih baik daripada v12 yang mencapai top-1 97.06%.
+
+3. Perbandingan v12 dan v13
+
+Secara konsep, v12 dan v13 sama-sama lebih baik daripada pendekatan awal karena keduanya tidak lagi bergantung pada interpolasi keypoint. Perbedaannya adalah v13 memiliki strategi temporal yang lebih sesuai dengan kondisi inferensi video.
+
+v12 membuktikan bahwa no interpolation masih dapat menghasilkan akurasi tinggi dan lebih jujur terhadap kualitas skeleton asli. Namun, v13 memperbaiki kemampuan model dalam menghadapi pergeseran waktu gerakan. Dengan offset -3, 0, dan +6, model menjadi lebih toleran terhadap variasi timing dalam window 30 frame.
+
+Dari sisi hasil validasi, v12 memperoleh top-1 97.06%, sedangkan v13 memperoleh top-1 100%. Dari sisi inferensi video, v13 juga terlihat lebih stabil karena model lebih siap menghadapi window yang tidak selalu sejajar sempurna dengan anotasi.
+
+4. Mengapa v13 dengan threshold 0.75 menjadi versi terakhir
+
+Pada tahap inferensi video v13, dilakukan pengujian dengan threshold confidence yang berbeda, salah satunya 0.55 dan 0.75. Threshold ini menentukan kapan prediksi gerakan dianggap cukup yakin untuk ditampilkan.
+
+Jika threshold terlalu rendah, seperti 0.55, sistem akan lebih sering menampilkan prediksi. Kelebihannya adalah lebih banyak gerakan yang terdeteksi. Namun, kekurangannya adalah prediksi yang kurang yakin juga tetap muncul, sehingga output video menjadi lebih mudah terlihat jitter, lebih sering berubah-ubah, dan lebih berisiko menampilkan label yang salah pada bagian transisi atau idle.
+
+Sebaliknya, threshold 0.75 lebih ketat. Model hanya menampilkan prediksi ketika confidence cukup tinggi. Dengan threshold ini, beberapa prediksi yang kurang yakin tidak ditampilkan. Hasilnya, video inferensi menjadi lebih bersih dan lebih dapat dipercaya. Sistem lebih memilih untuk tidak menampilkan label daripada menampilkan label yang salah.
+
+Pendekatan ini lebih sesuai untuk tujuan penelitian karena kualitas prediksi lebih penting daripada jumlah prediksi yang muncul. Dalam konteks analisis gerakan Tekken, prediksi yang salah dapat lebih merugikan daripada prediksi yang tidak ditampilkan. Oleh karena itu, threshold 0.75 dipilih sebagai konfigurasi akhir karena memberikan keseimbangan terbaik antara akurasi, stabilitas, dan kejelasan visual.
+
+Dengan demikian, v13 0.75 dipilih sebagai versi terakhir karena memenuhi beberapa alasan utama:
+
+Pertama, v13 memiliki hasil validasi terbaik, yaitu top-1 100% dan top-5 100%.
+
+Kedua, v13 tetap menggunakan no interpolation, sehingga hasilnya lebih realistis dan tidak terlalu bergantung pada keypoint buatan.
+
+Ketiga, offset -3, 0, dan +6 membuat model lebih tahan terhadap variasi timing pada video inferensi.
+
+Keempat, threshold 0.75 mengurangi prediksi palsu dan membuat hasil video lebih stabil.
+
+Kelima, secara kualitatif, video demo v13 dengan threshold 0.75 memberikan hasil paling bersih dibandingkan threshold yang lebih rendah.
+
+Berdasarkan pertimbangan tersebut, v13 0.75 dianggap sebagai versi final dari eksperimen ini. Versi ini bukan hanya dipilih karena angka validasinya paling tinggi, tetapi juga karena hasil inferensi videonya paling masuk akal secara visual dan paling aman untuk digunakan sebagai hasil akhir penelitian.

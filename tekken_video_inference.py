@@ -150,6 +150,16 @@ def parse_args() -> argparse.Namespace:
         help="Rolling keypoint window length sent to ST-GCN++.",
     )
     parser.add_argument(
+        "--kp-interpolation",
+        choices=("window", "none"),
+        default="window",
+        help=(
+            "How to handle missing keypoints before ST-GCN++. "
+            "'window' keeps the v10 behavior by interpolating inside the current rolling window; "
+            "'none' zero-fills missing keypoints for the v12 no-interpolation test."
+        ),
+    )
+    parser.add_argument(
         "--predict-every",
         type=int,
         default=3,
@@ -438,8 +448,30 @@ def interpolate_window(kp_window: deque[np.ndarray]) -> np.ndarray:
     return window
 
 
-def build_action_sample(kp_window: deque[np.ndarray], frame_h: int, frame_w: int) -> dict:
-    window = interpolate_window(kp_window)
+def zero_fill_window(kp_window: deque[np.ndarray]) -> np.ndarray:
+    window = np.asarray(kp_window, dtype=np.float32).copy()
+    if window.ndim != 3:
+        raise ValueError(f"Expected keypoint window shape (T, 17, 3), got {window.shape}")
+    return np.nan_to_num(window, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def prepare_action_window(kp_window: deque[np.ndarray], kp_interpolation: str) -> np.ndarray:
+    if kp_interpolation == "window":
+        # v10 behavior: fill missing coordinates only inside the current 30-frame window.
+        return interpolate_window(kp_window)
+
+    # v12 behavior: preserve missing keypoints as missing, then encode them as zero + zero score.
+    # window = interpolate_window(kp_window)
+    return zero_fill_window(kp_window)
+
+
+def build_action_sample(
+    kp_window: deque[np.ndarray],
+    frame_h: int,
+    frame_w: int,
+    kp_interpolation: str,
+) -> dict:
+    window = prepare_action_window(kp_window, kp_interpolation)
     keypoint_xy = window[:, :, [1, 0]][None].astype(np.float32)
     keypoint_score = window[:, :, 2][None].astype(np.float32)
     return {
@@ -478,8 +510,9 @@ def predict_action(
     frame_w: int,
     id_to_label: dict[int, str],
     confidence_threshold: float,
+    kp_interpolation: str,
 ) -> Prediction:
-    sample = build_action_sample(kp_window, frame_h, frame_w)
+    sample = build_action_sample(kp_window, frame_h, frame_w, kp_interpolation)
     data = pipeline(sample)
     data = pseudo_collate([data])
 
@@ -806,6 +839,7 @@ def process_video(args: argparse.Namespace) -> None:
     print(f"Detector: {args.detector}")
     print(f"Pose: {args.pose_model} imgsz={args.pose_imgsz}")
     print(f"ST-GCN: {args.checkpoint}")
+    print(f"KP interpolation: {args.kp_interpolation}")
     print(f"Labels: {id_to_label}")
 
     while True:
@@ -876,6 +910,7 @@ def process_video(args: argparse.Namespace) -> None:
                         frame_w,
                         id_to_label,
                         args.action_conf,
+                        args.kp_interpolation,
                     )
                     update_stable_prediction(player, new_prediction, args.stable_predictions)
         timings_ms["action"] = (time.perf_counter() - action_start) * 1000
