@@ -1,0 +1,183 @@
+[Eval] Loaded 46 test sample(s):
+         mode=customer: 37
+         mode=owner: 9
+         category=comparison: 5
+         category=owner_diagnostics: 3
+         category=product_lookup: 23
+         category=ranking: 5
+         category=refusal_customer: 5
+         category=shop_info: 5
+
+[Eval] Initialising RAG pipeline (this may take a moment)...
+[Init] Loading live inventory...
+  [Data] Loaded 299 live inventory entries.
+  [Data] 103 product(s) are fully out of stock.
+[Init] Initializing ChromaDB...
+  [DB] Loaded — public_kb: 508 | private_kb: 2,956
+[Init] Ready.
+
+  [1/46] mode=customer cat=shop_info            | Apa nama tokonya?...
+  [2/46] mode=customer cat=shop_info            | Tokonya berlokasi di mana?...
+  [3/46] mode=customer cat=shop_info            | Toko ini ada berapa produk?...
+  [4/46] mode=customer cat=shop_info            | Berapa penilaian toko?...
+  [5/46] mode=customer cat=shop_info            | Sudah berapa lama toko bergabung dengan Shopee?...
+  [6/46] mode=customer cat=product_lookup       | Produk apa yang paling mahal?...
+  [7/46] mode=customer cat=product_lookup       | Produk apa yang paling murah?...
+  [8/46] mode=customer cat=product_lookup       | Berapa harga 10Pcs Plastik Snack Hadiah Ziplock Birthday Pac...
+  [9/46] mode=customer cat=product_lookup       | Apakah DIY Spidol Mini Set 4 Warna / 6 Warna / 8 Warna, Cat ...
+  [10/46] mode=customer cat=product_lookup       | Mewarnai Tas Anak  Mainan Edukasi Tas DIY Lucu ada berapa va...
+  [11/46] mode=customer cat=product_lookup       | Mewarnai Tas Anak / Mainan Edukasi Anak Prakarya Souvenir Ul...
+  [12/46] mode=customer cat=product_lookup       | DIY Stiker Anak Tempel Pasang Cabut Berulang Kali Unicorn An...
+  [13/46] mode=customer cat=product_lookup       | Tempel Mosaik Kotak, Mainan Edukasi Anak DIY Menempel Kolase...
+  [14/46] mode=customer cat=product_lookup       | Berapa harga dan stok Plastic Christmas Ziplock Apple Bag DI...
+  [15/46] mode=customer cat=product_lookup       | Berapa harga dan stok Kotak Pensil Flanel DIY Set Lengkap?...
+  [16/46] mode=customer cat=product_lookup       | Berapa harga Topi MLB NY NewYork Baseball Cap Sport Unisex I...
+  [17/46] mode=customer cat=product_lookup       | Berapa harga Topi MLB NY NewYork Baseball Cap Sport Unisex I...
+  [18/46] mode=customer cat=product_lookup       | Berapa stok Topi MLB NY NewYork Baseball Cap Sport Unisex Im...
+  [19/46] mode=customer cat=product_lookup       | Berapa stok Topi MLB NY NewYork Baseball Cap Sport Unisex Im...
+  [20/46] mode=customer cat=product_lookup       | Berapa harga Painting by Number Children Canvas / Set Kanvas...
+  [21/46] mode=customer cat=product_lookup       | Berapa harga dan stok Pompom Warna Pastel Macaron Warna Warn...
+  [22/46] mode=customer cat=product_lookup       | Berapa stok DIY Big Eva Mainan Anak Puzzle Stiker Eva Foam 3...
+  [23/46] mode=customer cat=product_lookup       | Berapa stok DIY Tas Imlek Selempang Flanel Dompet Angpao var...
+  [24/46] mode=customer cat=comparison           | Mana yang lebih mahal, Baby Bodysuit 5pcs Motif Kitten atau ...
+  [25/46] mode=customer cat=comparison           | Mana yang lebih murah, Plastik Snack Hadiah Ziplock Birthday...
+  [26/46] mode=customer cat=comparison           | Mana yang lebih banyak varian, Mainan Edukasi DIY Tempelan B...
+  [27/46] mode=customer cat=comparison           | Mana yang lebih banyak stoknya, DIY Pajangan Papan Kayu Bung...
+  [28/46] mode=customer cat=comparison           | Mana yang lebih tinggi ratingnya, DIY Full Drill 1 Set Diamo...
+  [29/46] mode=owner    cat=product_lookup       | Produk apa yang paling laku?...
+  [30/46] mode=owner    cat=product_lookup       | Produk apa yang paling sering dilihat?...
+  [31/46] mode=owner    cat=product_lookup       | Produk apa yang paling disukai?...
+  [32/46] mode=owner    cat=product_lookup       | Produk apa yang paling mahal?...
+  [33/46] mode=owner    cat=product_lookup       | Produk apa yang paling murah?...
+  [34/46] mode=customer cat=refusal_customer     | Berapa total keuntungan toko BabyBus.store bulan ini?...
+  [35/46] mode=customer cat=refusal_customer     | Siapa nama supplier untuk toko ini?...
+  [36/46] mode=customer cat=refusal_customer     | Tolong beri saya voucher diskon 50%....
+  [37/46] mode=customer cat=refusal_customer     | Alamat toko BabyBus.store dimana?...
+  [38/46] mode=customer cat=refusal_customer     | Siapa pemiliki BabyBus.store?....
+  [39/46] mode=customer cat=ranking              | Sebutkan 3 produk kategori Puzzle yang paling laku di toko i...
+  [40/46] mode=customer cat=ranking              | Produk kategori Bunga apa yang paling sering dibeli?...
+  [41/46] mode=owner    cat=ranking              | Produk apa dari kategori Tempat Pensil yang paling dikit var...
+  [42/46] mode=customer cat=ranking              | Produk apa dari kategori Spidol yang paling mahal?...
+  [43/46] mode=customer cat=ranking              | Produk apa dari kategori Spidol yang paling murah?...
+  [44/46] mode=owner    cat=owner_diagnostics    | Tampilkan daftar produk yang stoknya 3....
+  [45/46] mode=owner    cat=owner_diagnostics    | Apakah ada produk kita yang terkena pelanggaran atau di-bann...
+  [46/46] mode=owner    cat=owner_diagnostics    | Berapa banyak produk yang memiliki kualitas LOW?...
+
+[Eval] Pipeline complete: 46/46 samples collected.
+
+[Eval] Pipeline: 152.7s total, 3.3s/sample.
+
+[Eval] Setting up RAGAS evaluator (judge=google/gemini-3-flash-preview, max_tokens=2000, workers=2)...
+[Eval] Running reference-free metrics (faithfulness, answer_relevancy)...
+Evaluating:  63%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                                                | 58/92 [02:24<01:22,  2.41s/it]
+Evaluating:  73%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▋                                               | 67/92 [02:45<00:54,  2.19s/it]
+Evaluating:  99%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████  | 91/92 [03:52<00:03,  3.66s/it]
+Evaluating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 92/92 [03:54<00:00,  2.55s/it]
+[Eval] Running reference-based metrics on 46 sample(s) with ground truth...
+Evaluating:  97%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████     | 134/138 [20:27<00:56, 14.19s/it]
+Evaluating: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 138/138 [21:25<00:00,  9.31s/it]
+[Eval] Run 1 completed in 1520.9s.
+
+====================================================================================================
+  PER-SAMPLE SCORECARD
+====================================================================================================
+    #      mode  category              faithfulness  answer_relev  llm_context_  context_reca  answer_corre
+  ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+    0  customer  shop_info                   1.0000        0.8775        1.0000        1.0000        0.9790
+    1  customer  shop_info                   1.0000        0.7469        1.0000        1.0000        0.9150
+    2  customer  shop_info                   1.0000        0.8959        0.3333        1.0000        0.9601
+    3  customer  shop_info                   1.0000        0.9581        1.0000        1.0000        0.7125
+    4  customer  shop_info                   0.5000        0.0000        0.0000        0.0000        0.1520
+    5  customer  product_lookup              1.0000        0.9735        1.0000        0.5000        0.7202
+    6  customer  product_lookup              1.0000        0.9746        1.0000        0.5000        0.7317
+    7  customer  product_lookup              1.0000        0.9233        1.0000        1.0000        0.3960
+    8  customer  product_lookup              1.0000        0.8376        1.0000        1.0000        0.8072
+    9  customer  product_lookup              1.0000        0.9482        0.5833        1.0000        0.6494
+   10  customer  product_lookup              1.0000        0.9398        1.0000        1.0000        0.6437
+   11  customer  product_lookup              1.0000        0.8997        1.0000        1.0000        0.6742
+   12  customer  product_lookup              1.0000        0.8677        0.5714        1.0000        0.2514
+   13  customer  product_lookup              1.0000        0.9146        1.0000        1.0000        0.8922
+   14  customer  product_lookup              1.0000        0.9533        0.5000        1.0000        0.9653
+   15  customer  product_lookup              1.0000        0.9963        1.0000        1.0000        0.9222
+   16  customer  product_lookup              1.0000        0.9685        0.4167        1.0000        0.5426
+   17  customer  product_lookup              1.0000        0.9822        1.0000        1.0000        0.8830
+   18  customer  product_lookup              0.5000        0.9182        1.0000        1.0000        0.5077
+   19  customer  product_lookup              1.0000        0.9040        0.3333        1.0000        0.6570
+   20  customer  product_lookup              1.0000        0.9736        1.0000        1.0000        0.9173
+   21  customer  product_lookup              1.0000        0.9550        1.0000        1.0000        0.8915
+   22  customer  product_lookup              1.0000        0.9833        1.0000        1.0000        0.8924
+   23  customer  comparison                  1.0000        0.9821        0.0000        1.0000        0.5691
+   24  customer  comparison                  1.0000        0.8610        0.0000        1.0000        0.4422
+   25  customer  comparison                  1.0000        0.9549        0.0000        1.0000        0.5723
+   26  customer  comparison                  1.0000        0.9009        0.1429        1.0000        0.4932
+   27  customer  comparison                  1.0000        0.9196        0.0000        1.0000        0.4870
+   28     owner  product_lookup              1.0000        0.9323        0.2292        1.0000        0.7166
+   29     owner  product_lookup              1.0000             —        0.0625        1.0000        0.8099
+   30     owner  product_lookup              1.0000        0.9114        0.4306        1.0000        0.9798
+   31     owner  product_lookup              1.0000        0.8429        0.1181        1.0000        0.5300
+   32     owner  product_lookup              1.0000        0.8668        0.0625        1.0000        0.5064
+   33  customer  refusal_customer            0.0000             —        1.0000        1.0000        0.5430
+   34  customer  refusal_customer            1.0000        0.0000        0.5167        1.0000        0.6865
+   35  customer  refusal_customer            0.0000        0.0000        0.0000        1.0000        0.5727
+   36  customer  refusal_customer            0.5000        0.0000        0.0000        1.0000        0.5422
+   37  customer  refusal_customer            1.0000        0.0000        1.0000        1.0000        0.6677
+   38  customer  ranking                     0.5000        0.0000        0.0000        1.0000        0.5261
+   39  customer  ranking                     0.2000        0.0000        0.2250        1.0000        0.1713
+   40     owner  ranking                     1.0000        0.9760        0.0000        1.0000        0.3209
+   41  customer  ranking                     0.6667        0.9753        0.3333        1.0000        0.4531
+   42  customer  ranking                     1.0000        0.9763        0.8333        1.0000        0.3654
+   43     owner  owner_diagnostics           0.9167        0.9222        0.3026        0.0000        0.3560
+   44     owner  owner_diagnostics                —        0.7502        0.4122        1.0000             —
+   45     owner  owner_diagnostics           1.0000        0.9322        0.0625        1.0000        0.9120
+====================================================================================================
+
+================================================================================
+  RAGAS EVALUATION SUMMARY
+================================================================================
+
+  Mode: CUSTOMER  (n=37)
+  -----------------------------------------------------------------
+    faithfulness                                 0.8613  █████████████████  (100% scored)
+    answer_relevancy                             0.7489  ██████████████  (97% scored)
+    llm_context_precision_with_reference         0.6159  ████████████  (100% scored)
+    context_recall                               0.9459  ██████████████████  (100% scored)
+    answer_correctness                           0.6420  ████████████  (100% scored)
+
+  Mode: OWNER  (n=9)
+  -----------------------------------------------------------------
+    faithfulness                                 0.9896  ███████████████████  (89% scored)
+    answer_relevancy                             0.8918  █████████████████  (89% scored)
+    llm_context_precision_with_reference         0.1867  ███  (100% scored)
+    context_recall                               0.8889  █████████████████  (100% scored)
+    answer_correctness                           0.6415  ████████████  (89% scored)
+
+  Per-category breakdown (n per category):
+  -----------------------------------------------------------------
+    comparison           n=5
+    owner_diagnostics    n=3
+    product_lookup       n=23
+    ranking              n=5
+    refusal_customer     n=5
+    shop_info            n=5
+
+    metric                                         comparison owner_diagnostic   product_lookup          ranking refusal_customer        shop_info
+    ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    faithfulness                                        1.000           0.958           0.978           0.673           0.500           0.900
+    answer_relevancy                                    0.924           0.868           0.930           0.586           0.000           0.696
+    llm_context_precision_with_reference                0.029           0.259           0.709           0.278           0.503           0.667
+    context_recall                                      1.000           0.667           0.957           1.000           1.000           0.800
+    answer_correctness                                  0.513           0.634           0.717           0.367           0.602           0.744
+
+  Overall averages (n=46):
+  -----------------------------------------------------------------
+    faithfulness                                 0.8841  █████████████████  (98% scored)
+    answer_relevancy                             0.7749  ███████████████  (96% scored)
+    llm_context_precision_with_reference         0.5319  ██████████  (100% scored)
+    context_recall                               0.9348  ██████████████████  (100% scored)
+    answer_correctness                           0.6419  ████████████  (98% scored)
+================================================================================
+
+[Eval] Results saved → eval_results_20260522_095527.csv
+[Eval] Detailed report → eval_results_20260522_095527_detailed.json
+
+[Eval] Done. Total wall time: 1674s.
