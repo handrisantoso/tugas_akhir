@@ -1,0 +1,36 @@
+Model:    YOLOv10n
+Backend:  PyTorch (CPU)
+Weights:  /home/david/Desktop/Tugas_Akhir/Trained_Models/YOLOv10n/weights/best.pt
+Split:    test   (images: 108)
+Config:   imgsz=640  conf=0.001  iou=0.7  device=cpu
+Saved:    /home/david/Desktop/Tugas_Akhir/Output_Folder/YOLOv10n_CPU
+
+Overall
+  Precision (mean):  0.9369
+  Recall (mean):     0.9522
+  mAP@50:            0.9766
+  mAP@75:            0.8603
+  mAP@50-95:         0.7387
+
+Performance
+  Inference only:      4.09 FPS  (244.33 ms/img)
+  End-to-end:          4.06 FPS  (246.03 ms/img incl. pre/post)
+  CPU peak:         95%   (system-wide; 100% = all 4 cores maxed)
+  RAM peak:         3.35 GB / 7.87 GB   (42.6% system-wide)
+
+Per class
+Class                       P        R     mAP50   mAP50-95
+-----------------------------------------------------------
+1-ball                 0.9637   1.0000    0.9950     0.8451
+2-ball                 0.9682   1.0000    0.9943     0.7874
+3-ball                 0.9808   0.9474    0.9824     0.7766
+4-ball                 0.9876   0.9938    0.9949     0.7683
+5-ball                 0.9909   1.0000    0.9950     0.8085
+6-ball                 0.9707   1.0000    0.9949     0.8018
+7-ball                 0.9854   0.9901    0.9949     0.7534
+8-ball                 0.9833   0.9905    0.9950     0.7865
+9-ball                 0.9493   0.9902    0.9945     0.7444
+cue                    0.9780   1.0000    0.9950     0.7725
+cue_stick              1.0000   0.4793    0.7709     0.2319
+pocket                 0.9838   0.9876    0.9938     0.7978
+rack                   0.4382   1.0000    0.9950     0.7297
