@@ -84,7 +84,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "practice_videos" / "tekken_stgcn_demo.mp4",
+        default=ROOT / "practice_videos" / "tekken_stgcn_demo_v13_no_interp_offsets_m3_0_6_0.75.mp4",
         help="Output visualization video path.",
     )
     parser.add_argument(
@@ -107,8 +107,8 @@ def parse_args() -> argparse.Namespace:
         / "configs"
         / "skeleton"
         / "stgcnpp"
-        / "tekken_stgcn.py",
-        help="MMAction2 ST-GCN++ config.",
+        / "tekken_stgcn_all_moves_idle.py",
+        help="MMAction2 ST-GCN++ all-moves + idle config.",
     )
     parser.add_argument(
         "--checkpoint",
@@ -116,15 +116,15 @@ def parse_args() -> argparse.Namespace:
         default=ROOT
         / "mmaction2"
         / "work_dirs"
-        / "tekken_stgcn_v3_5move_val"
-        / "best_acc_top1_epoch_10.pth",
+        / "tekken_stgcn_v13_all_moves_idle_no_interp_offsets_m3_0_6"
+        / "best_acc_top1_epoch_16.pth",
         help="Trained ST-GCN++ checkpoint.",
     )
     parser.add_argument(
         "--labels",
         type=Path,
-        default=ROOT / "practice_videos" / "move_labels_filtered.json",
-        help="Label map JSON used by the filtered 5-move dataset.",
+        default=ROOT / "practice_videos" / "move_labels_all_moves_idle.json",
+        help="Label map JSON used by the all-moves + idle dataset.",
     )
     parser.add_argument("--device", default="mps", help="YOLO device, e.g. mps/cpu/cuda:0.")
     parser.add_argument(
@@ -152,11 +152,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--kp-interpolation",
         choices=("window", "none"),
-        default="window",
+        default="none",
         help=(
             "How to handle missing keypoints before ST-GCN++. "
             "'window' keeps the v10 behavior by interpolating inside the current rolling window; "
-            "'none' zero-fills missing keypoints for the v12 no-interpolation test."
+            "'none' zero-fills missing keypoints for the v12/v13 no-interpolation setup."
         ),
     )
     parser.add_argument(
@@ -168,13 +168,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--action-conf",
         type=float,
-        default=0.35,
+        default=0.75,
         help="Display 'uncertain' when the top action probability is below this.",
     )
     parser.add_argument(
         "--stable-predictions",
         type=int,
-        default=2,
+        default=4,
         help="Only update the visible action after the same label appears this many prediction steps in a row.",
     )
     parser.add_argument(

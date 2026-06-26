@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--positive-window-size",
         type=int,
-        default=0,
+        default=30,
         help="If >0, use a fixed-size context window around each annotated move instead of raw start/end frames.",
     )
     parser.add_argument(
@@ -42,11 +42,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--positive-offsets",
-        default="0",
+        default="-3,0,6",
         help="Comma-separated frame offsets for fixed positive windows, e.g. -6,0,6.",
     )
     parser.add_argument("--idle-label", default="idle")
-    parser.add_argument("--idle-count", type=int, default=10)
+    parser.add_argument("--idle-count", type=int, default=30)
     parser.add_argument("--idle-window-size", type=int, default=30)
     parser.add_argument("--idle-stride", type=int, default=15)
     parser.add_argument("--exclude-margin", type=int, default=15)
