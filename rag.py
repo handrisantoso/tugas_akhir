@@ -169,7 +169,7 @@ class OpenRouterEmbedding(BaseEmbedding):
 Settings.llm = OpenAILike(
     api_key=OPENROUTER_API_KEY,
     api_base="https://openrouter.ai/api/v1",
-    model="deepseek/deepseek-v4-flash",
+    model="google/gemini-2.5-flash",
     is_chat_model=True,
     max_tokens=1500,
 )
