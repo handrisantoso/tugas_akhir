@@ -11,10 +11,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
+import subprocess
 import sys
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -57,6 +60,7 @@ class Prediction:
     label: str = "warming up"
     confidence: float = 0.0
     raw_label: str = ""
+    probabilities: tuple[float, ...] = ()
 
 
 @dataclass
@@ -69,6 +73,94 @@ class PlayerState:
     pending_prediction: Prediction = field(default_factory=Prediction)
     pending_count: int = 0
     missing_frames: int = 0
+
+
+@dataclass
+class PipelineMetrics:
+    """Collect rolling and run-level end-to-end pipeline measurements."""
+
+    window_size: int = 60
+    warmup_frames: int = 30
+    stages: tuple[str, ...] = (
+        "input",
+        "det",
+        "pose",
+        "action",
+        "render",
+        "output",
+        "e2e",
+    )
+    rolling: dict[str, deque[float]] = field(init=False)
+    samples: dict[str, list[float]] = field(init=False)
+    completed_frames: int = 0
+
+    def __post_init__(self) -> None:
+        self.window_size = max(1, self.window_size)
+        self.warmup_frames = max(0, self.warmup_frames)
+        self.rolling = {
+            stage: deque(maxlen=self.window_size) for stage in self.stages
+        }
+        self.samples = {stage: [] for stage in self.stages}
+
+    def record(self, timings_ms: dict[str, float]) -> None:
+        """Record one completed frame, excluding configurable warm-up frames."""
+        self.completed_frames += 1
+        if self.completed_frames <= self.warmup_frames:
+            return
+
+        for stage in self.stages:
+            value = float(timings_ms.get(stage, 0.0))
+            self.rolling[stage].append(value)
+            self.samples[stage].append(value)
+
+    @property
+    def measured_frames(self) -> int:
+        return len(self.samples["e2e"])
+
+    def snapshot(self) -> dict[str, float | int | bool]:
+        """Return rolling values for the on-video performance panel."""
+        if not self.rolling["e2e"]:
+            return {
+                "ready": False,
+                "warmup_remaining": max(
+                    0, self.warmup_frames - self.completed_frames
+                ),
+            }
+
+        values: dict[str, float | int | bool] = {"ready": True}
+        for stage in self.stages:
+            values[stage] = float(np.mean(self.rolling[stage]))
+        values["fps"] = 1000.0 / max(float(values["e2e"]), 1e-9)
+        values["window_frames"] = len(self.rolling["e2e"])
+        return values
+
+    def summary(self) -> dict[str, object]:
+        """Return aggregate latency percentiles and pipeline throughput."""
+        if not self.samples["e2e"]:
+            return {
+                "measured_frames": 0,
+                "note": "No post-warm-up frames were measured.",
+            }
+
+        summary: dict[str, object] = {
+            "measured_frames": self.measured_frames,
+            "warmup_frames": min(self.completed_frames, self.warmup_frames),
+            "latency_ms": {},
+        }
+        latency = summary["latency_ms"]
+        assert isinstance(latency, dict)
+        for stage in self.stages:
+            values = np.asarray(self.samples[stage], dtype=np.float64)
+            latency[stage] = {
+                "mean": float(np.mean(values)),
+                "median": float(np.median(values)),
+                "p95": float(np.percentile(values, 95)),
+                "std": float(np.std(values)),
+            }
+
+        e2e_mean_ms = float(np.mean(self.samples["e2e"]))
+        summary["pipeline_fps"] = 1000.0 / max(e2e_mean_ms, 1e-9)
+        return summary
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,8 +208,8 @@ def parse_args() -> argparse.Namespace:
         default=ROOT
         / "mmaction2"
         / "work_dirs"
-        / "tekken_stgcn_v13_all_moves_idle_no_interp_offsets_m3_0_6"
-        / "best_acc_top1_epoch_16.pth",
+        / "tekken_stgcn_v13_fix_sls_annotation"
+        / "best_acc_top1_epoch_22.pth",
         help="Trained ST-GCN++ checkpoint.",
     )
     parser.add_argument(
@@ -222,6 +314,51 @@ def parse_args() -> argparse.Namespace:
         default="both",
         help="Choose which tracked player gets ST-GCN move predictions.",
     )
+    parser.add_argument(
+        "--metrics-window",
+        type=int,
+        default=60,
+        help="Completed-frame rolling window used by the latency/FPS overlay.",
+    )
+    parser.add_argument(
+        "--metrics-warmup",
+        type=int,
+        default=30,
+        help="Initial frames excluded from the aggregate runtime result.",
+    )
+    parser.add_argument(
+        "--metrics-json",
+        type=Path,
+        default=None,
+        help=(
+            "Runtime summary JSON path. By default, write "
+            "<output_stem>_metrics.json next to the output video."
+        ),
+    )
+    parser.add_argument(
+        "--predictions-json",
+        type=Path,
+        default=None,
+        help=(
+            "Optional per-prediction JSON output for annotation-based accuracy "
+            "evaluation. Records raw probabilities, thresholded labels, and "
+            "stabilized displayed labels."
+        ),
+    )
+    parser.add_argument(
+        "--device-label",
+        default="",
+        help=(
+            "Optional device text for the overlay/report, e.g. "
+            "'MacBook Pro, Apple M5, 24 GB'. Empty means auto-detect."
+        ),
+    )
+    parser.add_argument(
+        "--realtime-target-fps",
+        type=float,
+        default=0.0,
+        help="FPS target used by the real-time status. 0 uses the input-video FPS.",
+    )
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N frames. 0 means full video.")
     parser.add_argument("--show", action="store_true", help="Show a live OpenCV window.")
     return parser.parse_args()
@@ -230,6 +367,21 @@ def parse_args() -> argparse.Namespace:
 def require_path(path: Path, label: str) -> None:
     if not path.exists():
         raise FileNotFoundError(f"{label} not found: {path}")
+
+
+def validate_device(device: str, label: str) -> None:
+    """Prevent a requested accelerator from being reported after CPU fallback."""
+    normalized = device.lower().strip()
+    if normalized == "mps" and not torch.backends.mps.is_available():
+        raise RuntimeError(
+            f"{label} requested MPS, but torch.backends.mps.is_available() is False. "
+            "Run where Apple MPS access is available or explicitly choose CPU."
+        )
+    if normalized.startswith("cuda") and not torch.cuda.is_available():
+        raise RuntimeError(
+            f"{label} requested {device}, but CUDA is not available. "
+            "Choose an available device explicitly."
+        )
 
 
 def load_labels(path: Path) -> dict[int, str]:
@@ -525,7 +677,12 @@ def predict_action(
     raw_label = id_to_label.get(pred_idx, f"class_{pred_idx}")
     confidence = float(probs[pred_idx])
     label = raw_label if confidence >= confidence_threshold else "uncertain"
-    return Prediction(label=label, confidence=confidence, raw_label=raw_label)
+    return Prediction(
+        label=label,
+        confidence=confidence,
+        raw_label=raw_label,
+        probabilities=tuple(float(value) for value in probs),
+    )
 
 
 def should_classify_player(player: PlayerState, mode: str) -> bool:
@@ -772,27 +929,215 @@ def draw_prediction_panels(
 def draw_status(
     frame: np.ndarray,
     frame_idx: int,
-    timings_ms: dict[str, float],
+    metrics: dict[str, float | int | bool],
+    source_fps: float,
+    target_fps: float,
+    device_label: str,
     window_size: int,
 ) -> None:
-    text = (
-        f"frame {frame_idx} | "
-        f"det {timings_ms['det']:.2f}ms | "
-        f"pose {timings_ms['pose']:.2f}ms | "
-        f"action {timings_ms['action']:.2f}ms | "
-        f"total {timings_ms['total']:.2f}ms | "
-        f"window {window_size}"
+    frame_h, frame_w = frame.shape[:2]
+    panel_x1 = 12
+    panel_y1 = 12
+    panel_x2 = min(frame_w - 12, max(620, int(frame_w * 0.74)))
+    panel_y2 = min(frame_h - 12, 126)
+    draw_translucent_rect(
+        frame, panel_x1, panel_y1, panel_x2, panel_y2, (20, 20, 20), 0.72
     )
-    cv2.putText(
-        frame,
-        text,
-        (12, 28),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255, 255, 255),
-        2,
-        lineType=cv2.LINE_AA,
+
+    if not bool(metrics.get("ready", False)):
+        remaining = int(metrics.get("warmup_remaining", 0))
+        lines = [
+            f"Pipeline benchmark warming up: {remaining} frame(s) remaining",
+            f"Source {source_fps:.2f} FPS | target {target_fps:.2f} FPS | action window {window_size}",
+            f"Device: {device_label}",
+        ]
+        status_color = (0, 215, 255)
+    else:
+        e2e_ms = float(metrics["e2e"])
+        pipeline_fps = float(metrics["fps"])
+        realtime_ratio = pipeline_fps / max(target_fps, 1e-9)
+        realtime_ok = pipeline_fps >= target_fps
+        status = "MEETS TARGET" if realtime_ok else "BELOW TARGET"
+        status_color = (70, 220, 90) if realtime_ok else (40, 170, 255)
+        lines = [
+            (
+                f"E2E {e2e_ms:.2f} ms | pipeline {pipeline_fps:.2f} FPS | "
+                f"target {target_fps:.2f} FPS ({realtime_ratio:.2f}x) | {status}"
+            ),
+            (
+                f"input {float(metrics['input']):.2f} | "
+                f"det+track {float(metrics['det']):.2f} | "
+                f"pose {float(metrics['pose']):.2f} | "
+                f"action {float(metrics['action']):.2f} | "
+                f"render+output {float(metrics['render']) + float(metrics['output']):.2f} ms"
+            ),
+            (
+                f"Device: {device_label} | rolling "
+                f"{int(metrics['window_frames'])} frame(s) | frame {frame_idx}"
+            ),
+        ]
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    max_text_width = panel_x2 - panel_x1 - 24
+    for line_idx, line in enumerate(lines):
+        scale = fit_text_scale(
+            line,
+            max_text_width,
+            font,
+            initial_scale=0.56,
+            thickness=1,
+            min_scale=0.38,
+        )
+        color = status_color if line_idx == 0 else (245, 245, 245)
+        cv2.putText(
+            frame,
+            line,
+            (panel_x1 + 12, panel_y1 + 28 + (line_idx * 34)),
+            font,
+            scale,
+            color,
+            1,
+            lineType=cv2.LINE_AA,
+        )
+
+
+def sysctl_value(name: str) -> str:
+    """Read one macOS sysctl value without making it a runtime requirement."""
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", name],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        return result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def total_memory_gb() -> Optional[int]:
+    try:
+        total_bytes = os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+        return round(total_bytes / (1024**3))
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def mac_hardware_label() -> str:
+    """Return non-identifying Mac model/chip/memory information."""
+    if platform.system() != "Darwin":
+        return ""
+    try:
+        result = subprocess.run(
+            ["system_profiler", "SPHardwareDataType", "-json"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        entries = json.loads(result.stdout).get("SPHardwareDataType", [])
+        if not entries:
+            return ""
+        hardware = entries[0]
+        parts = [
+            hardware.get("machine_name", ""),
+            hardware.get("chip_type", ""),
+            hardware.get("physical_memory", ""),
+        ]
+        return ", ".join(str(part) for part in parts if part)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+        return ""
+
+
+def build_device_label(args: argparse.Namespace) -> str:
+    if args.device_label.strip():
+        hardware = args.device_label.strip()
+    else:
+        hardware = mac_hardware_label()
+        if not hardware:
+            chip = sysctl_value("machdep.cpu.brand_string")
+            if not chip and platform.system() == "Darwin":
+                chip = platform.processor()
+            hardware = chip or f"{platform.system()} {platform.machine()}".strip()
+            memory_gb = total_memory_gb()
+            if memory_gb:
+                hardware = f"{hardware}, {memory_gb} GB"
+
+    return (
+        f"{hardware} | detector/pose {args.device.upper()} | "
+        f"ST-GCN {args.action_device.upper()}"
     )
+
+
+def write_metrics_report(
+    path: Path,
+    args: argparse.Namespace,
+    metrics: PipelineMetrics,
+    source_fps: float,
+    target_fps: float,
+    device_label: str,
+) -> dict[str, object]:
+    report = metrics.summary()
+    pipeline_fps = float(report.get("pipeline_fps", 0.0))
+    report.update(
+        {
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "measurement_scope": (
+                "Frame read -> detector/tracker -> ROI pose -> ST-GCN -> "
+                "overlay rendering -> video write/display. Model loading is excluded."
+            ),
+            "input_video": str(args.video),
+            "output_video": str(args.output),
+            "completed_frames": metrics.completed_frames,
+            "source_fps": source_fps,
+            "realtime_target_fps": target_fps,
+            "realtime_ratio": pipeline_fps / max(target_fps, 1e-9),
+            "meets_realtime_target": pipeline_fps >= target_fps,
+            "device": device_label,
+            "detector_weights": str(args.detector),
+            "pose_weights": str(args.pose_model),
+            "pose_imgsz": args.pose_imgsz,
+            "action_checkpoint": str(args.checkpoint),
+            "yolo_device": args.device,
+            "action_device": args.action_device,
+            "rolling_window_frames": metrics.window_size,
+        }
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
+    return report
+
+
+def write_predictions_report(
+    path: Path,
+    args: argparse.Namespace,
+    source_fps: float,
+    id_to_label: dict[int, str],
+    records: list[dict[str, object]],
+) -> dict[str, object]:
+    ordered_labels = [
+        id_to_label[label_id] for label_id in sorted(id_to_label)
+    ]
+    report: dict[str, object] = {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "input_video": str(args.video),
+        "source_fps": source_fps,
+        "checkpoint": str(args.checkpoint),
+        "labels": ordered_labels,
+        "window_size": args.window_size,
+        "predict_every": args.predict_every,
+        "action_confidence_threshold": args.action_conf,
+        "stable_prediction_steps": args.stable_predictions,
+        "kp_interpolation": args.kp_interpolation,
+        "prediction_count": len(records),
+        "predictions": records,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
+    return report
 
 
 def process_video(args: argparse.Namespace) -> None:
@@ -802,6 +1147,8 @@ def process_video(args: argparse.Namespace) -> None:
     require_path(args.config, "MMAction config")
     require_path(args.checkpoint, "ST-GCN checkpoint")
     require_path(args.labels, "Label map")
+    validate_device(args.device, "Detector/pose")
+    validate_device(args.action_device, "ST-GCN")
 
     id_to_label = load_labels(args.labels)
     detector = YOLO(str(args.detector))
@@ -833,6 +1180,16 @@ def process_video(args: argparse.Namespace) -> None:
     player_set = False
     both_missing_frames = 0
     frame_idx = 0
+    pipeline_metrics = PipelineMetrics(
+        window_size=args.metrics_window,
+        warmup_frames=args.metrics_warmup,
+    )
+    device_label = build_device_label(args)
+    target_fps = args.realtime_target_fps if args.realtime_target_fps > 0 else fps
+    metrics_path = args.metrics_json or args.output.with_name(
+        f"{args.output.stem}_metrics.json"
+    )
+    prediction_records: list[dict[str, object]] = []
 
     print(f"Input: {args.video}")
     print(f"Output: {args.output}")
@@ -840,18 +1197,30 @@ def process_video(args: argparse.Namespace) -> None:
     print(f"Pose: {args.pose_model} imgsz={args.pose_imgsz}")
     print(f"ST-GCN: {args.checkpoint}")
     print(f"KP interpolation: {args.kp_interpolation}")
+    print(f"Benchmark device: {device_label}")
+    print(f"Real-time target: {target_fps:.2f} FPS")
+    print(f"Metrics report: {metrics_path}")
     print(f"Labels: {id_to_label}")
 
     while True:
         if args.max_frames and frame_idx >= args.max_frames:
             break
 
+        frame_start = time.perf_counter()
+        input_start = frame_start
         ok, frame = cap.read()
         if not ok:
             break
 
-        frame_start = time.perf_counter()
-        timings_ms = {"det": 0.0, "pose": 0.0, "action": 0.0, "total": 0.0}
+        timings_ms = {
+            "input": (time.perf_counter() - input_start) * 1000,
+            "det": 0.0,
+            "pose": 0.0,
+            "action": 0.0,
+            "render": 0.0,
+            "output": 0.0,
+            "e2e": 0.0,
+        }
 
         det_start = time.perf_counter()
         detections = yolo_detect(detector, frame, args.det_conf, args.det_iou, args.device)
@@ -913,14 +1282,30 @@ def process_video(args: argparse.Namespace) -> None:
                         args.kp_interpolation,
                     )
                     update_stable_prediction(player, new_prediction, args.stable_predictions)
+                    prediction_records.append(
+                        {
+                            "frame": frame_idx,
+                            "time_seconds": frame_idx / fps,
+                            "window_start_frame": frame_idx - args.window_size + 1,
+                            "window_end_frame": frame_idx,
+                            "player": player.name.lower().replace("p", "player", 1),
+                            "track_id": player.track_id,
+                            "raw_top1_label": new_prediction.raw_label,
+                            "raw_top1_confidence": new_prediction.confidence,
+                            "thresholded_label": new_prediction.label,
+                            "stable_label": player.prediction.label,
+                            "stable_confidence": player.prediction.confidence,
+                            "probabilities": list(new_prediction.probabilities),
+                        }
+                    )
         timings_ms["action"] = (time.perf_counter() - action_start) * 1000
 
+        render_start = time.perf_counter()
         for player, padded_box in zip(players, padded_boxes):
             draw_box_and_label(frame, padded_box, player)
             if len(player.keypoints) > 0:
                 draw_keypoints(frame, player.keypoints[-1], player.color)
 
-        timings_ms["total"] = (time.perf_counter() - frame_start) * 1000
         draw_prediction_panels(
             frame,
             players,
@@ -929,31 +1314,87 @@ def process_video(args: argparse.Namespace) -> None:
             parse_hidden_labels(args.hide_labels),
             args.panel_alpha,
         )
-        draw_status(frame, frame_idx, timings_ms, min(len(players[0].keypoints), args.window_size))
+        draw_status(
+            frame,
+            frame_idx,
+            pipeline_metrics.snapshot(),
+            fps,
+            target_fps,
+            device_label,
+            min(len(players[0].keypoints), args.window_size),
+        )
+        timings_ms["render"] = (time.perf_counter() - render_start) * 1000
+
+        output_start = time.perf_counter()
         writer.write(frame)
 
+        quit_requested = False
         if args.show:
             cv2.imshow("Tekken ST-GCN inference", frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+                quit_requested = True
+        timings_ms["output"] = (time.perf_counter() - output_start) * 1000
+        timings_ms["e2e"] = (time.perf_counter() - frame_start) * 1000
+        pipeline_metrics.record(timings_ms)
 
         if frame_idx % 100 == 0:
+            snapshot = pipeline_metrics.snapshot()
+            rolling_text = (
+                f"rolling {float(snapshot['e2e']):.2f} ms / "
+                f"{float(snapshot['fps']):.2f} FPS"
+                if bool(snapshot.get("ready", False))
+                else "benchmark warm-up"
+            )
             print(
                 f"frame {frame_idx:5d} | "
                 f"det {timings_ms['det']:.2f} ms | "
                 f"pose {timings_ms['pose']:.2f} ms | "
                 f"action {timings_ms['action']:.2f} ms | "
-                f"total {timings_ms['total']:.2f} ms"
+                f"E2E {timings_ms['e2e']:.2f} ms | "
+                f"{rolling_text}"
             )
 
         frame_idx += 1
+        if quit_requested:
+            break
 
     cap.release()
     writer.release()
     if args.show:
         cv2.destroyAllWindows()
 
+    report = write_metrics_report(
+        metrics_path,
+        args,
+        pipeline_metrics,
+        fps,
+        target_fps,
+        device_label,
+    )
+    if args.predictions_json is not None:
+        write_predictions_report(
+            args.predictions_json,
+            args,
+            fps,
+            id_to_label,
+            prediction_records,
+        )
     print(f"Done. Wrote: {args.output}")
+    print(f"Metrics: {metrics_path}")
+    if args.predictions_json is not None:
+        print(
+            f"Predictions: {args.predictions_json} "
+            f"({len(prediction_records)} records)"
+        )
+    if "pipeline_fps" in report:
+        e2e_stats = report["latency_ms"]["e2e"]
+        print(
+            f"End-to-end result ({report['measured_frames']} frames): "
+            f"{e2e_stats['mean']:.2f} ms mean, "
+            f"{e2e_stats['p95']:.2f} ms p95, "
+            f"{report['pipeline_fps']:.2f} FPS, "
+            f"{report['realtime_ratio']:.2f}x target"
+        )
 
 
 def main() -> None:

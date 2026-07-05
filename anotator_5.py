@@ -189,21 +189,20 @@ class Annotator:
         
         Button(self.btn_frame, text="Prev Frame (←)", command=self.prev_frame).pack(side="left")
         Button(self.btn_frame, text="Next Frame (→)", command=self.next_frame).pack(side="left")
-        self.start_btn = Button(self.btn_frame, text="Start Sequence (Alt+s)", command=self.start_sequence)
+        self.start_btn = Button(self.btn_frame, text="Start Sequence (Control+s)", command=self.start_sequence)
         self.start_btn.pack(side="left")
-        self.cancel_btn = Button(self.btn_frame, text="Cancel Sequence (Alt+c)", command=self.cancel_sequence)
+        self.cancel_btn = Button(self.btn_frame, text="Cancel Sequence (Control+c)", command=self.cancel_sequence)
         self.cancel_btn.pack(side="left")
-        Button(self.btn_frame, text="Save (Ctrl+S)", command=self.save_annotations).pack(side="right")
+        Button(self.btn_frame, text="Save (Command+S)", command=self.save_annotations).pack(side="right")
         
         # Key bindings
         self.root.bind('<Left>', lambda e: self.prev_frame())
         self.root.bind('<Right>', lambda e: self.next_frame())
         self.root.bind('<Shift-Left>', lambda e: self.jump_frames(-10))
         self.root.bind('<Shift-Right>', lambda e: self.jump_frames(10))
-        self.root.bind('<Right>', lambda e: self.next_frame())
-        self.root.bind('<Alt-s>', lambda e: self.start_sequence())
-        self.root.bind('<Alt-c>', lambda e: self.cancel_sequence())
-        self.root.bind('<Control-s>', lambda e: self.save_annotations())
+        self.root.bind('<Control-s>', lambda e: self.start_sequence())
+        self.root.bind('<Control-c>', lambda e: self.cancel_sequence())
+        self.root.bind('<Command-s>', lambda e: self.save_annotations())
         
         # Load the first frame
         self.draw_annotation_marks()
@@ -244,7 +243,7 @@ class Annotator:
                 duration = seq_data["duration_frames"]
                 # Use 0-based frame numbers
                 start_frame = seq_data["start_frame"]
-                end_frame = seq_data["end_frame"]
+                end_frame = seq_data["end_frame"] + 1
                 matches.append({
                     'id': seq_id,
                     'p1_move': seq_data["player1"]["move"],
