@@ -1,0 +1,13 @@
+services:
+  rag-chatbot:
+    build: .
+    container_name: shopee-rag-chatbot
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data_exports:/app/data_exports
+      - ./chroma_db:/app/chroma_db
+      - ./document_registry:/app/document_registry
+    restart: unless-stopped

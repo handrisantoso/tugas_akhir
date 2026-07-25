@@ -1,0 +1,15 @@
+chainlit
+chromadb
+llama-index
+llama-index-vector-stores-chroma
+llama-index-llms-openai-like
+python-dotenv
+httpx
+requests
+pandas
+tqdm
+datasets
+ragas
+langchain-openai
+openai
+openpyxl
