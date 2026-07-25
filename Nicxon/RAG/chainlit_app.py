@@ -8,9 +8,16 @@ import logging
 from typing import Dict, Any
 import chainlit as cl
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Load environment variables — prefer project-root .env, fall back to RAG/.env
+_here = Path(__file__).resolve().parent
+for _env_path in [
+    _here.parent / ".env",   # project root (single source of truth)
+    _here / ".env",          # RAG-local fallback
+]:
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
 
 # Import our RAG components
 from rag_engine import LibraryRAGEngine
@@ -48,7 +55,11 @@ async def start():
     
     # Initialize RAG engine
     try:
-        rag_engine = LibraryRAGEngine()
+        if rag_engine is None:
+            logger.info("Initializing global RAG engine...")
+            rag_engine = LibraryRAGEngine()
+        else:
+            logger.info("Using existing global RAG engine...")
         
         # Check system status
         status = rag_engine.get_system_status()
@@ -104,9 +115,9 @@ async def main(message: cl.Message):
                 logger.warning(f"Could not read uploaded image: {img_err}")
             break  # Only process the first image
 
-    # Show thinking indicator
+    # Show processing indicator while RAG engine is running
     thinking_msg = cl.Message(
-        content="🤔 **Thinking...**\n\nLet me search through the library collection and process your request.",
+        content="🔍 **Searching library collection...**",
         author="Assistant"
     )
     await thinking_msg.send()
@@ -118,27 +129,21 @@ async def main(message: cl.Message):
                                                         mime_type=mime_type)
         
         # Extract components
-        thinking_process = response_data.get('thinking', '')
         assistant_response = response_data.get('response', '')
         search_results = response_data.get('search_results', [])
         intent = response_data.get('intent', 'UNKNOWN')
         
-        # Update the thinking message with detailed process
-        thinking_content = f"🧠 **My Thinking Process:**\n\n{thinking_process}\n\n"
-        
         search_mode = response_data.get('search_mode', 'TEXT')
         mode_badge = {
-            'TEXT':   '🔤 TEXT search',
-            'IMAGE':  '🖼️ IMAGE search',
-            'HYBRID': '🔀 HYBRID search (text + image)',
+            'TEXT':   '🔤 Text',
+            'IMAGE':  '🖼️ Image',
+            'HYBRID': '🔀 Hybrid',
         }.get(search_mode, search_mode)
 
         if search_results:
-            thinking_content += f"📊 **Search Stats:** Found {len(search_results)} relevant books | Intent: {intent} | Mode: {mode_badge}"
+            thinking_msg.content = f"📚 Found **{len(search_results)}** relevant books | {mode_badge} search | Intent: `{intent}`"
         else:
-            thinking_content += f"💭 **Processing:** Handled as {intent} intent | Mode: {mode_badge}"
-        
-        thinking_msg.content = thinking_content
+            thinking_msg.content = f"💭 Processed as `{intent}` | {mode_badge} search"
         await thinking_msg.update()
         
         # Send the main response
@@ -168,115 +173,43 @@ async def main(message: cl.Message):
         thinking_msg.content = f"❌ **Error:** {str(e)}\n\nPlease try rephrasing your question or contact support."
         await thinking_msg.update()
 
+
 async def show_search_details(search_results: list):
     """Display search results in an organized format"""
     if not search_results:
         return
     
-    # Create detailed results display
-    details_content = "📚 **Detailed Search Results:**\n\n"
-    
-    # Show search mode badge
-    if search_results:
-        mode = search_results[0].get('search_mode', 'TEXT')
-        mode_labels = {
-            'TEXT':   '🔤 TEXT',
-            'IMAGE':  '🖼️ IMAGE',
-            'HYBRID': '🔀 HYBRID',
-        }
-        details_content += f"**Search mode:** {mode_labels.get(mode, mode)}\n\n"
-
-    # Show applied filters if any
-    if search_results and 'applied_filters' in search_results[0]:
-        filters = search_results[0]['applied_filters']
-        if filters:
-            details_content += "🔍 **Applied Filters:**\n"
-            for filter_key, filter_value in filters.items():
-                if filter_key == 'language':
-                    details_content += f"   🌐 Language: {filter_value.title()}\n"
-                elif filter_key == 'publish_year':
-                    if isinstance(filter_value, dict):
-                        if '$gt' in filter_value:
-                            details_content += f"   📅 Published after: {filter_value['$gt']}\n"
-                        elif '$lt' in filter_value:
-                            details_content += f"   📅 Published before: {filter_value['$lt']}\n"
-                        elif '$gte' in filter_value and '$lte' in filter_value:
-                            details_content += f"   📅 Published: {filter_value['$gte']}-{filter_value['$lte']}\n"
-                    else:
-                        details_content += f"   📅 Published: {filter_value}\n"
-                elif filter_key == 'page_count':
-                    if isinstance(filter_value, dict):
-                        if '$lt' in filter_value:
-                            details_content += f"   📄 Pages: Under {filter_value['$lt']}\n"
-                        elif '$gt' in filter_value:
-                            details_content += f"   📄 Pages: Over {filter_value['$gt']}\n"
-                    else:
-                        details_content += f"   📄 Pages: {filter_value}\n"
-                elif filter_key == 'format':
-                    details_content += f"   📖 Format: {filter_value.title()}\n"
-                elif filter_key == 'has_description':
-                    details_content += f"   📝 Content: Books with descriptions\n"
-                elif filter_key == 'has_subjects':
-                    details_content += f"   🏷️ Content: Books with subject information\n"
-            details_content += "\n"
-    
     elements = []  # Chainlit image elements to attach
 
     for i, result in enumerate(search_results[:5], 1):
-        doc = result['document']
         metadata = result.get('metadata', {})
-        similarity = result.get('similarity_score', 0)
-        
-        # Extract title from document (assuming it's first in the formatted text)
-        lines = doc.split('\n')
-        title = lines[0] if lines else "Unknown Title"
-        
-        details_content += f"**{i}. {title}**\n"
-        details_content += f"   📈 Relevance: {similarity:.1%}\n"
-        
-        # Add metadata if available
-        if metadata.get('language'):
-            details_content += f"   🌐 Language: {metadata['language'].title()}\n"
-        if metadata.get('publish_year'):
-            details_content += f"   📅 Year: {metadata['publish_year']}\n"
-        if metadata.get('page_count'):
-            details_content += f"   📄 Pages: {metadata['page_count']}\n"
-        if metadata.get('format'):
-            details_content += f"   📖 Format: {metadata['format'].title()}\n"
-        
-        # Show if book has rich content
-        if metadata.get('has_description'):
-            details_content += f"   📝 Has detailed description\n"
-        if metadata.get('has_toc'):
-            details_content += f"   📋 Has table of contents\n"
         
         # Attach cover image if available
         cover_path = metadata.get('cover_image_path', '')
         if metadata.get('has_cover_image') and cover_path and os.path.exists(cover_path):
             try:
+                # Need a unique title to display under the image
+                doc = result.get('document', '')
+                lines = doc.split('\n')
+                title = lines[0] if lines else f"Book {i}"
+                
                 elements.append(
                     cl.Image(
-                        name=f"cover_{i}",
+                        name=title,
                         path=cover_path,
                         display="inline"
                     )
                 )
-                details_content += f"   🖼️ Cover: see image below (cover_{i})\n"
             except Exception:
                 pass  # Silently skip if image can't be loaded
         
-        # Show LLM explanation if available
-        if result.get('llm_explanation'):
-            details_content += f"   💡 Why relevant: {result['llm_explanation'][:100]}...\n"
-        
-        details_content += f"   📄 Preview: {doc[:200]}...\n\n"
-    
     # Send as a collapsible details message with optional cover images
-    await cl.Message(
-        content=details_content,
-        elements=elements,
-        author="Search Results"
-    ).send()
+    if elements:
+        await cl.Message(
+            content="📚 **Retrieved Book Covers:**",
+            elements=elements,
+            author="Search Results"
+        ).send()
 
 @cl.on_chat_end
 async def end():

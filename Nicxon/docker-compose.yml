@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------
+#  Library RAG Chatbot - Docker Compose
+#
+#  Quick start (first time):
+#    1. copy .env.example .env     and fill in your API keys
+#    2. .\init-db.ps1              populate the vector DB volumes
+#    3. docker compose up
+#
+#  Subsequent runs:
+#    docker compose up
+#
+#  Open http://localhost:8000 in your browser.
+# ---------------------------------------------------------------
+
+services:
+  rag:
+    image: library-rag:latest          # change to registry path if pushed, e.g. yourname/library-rag:latest
+    build:
+      context: .                       # build locally if image not pulled yet
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                           # recipient creates this from .env.example
+    volumes:
+      # HuggingFace model cache (Jina / Qwen local models persist here)
+      - hf_cache:/app/.cache/huggingface
+
+      # Vector databases — named volumes, populated once via init-db.ps1
+      - chroma_google:/app/vector_db/chroma_db_multimodal_google
+      - chroma_jina:/app/vector_db/chroma_db_multimodal_jina
+      - chroma_qwen:/app/vector_db/chroma_db_multimodal_qwen
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1                 # use 1 GPU; set to "all" if you want all GPUs
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  hf_cache:       # HuggingFace downloaded models
+  chroma_google:  # Google gemini-embedding-2 vector DB
+  chroma_jina:    # Jina embeddings v5 vector DB
+  chroma_qwen:    # Qwen3-VL-Embedding-2B vector DB

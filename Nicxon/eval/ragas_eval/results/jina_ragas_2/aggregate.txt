@@ -1,0 +1,12 @@
+RAGAS evaluation
+label:          jina_ragas_2
+db_path:        E:\D backup\Compressed\vector_db\chroma_db_multimodal_jina
+judge_provider: openrouter
+judge:          meta-llama/llama-3.3-70b-instruct
+embedder:       gemini-embedding-2
+queries:        43
+with refs:      False
+
+Mean scores:
+  mean_faithfulness              0.7969
+  mean_answer_relevancy          0.7418

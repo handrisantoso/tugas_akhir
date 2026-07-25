@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """
-Library Chatbot — Text Embedding Generation (Jina CLIP v2, local)
+Library Chatbot — Text Embedding Generation (Jina Embeddings v5 Omni Small, local)
 
 Generates embeddings for book TEXT chunks using the
-jinaai/jina-clip-v2 model loaded locally via sentence-transformers.
-No API key required — model weights are downloaded automatically
-from HuggingFace on first run.
+jinaai/jina-embeddings-v5-omni-small model loaded locally via sentence-transformers.
+No API key required — model weights are downloaded automatically from HuggingFace.
+
+Documentation: https://huggingface.co/jinaai/jina-embeddings-v5-omni-small
+
+Key usage pattern (vision modality, retrieval task):
+  model = SentenceTransformer(MODEL, trust_remote_code=True,
+                               model_kwargs={"modality": "vision", "default_task": "retrieval"})
+  doc_emb   = model.encode_document([text])   # for stored passages
+  query_emb = model.encode_query([text])       # for search queries
 
 Output
 ------
 JSON file at `embeddings_text/text_embeddings_jina.json` with the
 SAME record shape as the Google / Qwen versions so that
-`vector_db/create_vector_db_multimodal.py` can ingest it without
-changes (point TEXT_EMBEDDINGS_FILE at the new path).
+`vector_db/create_vector_db_multimodal.py` can ingest it without changes.
 
 Install
 -------
-    conda install -c conda-forge sentence-transformers pillow
-    pip install einops
-
-Jina CLIP v2 is much smaller than Qwen (~1.5 GB vs ~4-5 GB).
+    conda install -c conda-forge sentence-transformers
 """
 
 from __future__ import annotations
@@ -44,29 +47,11 @@ except ImportError:
     sys.exit(1)
 
 try:
-    from transformers import AutoModel
+    from sentence_transformers import SentenceTransformer
 except ImportError:
-    print("ERROR: transformers not installed.")
-    print("       conda install -c conda-forge transformers")
+    print("ERROR: sentence-transformers not installed.")
+    print("       conda install -c conda-forge sentence-transformers")
     sys.exit(1)
-
-# ---- Compatibility patch for Jina CLIP v2 + transformers >= 4.49 ----
-# Jina's custom code imports `clip_loss` from transformers, but it was
-# removed in newer versions.  Re-add it so the import succeeds.
-try:
-    import torch
-    import torch.nn as nn
-    import transformers.models.clip.modeling_clip as _clip_module
-    if not hasattr(_clip_module, "clip_loss"):
-        def _clip_loss(similarity: torch.Tensor) -> torch.Tensor:
-            caption_loss = nn.functional.cross_entropy(
-                similarity, torch.arange(len(similarity), device=similarity.device))
-            image_loss = nn.functional.cross_entropy(
-                similarity.t(), torch.arange(len(similarity), device=similarity.device))
-            return (caption_loss + image_loss) / 2.0
-        _clip_module.clip_loss = _clip_loss
-except Exception:
-    pass  # best-effort; if it fails the original error will surface later
 
 
 # ======================================================================
@@ -80,15 +65,15 @@ OUTPUT_DIR  = PROJECT_ROOT / "embeddings_text"
 OUTPUT_FILE = OUTPUT_DIR   / "text_embeddings_jina.json"
 STATS_FILE  = OUTPUT_DIR   / "text_embedding_statistics_jina.txt"
 
-EMBEDDING_MODEL = "jinaai/jina-clip-v2"
-EMBEDDING_DIM   = 1024  # Jina CLIP v2 output dimension
+EMBEDDING_MODEL = "jinaai/jina-embeddings-v5-omni-small"
+EMBEDDING_DIM   = 1024  # jina-embeddings-v5-omni-small default output dimension
 
-# Using AutoModel.encode_text() — same interface as encode_image().
-# No asymmetric prompts: stored text and query text both go through
-# the raw text encoder, keeping them in the same vector space.
+# Using SentenceTransformer with modality='vision' and encode_document() /
+# encode_query() — the asymmetric pair for retrieval.
+# Stored passages use encode_document(); queries use encode_query().
 
-# Batch size for encode_text() calls.
-BATCH_SIZE = 16
+# Batch size for encode calls.
+BATCH_SIZE = 8
 
 # How often (chunks processed) to flush results to disk.
 SAVE_INTERVAL = 50
@@ -98,35 +83,39 @@ SAVE_INTERVAL = 50
 # Helpers
 # ======================================================================
 
-def _load_model(model_name: str):
-    """Load Jina CLIP v2 via AutoModel and move to GPU if available."""
+def _load_model(model_name: str) -> SentenceTransformer:
+    """Load jina-embeddings-v5-omni-small via SentenceTransformer.
+
+    Uses modality='vision' so that both text and image inputs are
+    supported in the same embedding space.
+    """
     print(f"Loading model: {model_name}")
-    print("  (first run downloads ~1.5 GB; subsequent runs use cache)")
-    model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
-    if torch.cuda.is_available():
-        model = model.to("cuda")
-        print(f"  model loaded on GPU — embedding dim: {EMBEDDING_DIM}")
-    else:
-        print(f"  model loaded on CPU — embedding dim: {EMBEDDING_DIM}")
+    print("  (first run downloads model weights; subsequent runs use cache)")
+    model = SentenceTransformer(
+        model_name,
+        trust_remote_code=True,
+        model_kwargs={"modality": "vision", "default_task": "retrieval"},
+    )
+    dim = model.get_sentence_embedding_dimension()
+    print(f"  model loaded — embedding dim: {dim}")
     return model
 
 
-def _embed_texts(model, texts: List[str]) -> List[List[float]]:
-    """Return normalised embedding vectors via AutoModel.encode_text().
+def _embed_texts(model: SentenceTransformer, texts: List[str]) -> List[List[float]]:
+    """Return normalised embedding vectors via encode() with task='retrieval'.
 
-    No prompts are used — both stored and query embeddings go through
-    the same raw text encoder, keeping them in the same vector space.
+    Using task='retrieval' explicitly rather than encode_document() so
+    that the same pattern works for both text and image inputs.
     """
-    with torch.no_grad():
-        embeddings = model.encode_text(texts)
-    if hasattr(embeddings, "cpu"):
-        embeddings = embeddings.cpu()
-    arr = np.array(embeddings).astype(np.float32)
-    # L2-normalise each row
-    norms = np.linalg.norm(arr, axis=1, keepdims=True)
-    norms = np.where(norms == 0, 1, norms)
-    arr = arr / norms
-    return arr.tolist()
+    embeddings = model.encode(
+        texts,
+        task="retrieval",
+        batch_size=BATCH_SIZE,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    )
+    return [emb.tolist() for emb in embeddings]
 
 
 # ======================================================================

@@ -1,0 +1,32 @@
+# -- Core RAG app (chainlit_app.py) ----------------------------
+chainlit==2.11.0
+chromadb==0.6.3
+google-genai==1.75.0
+pillow==12.1.1
+python-dotenv==1.2.2
+requests==2.34.2
+
+# -- Embedding models (sentence-transformers backends) ---------
+sentence-transformers==5.5.1
+transformers==5.10.2
+torch==2.7.1
+# Required by Qwen/Jina model loaders (trust_remote_code);
+# NOT pulled in automatically by pip as transitive deps:
+sentencepiece==0.2.0
+qwen-vl-utils==0.0.8
+peft==0.19.1
+timm==1.0.27
+
+# -- Eval / research scripts (not needed by Docker container) --
+# These are kept here for local development. They add ~500 MB
+# to the Docker image. Remove or move to a separate
+# requirements-eval.txt if you want a leaner image.
+datasets==4.0.0
+langchain==1.3.10
+matplotlib==3.10.9
+numpy
+openai==2.43.0
+pandas
+ragas==0.2.3
+scikit-learn
+tqdm

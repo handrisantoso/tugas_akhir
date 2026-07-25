@@ -80,7 +80,11 @@ OUTPUT_DIR = PROJECT_ROOT / "embeddings_image"
 OUTPUT_FILE = OUTPUT_DIR / "image_embeddings_google.json"
 STATS_FILE = OUTPUT_DIR / "image_embedding_statistics_google.txt"
 
-ENV_FILE = Path(__file__).resolve().parent / ".env"
+# .env search order: project root first, then embedding/ local
+ENV_CANDIDATES = [
+    PROJECT_ROOT / ".env",
+    Path(__file__).resolve().parent / ".env",
+]
 
 # Must match RAG/config.py and RAG/rag_engine.py so query and ingest
 # live in the same vector space.
@@ -100,13 +104,17 @@ SAVE_INTERVAL = 25
 # ======================================================================
 
 def _load_api_key() -> str:
-    """Load GOOGLE_API_KEY from embedding/.env, falling back to env."""
-    if ENV_FILE.exists():
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(ENV_FILE, override=False)
-        except ImportError:
-            for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+    """Load GOOGLE_API_KEY from project-root .env, falling back to embedding/.env."""
+    try:
+        from dotenv import load_dotenv
+        for env_file in ENV_CANDIDATES:
+            if env_file.exists():
+                load_dotenv(env_file, override=False)
+    except ImportError:
+        for env_file in ENV_CANDIDATES:
+            if not env_file.exists():
+                continue
+            for line in env_file.read_text(encoding="utf-8").splitlines():
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
@@ -116,7 +124,7 @@ def _load_api_key() -> str:
     key = os.environ.get("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError(
-            f"GOOGLE_API_KEY not found. Set it in {ENV_FILE} or in the environment."
+            "GOOGLE_API_KEY not found. Set it in the project-root .env or in the environment."
         )
     return key
 

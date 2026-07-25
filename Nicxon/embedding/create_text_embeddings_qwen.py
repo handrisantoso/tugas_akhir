@@ -1,27 +1,4 @@
 #!/usr/bin/env python3
-"""
-Library Chatbot — Text Embedding Generation (Qwen3-VL-Embedding, local)
-
-Generates embeddings for book TEXT chunks using the
-Qwen/Qwen3-VL-Embedding-2B (or -8B) model loaded locally via
-sentence-transformers.  No API key required — model weights are
-downloaded automatically from HuggingFace on first run.
-
-Output
-------
-JSON file at `embeddings_text/text_embeddings_qwen.json` with the
-SAME record shape as the Google / OpenRouter versions so that
-`vector_db/create_vector_db_multimodal.py` can ingest it without
-changes (point TEXT_EMBEDDINGS_FILE at the new path).
-
-Install (conda-forge first, then pip for qwen-vl-utils)
--------
-    conda install -c conda-forge "transformers>=4.57" sentence-transformers
-    pip install qwen-vl-utils
-
-The Google version of this script (`create_text_embeddings_google.py`)
-is intentionally left untouched.
-"""
 
 from __future__ import annotations
 
@@ -52,10 +29,6 @@ except ImportError:
     sys.exit(1)
 
 
-# ======================================================================
-# Configuration
-# ======================================================================
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 INPUT_FILE  = PROJECT_ROOT / "chunking"       / "book_chunks_text.json"
@@ -63,27 +36,14 @@ OUTPUT_DIR  = PROJECT_ROOT / "embeddings_text"
 OUTPUT_FILE = OUTPUT_DIR   / "text_embeddings_qwen.json"
 STATS_FILE  = OUTPUT_DIR   / "text_embedding_statistics_qwen.txt"
 
-# Switch to "Qwen/Qwen3-VL-Embedding-8B" if you have the VRAM for it.
 EMBEDDING_MODEL = "Qwen/Qwen3-VL-Embedding-2B"
 
-# sentence-transformers will batch these together for GPU efficiency.
 BATCH_SIZE = 16
 
-# How often (chunks processed) to flush results to disk.
 SAVE_INTERVAL = 50
 
 
-# ======================================================================
-# Helpers
-# ======================================================================
-
 def _load_model(model_name: str) -> SentenceTransformer:
-    """Load the Qwen embedding model.
-
-    On first call the weights (~4-5 GB for 2B) are downloaded from
-    HuggingFace and cached in ~/.cache/huggingface/hub automatically.
-    Subsequent runs load from the local cache instantly.
-    """
     print(f"Loading model: {model_name}")
     print("  (first run downloads ~4-5 GB; subsequent runs use cache)")
     model = SentenceTransformer(model_name, trust_remote_code=True)
@@ -92,20 +52,15 @@ def _load_model(model_name: str) -> SentenceTransformer:
 
 
 def _embed_texts(model: SentenceTransformer, texts: List[str]) -> List[List[float]]:
-    """Return a list of embedding vectors (as plain Python lists)."""
     embeddings = model.encode(
         texts,
         batch_size=BATCH_SIZE,
         show_progress_bar=False,
-        normalize_embeddings=True,   # cosine-ready; mirrors Qwen's recommended usage
+        normalize_embeddings=True,
         convert_to_numpy=True,
     )
     return [emb.tolist() for emb in embeddings]
 
-
-# ======================================================================
-# Main pipeline
-# ======================================================================
 
 def main() -> int:
     print(f"Text embedder (Qwen local, model={EMBEDDING_MODEL})")
@@ -118,11 +73,9 @@ def main() -> int:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ---- Load model ----
     model = _load_model(EMBEDDING_MODEL)
     embedding_dim = model.get_sentence_embedding_dimension()
 
-    # ---- Load chunks ----
     with INPUT_FILE.open("r", encoding="utf-8") as f:
         chunks: List[Dict[str, Any]] = json.load(f)
 
@@ -133,7 +86,6 @@ def main() -> int:
         print("Nothing to do.")
         return 0
 
-    # ---- Resume if an output already exists ----
     embedded: List[Dict[str, Any]] = []
     done_book_ids: set[str] = set()
     if OUTPUT_FILE.exists():
@@ -149,7 +101,6 @@ def main() -> int:
     pending = [c for c in chunks if c.get("book_id") not in done_book_ids]
     print(f"  to embed: {len(pending):,}")
 
-    # ---- Stats ----
     stats: Dict[str, Any] = {
         "started":      datetime.now(),
         "total_chunks": total,
@@ -161,7 +112,6 @@ def main() -> int:
         "total_chars":  0,
     }
 
-    # ---- Embed (single-item loop to match Google version's per-chunk logic) ----
     try:
         with tqdm(total=len(pending), desc="text embeddings") as pbar:
             for i, chunk in enumerate(pending):
@@ -175,7 +125,6 @@ def main() -> int:
                     continue
 
                 try:
-                    # encode() accepts a single string or a list; returns ndarray
                     [embedding] = _embed_texts(model, [text])
                 except Exception as e:
                     stats["failed"] += 1
@@ -183,7 +132,6 @@ def main() -> int:
                     pbar.update(1)
                     continue
 
-                # Dimension sanity check
                 if len(embedding) != embedding_dim:
                     pbar.write(
                         f"  WARNING: dim mismatch for {book_id}: "
@@ -218,13 +166,11 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nInterrupted — saving partial results...")
 
-    # ---- Final save ----
     OUTPUT_FILE.write_text(
         json.dumps(embedded, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
 
-    # ---- Stats report ----
     stats["ended"] = datetime.now()
     duration = stats["ended"] - stats["started"]
     avg_chars = (stats["total_chars"] / stats["processed"]) if stats["processed"] else 0

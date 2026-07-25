@@ -1,8 +1,8 @@
 LIBRARY CHATBOT — IMAGE EMBEDDING STATISTICS (Jina CLIP v2 local)
 ============================================================
-Date:       2026-06-13 05:10:29
-Duration:   0:00:09.272712
-Model:      jinaai/jina-clip-v2
+Date:       2026-06-20 02:28:18
+Duration:   0:00:24.207483
+Model:      jinaai/jina-embeddings-v5-omni-small
 Output:     E:\D backup\Compressed\embeddings_image\image_embeddings_jina.json
 
 PROCESSING SUMMARY:
@@ -16,5 +16,5 @@ PROCESSING SUMMARY:
   Embedding dim:          1024
 
 SAMPLE EMBEDDING:
-  mean=-0.000277  std=0.031249
-  min=-0.302171  max=0.207621
+  mean=0.001121  std=0.031277
+  min=-0.098145  max=0.193359

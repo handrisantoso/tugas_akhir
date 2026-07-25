@@ -1,0 +1,472 @@
+query_id,user_input,response,n_contexts,faithfulness,answer_relevancy
+text_001,crime thriller about a dark angel in murder mystery,"Based on your request, the book that matches your criteria is:
+
+**Black Angel** by John Connolly
+
+*   **Description:** This crime thriller follows private detective Charlie Parker and his associate, Louis, as they search for a missing young woman. The search leads them into an older mystery linked to a mythical prize known as the ""Black Angel,"" which is described as being alive and sought by evil men.
+*   **Subjects & Topics:** Fiction, mystery & detective, thrillers, private investigators.
+*   **Publication:** Hodder & Stoughton, 2005.
+
+The other books provided in the records do not feature a ""dark angel"" or this specific combination of themes.",5,0.8666666666666667,0.7528017369967896
+text_002,spiritual autobiography confession of sins and faith,"Based on the records provided, the book that best matches your request for a spiritual autobiography involving a confession of sins and faith is:
+
+*   **TITLE:** *Confessions*
+    *   **AUTHOR:** Saint Augustine of Hippo
+    *   **DESCRIPTION:** This work is described as the first true autobiography in Western literature and a sophisticated theological argument. Augustine recounts his passage from a life of sensuality, superstition, and careerism to a ""genuine spiritual awakening,"" articulating his views on morality and faith.
+    *   **SUBJECTS & TOPICS:** Includes Biography & Autobiography / Religious, Religion / Christian Living / Spiritual Growth, and Religion / Christian Theology / History.
+
+While other books in the list touch upon faith or personal disclosure, *Confessions* is explicitly identified as an autobiography detailing a spiritual transition and faith. 
+
+*   *Questioning Faith* by Randy Newman explores paths from doubt to faith but is categorized under practical theology and apologetics rather than autobiography. 
+*   *The extraordinary ordinary life of Mark Rodriguez* involves private journals about knowing God, but the record does not use the specific terms ""autobiography"" or ""confession of sins.""
+*   *PostSecret* involves ""confessions,"" but these are described as artistically created postcards about profound questions rather than a spiritual autobiography.",5,1.0,0.8570933432424827
+text_003,how to protect marital assets and property in a Texas divorce,"To protect marital assets and property in a Texas divorce, the book *Protecting your assets from a Texas divorce* provides guidance on this topic.
+
+The table of contents suggests that the following areas are relevant to managing and protecting assets during a divorce in Texas:
+
+*   **Financial and Legal Strategy:** Working toward settlement, utilizing collaborative law, discovery, financial planning, and determining whether to use an attorney.
+*   **Asset Management:** Dividing assets, dealing with the family home, handling the family business, and managing retirement benefits or stock options.
+*   **Maintenance and Liabilities:** Addressing community debt, bankruptcy, alimony, maintenance, and common tax issues.
+*   **Future Planning:** The use of prenuptial and postnuptial agreements.
+*   **General Considerations:** Handling temporary matters and finances in the short term, as well as insuring your health and life.
+
+For more information, you may want to consult this specific title (ISBN-13: 9780974946146).",5,1.0,0.956695399396989
+text_004,C++ standard template library data structures and algorithms,"The book *Data Structures and Algorithms with the C++ STL: A Guide for Modern C++ Practitioners* by John Farrier (2024) is a comprehensive resource for your query.
+
+**Description**
+This book offers a thorough exploration of the Standard Template Library (STL) components for intermediate C++ developers. It covers fundamental data structures, advanced algorithms, and concurrency features, including an in-depth analysis of `std::vector` and its role in the STL, memory management, and the use of iterators. The text also guides readers through extending the STL with custom types and algorithms, as well as handling exception safety and parallel algorithms.
+
+**Key Topics Covered**
+*   **Data Structures:** Sequence containers, associative containers, unordered containers, container adaptors, and views.
+*   **Algorithms:** Sorting, searching, transformations, numeric operations, and parallel algorithms.
+*   **Advanced Features:** Custom allocators, custom STL-compatible types, thread safety, concurrency, exception safety, and the use of concepts and coroutines.
+
+**Publication Information**
+*   **Publisher:** Packt Publishing, Limited
+*   **Published:** 2024
+*   **ISBN-13:** 9781835468555
+
+This book is specifically designed to help intermediate-level C++ developers enhance their software development skills for practical application and efficient coding practices.",5,0.896551724137931,0.795120658055067
+text_005,numerical methods for scientists and engineers using MATLAB,"The book that best matches your request is **""Introduction to Numerical Methods and MATLAB: Implementations and Applications""** by Gerald W. Recktenwald.
+
+**Description:**
+This book is designed to provide undergraduate engineering students with a practical and rigorous introduction to the fundamentals of numerical computation. It offers a modern exposition of classic numerical methods using MATLAB. Instead of detailed numerical analysis, the book exposes the behavior of methods through carefully designed numerical experiments and exercises them on nontrivial example problems from engineering practice. It includes the ""Numerical Methods with MATLAB (NMM) Toolbox,"" which provides 150 programs and over forty data sets.
+
+**Publication Information:**
+*   **Publisher:** Prentice Hall
+*   **Publication Date:** January 15, 2001
+*   **Pages:** 786
+
+**Table of Contents Summary:**
+The content is organized into two main parts:
+*   **Part 1: MATLAB Basics:** Covers interactive computing, programming (scripts, functions, flow control, vectorization), and organizing/debugging code.
+*   **Part 2: Numerical Techniques:** Covers unavoidable errors, root-finding, linear algebra, systems of equations, least-squares fitting, interpolation, numerical integration, and numerical integration of ordinary differential equations.
+*   **Appendices:** Includes eigenvalues and eigensystems, sparse matrices, and NMM toolbox listings.
+
+**Subjects & Topics:**
+The book covers a broad range of topics including Computers/Computer Science, Mathematical & Statistical Software, Numerical Analysis, and various engineering disciplines (Electrical, Industrial, and Mechanical).",5,0.42424242424242425,0.8141901847046369
+text_006,introductory algebra textbook for college students,"Based on the library records, the following textbook is suitable for your search:
+
+**Introductory algebra** by Margaret L. Lial
+*   **Description:** This book is designed for courses in Beginning Algebra and is intended for students in developmental mathematics. It features student-friendly writing, examples, and exercises to support conceptual understanding. It is also available with MyLab Math, an online program for practice and assessment.
+*   **Subjects & Topics:** Textbooks, Algebra, Mathematics / Algebra / Elementary, Mathematics / Algebra / General
+*   **Table of Contents:** The book covers topics such as Prealgebra Review, the real number system, equations and inequalities, graphs of linear equations, systems of linear equations, exponents, polynomials, factoring, rational expressions, and roots and radicals.
+*   **Publication Information:** Published by Pearson in 2013 (Boston).
+*   **ISBN-13:** 9780321870483
+
+If you are interested in this title, please note that MyLab Math is a separate purchase. You may wish to consult with your instructor regarding the correct package information.",5,0.7391304347826086,0.8033710186431695
+text_007,high school statistics and probability textbook,"Based on the library records, the following textbook is explicitly identified for high school use:
+
+*   **Title:** *Statistics and Probability with Applications (High School)*
+    *   **Authors:** Daren S. Starnes and Josh Tabor
+    *   **Description:** An engaging and modern introduction to statistics designed to help students understand the ""why"" and ""how"" of the subject through bite-sized lessons and integrated activities.
+    *   **Publication:** W. H. Freeman & Company, 2021
+    *   **Content:** The book covers topics including one-variable and two-variable data, data collection, probability, random variables, sampling distributions, estimating parameters, significance testing, and inference for distributions.
+
+While the record for *Finite Mathematics and Calculus with Applications* by Margaret L. Lial includes chapters on sets and probability, it does not explicitly categorize itself as a high school statistics and probability textbook.",5,0.4666666666666667,0.8417593632752843
+text_008,environmental chemistry of organic pollutants in water and soil,"The book *Environmental Organic Chemistry* (2019) by Philip M. Gschwend, Dieter M. Imboden, and Ren P. Schwarzenbach directly addresses your query regarding the environmental chemistry of organic pollutants in water and soil.
+
+**Description**
+The book examines the molecular and macroscopic processes that govern the distribution and fate of organic chemicals in the environment. It provides a holistic treatment of phase partitioning and transformation processes, teaching readers how to relate the structure of a chemical to its physical-chemical properties and reactivity. It also includes modeling tools to quantitatively describe these processes in environmental systems.
+
+**Key Content Related to Your Query**
+The table of contents covers specific aspects of organic pollutants in environmental media:
+* **Partitioning and Sorption:** The book details equilibrium partitioning between gaseous, liquid, and solid phases. This includes dedicated chapters on:
+    * Sorption to organic matter (Chapter 9)
+    * Bioaccumulation in aquatic and terrestrial systems (Chapter 10)
+    * Sorption processes involving inorganic surfaces (Chapter 11)
+* **Transformation Processes:** It covers the thermodynamics and kinetics of chemical, photochemical, and biological transformations (Chapters 12–17).
+* **Environmental Systems:** The book applies these principles to specific environments, including ponds, lakes, oceans, rivers, and groundwater (Chapters 23–25).
+
+**Publication Details**
+* **Publisher:** Wiley & Sons, Incorporated, John
+* **Publication Year:** 2019
+* **Pages:** 1026
+* **ISBN-13:** 9781118767191",5,0.4166666666666667,0.8756567621186471
+text_009,vegetarian nutrition guide for bodybuilding and muscle building,"Based on your request, the following book is a relevant resource available in our collection:
+
+**Vegetarian Bodybuilding Nutrition: How to Crack the Muscle Building Success Code with Vegetarian Bodybuilding Nutrition, the ONE Thing You MUST Get Right, Vegetarian Times, Nutrition Cookbook**
+*   **Author:** Greg Fordham
+*   **Description:** This book explores the possibility of gaining lean muscle mass while following a vegetarian diet. The author argues that it is possible to build ""high quality rock-hard muscle"" on a vegetarian diet by utilizing protein-packed alternatives to meat, such as beans, Quorn, Tofu, and Quinoa. It includes 21 recipes (breakfast, lunch, dinner, and snacks) that provide macro-nutrient information—including calories, protein, carbs, and fat—to help you track your intake. The book also covers the ""ONE thing you MUST do"" to ensure success with this diet. Note that the author emphasizes that your training regime must be ""heavy, regular and hard enough to breakdown the muscle fibres.""
+*   **Subjects & Topics:** Health & Fitness / Diet & Nutrition / General, Bodybuilders, Nutrition, Vegetarian cooking
+*   **Publication:** CreateSpace Independent Publishing Platform, 2016",5,0.8333333333333334,0.8111774001912098
+text_010,qualitative research methods collecting and interpreting data,"The book *Collecting and Interpreting Qualitative Materials* (2003) is the most relevant resource for your query. 
+
+This volume serves as a guide for gathering, analyzing, and interpreting qualitative empirical materials. It is organized into two main parts:
+
+*   **Part I: Methods of Collecting and Analyzing Empirical Materials:** Covers topics such as narrative inquiry, oral history, observation, visual methodology, performative autoethnography, online ethnography, analyzing talk and text, and focus groups. 
+*   **Part II: The Art and Practices of Interpretation, Evaluation, and Presentation:** Includes discussions on interpretive adequacy, composition strategies, the politics of evidence, and the role of technology in qualitative research.
+
+It is published by Sage and is intended for students and researchers across a wide range of academic disciplines.",5,0.4,0.7799640653356249
+text_011,working from home remote office telecommuting productivity,"Based on the library records provided, the book **""Teleworking explained""** is the most relevant resource for your query regarding working from home and remote office topics.
+
+*   **Title:** Teleworking explained
+*   **Description:** This book encompasses work activities that entail working remotely from an employer. It provides an overview of the past, present, and future of teleworking, analyzes the economics and human resource management problems associated with it, and covers the technology required for successful teleworking. It also includes a review of several teleworking studies.
+*   **Subjects & Topics:** Telecommuting, Business & Economics / General, Business & Economics / Workplace Culture, Political Science / Labor & Industrial Relations, Technology & Engineering / Electrical, and Technology & Engineering / Telecommunications.
+*   **Publication:** Published by Wiley in 1993.
+
+While the other books in our records address topics such as business planning, real estate, and mindfulness at work, they do not specifically cover the subject of remote work or telecommuting.",5,0.8695652173913043,0.760982310676634
+text_012,ancient Jewish historian Josephus complete writings,"Hello! Regarding your interest in the writings of the ancient Jewish historian Flavius Josephus, we have the following item in our records:
+
+**Collected Works of Flavius Josephus**
+*   **Author:** Flavius Josephus
+*   **Description:** This work is presented as a reproduction of a historical artifact and is considered culturally important. As it is a reproduction of the original, it may contain missing or blurred pages, poor pictures, or errant marks. It is in the public domain in the United States.
+*   **Subjects & Topics:** Collections & anthologies of various literary forms, General, Literary Collections / General, Literature - Classics / Criticism.
+*   **Publication:** Published by BiblioBazaar on August 20, 2007.
+*   **Format & Details:** Paperback, 156 pages, 8 x 5 x 0.4 inches, 8 ounces.
+*   **Identifiers:** ISBN-13: 9781434641250; ISBN-10: 1434641252.
+
+Please let me know if you would like any further information from this record!",5,0.9,0.8431440024007779
+text_013,heraldry coats of arms Norfolk churches England,"Hello! I can certainly help you with your inquiry regarding heraldry and coats of arms in Norfolk churches.
+
+Based on the records available, the following book is relevant to your request:
+
+**Title:** *Church Heraldry of Norfolk Pt. I. Hundreds of Earsham, Diss, Guiltcross, Shropham and South Greenhoe. Pt. Ii. Hundreds of Clavering, Loddon, Henstead, Humbleyard and Depwade. Pt. Iii. Hundreds of Walsham, Blofield, Taverham, Forehoe and Mitford.*
+* **Author:** Edmund Farrer
+* **Publisher:** Creative Media Partners, LLC (2018)
+* **ISBN-13:** 9780342672790
+* **Description:** This work is considered culturally important and has been preserved and republished to provide an easy-to-read typeface.
+
+This appears to be the only resource in our collection that addresses the subject of church heraldry in Norfolk. Please let me know if you need any further information from this record!",5,0.6,0.8416046473228805
+text_014,color theory for artists painters and designers,"Based on your request, I recommend the following book from our collection:
+
+**TITLE:** Colour: a workshop for artists and designers
+**AUTHOR(S):** David Hornung
+
+**DESCRIPTION:** This title is designed to demystify its subject for both students and professionals. It provides a practical approach to color, effectively bridging the gap between theory and practice through a sequence of specially designed assignments and in-depth discussions. The third edition includes contemporary examples from graphic design, illustration, painting, textile art, textile design, and animation, as well as an expanded discussion of digital techniques. It is intended to inspire confidence and understanding in anyone working with color.
+
+**SUBJECTS & TOPICS:** Colors, Color, Painting -- Technique, Art / General, Art / History / General, Art / Techniques / Color, Crafts & Hobbies / Painting
+
+**PUBLICATION:** Publisher: Laurence King; Published: 2005; Place: London; Country: enk
+
+**FORMAT & DETAILS:** Pages: 168
+
+**IDENTIFIERS:** ISBN-10: 1856694194; OCLC: 56539156",5,1.0,0.782659189060665
+text_015,quick guide to art history for non-experts,"I would recommend the book **""12-Hour Art Expert: What You Need to Know about Art in a Dozen Masterpieces""** by Noah Charney.
+
+This book is described as a perfect primer for those who feel under-informed or intimidated by art. Rather than overwhelming the reader with hundreds of images to memorize, it guides you through a dozen Western art masterpieces—ranging from cave paintings to modern works—to help you understand art, the art trade, and art history. 
+
+**Key details:**
+*   **Approach:** It uses entertaining stories to break down barriers, using each of the 12 masterpieces as a lens to help you understand other objects you might encounter in the future.
+*   **Table of Contents:** The chapters cover topics such as defining art, art techniques, iconography, sculpture, art conservation, the art market, and the future of art.
+*   **Publication:** Published by Rowman & Littlefield Publishers in 2022 (160 pages). 
+
+It is designed to be an engaging and concise immersion into the subject for non-experts.",5,0.5294117647058824,0.7702014236220235
+text_016,fashion photography and visual culture study,"Hello! Based on the book records provided, the following title appears to be highly relevant to your study of fashion photography and visual culture:
+
+**Fashion as Photograph: Viewing and Reviewing Images of Fashion**
+*   **Author:** Eugenie Shinkle
+*   **Description:** This book explores fashion photography as a complex cultural phenomenon and a powerful medium within the fashion system. It combines critical academic approaches with insights from industry professionals, including contributors from the museum, auction, and gallery sectors. It examines both the production and consumption of fashion images.
+*   **Subjects:** Costume, Photographic equipment & techniques, Photography as an Art, Art, Fashion, and Fine Arts.
+*   **Publication:** I. B. Tauris, 2008.
+
+While other records in the library contain information on photography and visual culture (such as *Looking Jewish* and *Portraying Morocco*), they focus on different subject matters, such as the Jewish diaspora and anthropological field work in Morocco, rather than fashion.",5,0.9047619047619048,0.8298241369125735
+text_017,dream interpretation and Jungian psychology analysis,"Based on the library records provided, there is no book that focuses on Jungian psychology analysis.
+
+However, the book **""Working with Dreams""** by Montague Ullman may be of interest regarding dream interpretation. The record indicates:
+
+*   **Description:** It focuses on taking dream interpretation out of the realm of professionals and giving it to the dreamer. It explores how to deal with the intimacy and honesty of a dream, how to explore meanings without distorting them, and how dream groups can work together to uncover the meaning of dreams. It also covers the history of dreams and the way a dream develops.
+*   **Subjects & Topics:** Psychology / Psychotherapy / Psychoanalysis, Self-Help / Dreams, and Psychology / Cognitive Psychology & Cognition.
+*   **Table of Contents:** The book includes chapters such as ""From Freud On,"" ""Guidelines to Dream Work,"" ""Dispelling Self-Deception,"" and ""Dream Appreciation in Public.""
+
+The records for the other books provided do not contain information related to dream interpretation or Jungian analysis.",5,0.9230769230769231,0.765033952541229
+text_018,social justice education storytelling pedagogy,"Hello! I can certainly help you with your search for materials on social justice education and storytelling pedagogy.
+
+Based on the library records provided, the most relevant resource is:
+
+**Telling Stories to Change the World (Teaching/Learning Social Justice)**
+*   **Author(s):** Solinger/Fox/Ir
+*   **Description:** This book is a collection of essays about community-based and interest-based projects that use storytelling as a strategy for speaking out for justice. It includes accounts of grassroots projects from across the globe where communities use narrative to explore what a more just society looks like and what civic engagement means. The book highlights how the storytelling form can generate critique, collective action, and encourage active citizenship and human connectedness.
+*   **Subjects & Topics:** Education, Public Policy - City Planning & Urban Dev., Politics / Current Events
+*   **Publication:** Routledge; May 26, 2008
+*   **Content Highlights:** The book is organized into sections covering the use of stories for healing, tradition, and history; defending and building allies; challenging and transforming beliefs; and a section discussing the power and limits of stories.
+
+While not strictly defined by the phrase ""social justice education,"" another record, **""Leven met verschillen: jonge theatermakers op zoek naar zichzelf als kunstenaar in de wijk,""** relates to similar themes. The subjects include ""Drama in education"" and ""Theater and society,"" and the description mentions an investigation into whether and how theater can be made in places with and for people for whom that is not common.
+
+Please let me know if you would like more details on these specific titles!",5,0.7916666666666666,0.8703778989445454
+text_019,marriage sexuality and Christian faith,"Based on the library records provided, the following book appears relevant to your interest in marriage, sexuality, and the Christian faith:
+
+**One Flesh: God's Gift of Passion: Love, Sex and Romance in Marriage**
+*   **Author:** Bob Yandian
+*   **Description:** This book offers practical wisdom on relationships, including the author's story of his own restored marriage. It provides insights into sex and the Bible, aiming to help husbands and wives become ""best friends and passionate lovers."" The author writes that ""Godly passion is a supernatural gift of God.""
+*   **Subjects:** Includes Religion / Christian Living / Love & Marriage, Sex -- Religious aspects -- Christianity, and Self-Help / Sexual Instruction.
+*   **Table of Contents:** Includes chapters on ""Godly Passion,"" ""Husbands, Love Your Wives,"" ""Wives, Submit Yourselves,"" and ""The Husband’s Heart.""
+*   **Publication:** Pillar Books & Publishing Co, 1993.
+
+Additionally, the book **""Questioning Faith: Indirect Journeys of Belief Through Terrains of Doubt""** by Randy Newman may be of interest. While it covers broader themes, the record notes that the author addresses matters of ""morality, identity, suffering, sexuality, and science"" as they relate to one's faith journey.",5,0.9411764705882353,0.8355373810105351
+text_020,questioning religious doubt and spiritual journey memoir,"Based on your request, here are two books from the collection that focus on religious doubt and spiritual journeys:
+
+**1. Questioning Faith: Indirect Journeys of Belief Through Terrains of Doubt by Randy Newman**
+*   **Description:** This book serves as a guide for those navigating doubt or walking away from a faith they once held. It explores how spiritual journeys often involve twists and turns influenced by factors like family background, politics, and sexuality. It addresses questions about God’s existence and the meaning of life, aiming to help readers sort through their concerns.
+*   **Subjects:** Theology, practical; Religion / Christian Living / General; Religion / Christian Living / Spiritual Growth.
+*   **Content Preview:** The table of contents includes chapters addressing the questions of motives, trust, confidence, differences, pain, and pleasure.
+*   **Publication:** Published by Crossway in 2024.
+
+**2. Confessions by Augustine of Hippo**
+*   **Description:** Described as the first true autobiography in Western literature, this work recounts Augustine’s passage from a life of sensuality, Manichaean superstition, and empty careerism to a genuine spiritual awakening. It features theological arguments and insights on morality and faith.
+*   **Subjects:** Biography & Autobiography (General, Religious, Cultural & Regional); Religion / Christian Living / Spiritual Growth; Religion / Christian Theology; Religion / Inspirational.
+*   **Publication:** Published by Penguin USA, Inc. in 2009.",5,0.375,0.8130349015506506
+text_021,theology Old Testament commentary for pastors,"Hello! I can certainly help you look for resources based on our library records.
+
+Regarding your request for a theology Old Testament commentary for pastors, I have one book that specifically addresses the Old Testament:
+
+*   **Title:** *On the Old Testament*
+*   **Author:** Mark Driscoll
+*   **Subjects & Topics:** Bible. -- O.T. -- Introductions
+*   **Content Preview:** The book includes answers to nine common questions about the Old Testament and guidance on how to read it.
+*   **Publication:** Crossway Books, 2008.
+
+While this book provides an introduction and reading guide for the Old Testament, the provided records do not explicitly categorize it as a ""theology commentary"" for pastors.
+
+The other books in our current records cover topics such as preaching (*Setting words on fire* by Paul Scott Wilson), church history, and missionary work, but they do not appear to be Old Testament commentaries.",5,0.8571428571428571,0.0
+text_022,dinosaur coloring activity book for young children,"I found a book that matches your request:
+
+**Dinosaur Coloring Book for Kids**
+*   **Author:** Sanzida Tamanna
+*   **Description:** This is a coloring book designed for little hands featuring cute dinosaurs. It includes amazing and simple designs, 8.5 x 11 inch pages, and is printed on one side to allow for easy removal.
+*   **Subjects:** Juvenile Fiction / Animals / Baby Animals, Coloring Book
+*   **Publication:** Independently Published, 2020
+*   **Identifiers:** ISBN-13: 9798576515356",5,1.0,0.8270126332559263
+text_023,children's picture book about a hidden animal mystery,"Based on your request, the book **""Who's in the shed?""** by Brenda Parkes appears to be a good match.
+
+*   **Description:** Farm animals wonder who is in the shed making all the noise.
+*   **Subjects & Topics:** Readers (Primary), Fiction, Animals, Juvenile fiction, Stories in rhyme.
+
+The records for the other books provided do not feature a hidden animal mystery.",5,0.6363636363636364,0.7230888194547624
+text_024,horseback riding adventure story for kids,"Hello! I can certainly help you find a book based on the records provided.
+
+The book **""Horseback hurdles""** by Jake Maddox appears to be a great fit for your request. It is a sports story for children that follows a character named Tabitha who volunteers at the Rocky Ridge Riding Center. The story centers on her efforts to work with a troubled horse named Diamond. Its subjects include horses, horsemanship, and riding schools, and it is categorized as juvenile fiction.",5,0.75,0.6960150180004497
+text_025,children's story about butterflies nature lifecycle,"Hello! I would be happy to help you find a book about butterflies and their lifecycle.
+
+Based on the records, the most relevant book is:
+
+**Born to be a butterfly**
+* **Author:** Karen Wallace
+* **Description:** This book uses simple text and photographs to describe the stages by which a butterfly develops from an egg.
+* **Subjects & Topics:** The subjects include butterflies, life cycles, and juvenile literature.
+* **Publication Information:** Published in 2000 by Dorling Kindersley Pub. in New York.
+* **Details:** It is 32 pages long and part of the Dorling Kindersley readers series.
+
+I also found a book titled **Insects: [learn about animals]**, which mentions the butterfly alongside other insects like flies, beetles, and bees, though it does not specifically focus on the butterfly lifecycle.",5,0.8947368421052632,0.77419597689954
+text_026,ethnobiology indigenous classification of plants and animals,"Based on the records available, the following book is relevant to your query regarding the ethnobiological classification of plants and animals:
+
+**Title:** *Ethnobiological Classification: Principles of Categorization of Plants and Animals in Traditional Societies*
+**Author:** Brent Berlin
+**Publication Information:** Princeton University Press, 2014 (Originally published in 1992).
+
+**Description:** 
+This work examines the widespread regularities in how peoples of traditional, nonliterate societies name and classify plants and animals. Brent Berlin argues that these patterns persist across different environments, cultures, and languages, and are rooted in a largely unconscious human appreciation for natural affinities among organisms. The book challenges the perspective that these classifications are purely ""culturally constructed"" or idiosyncratic, suggesting instead that people recognize and name groupings independently of their symbolic or utilitarian significance.
+
+**Key Content (from the Table of Contents):**
+* **Part One** focuses on the structure of ethnobiological classification, covering the primacy of generic taxa, the nature of specific taxa, and higher-order categories (such as life-form rank).
+* **Part Two** discusses the processes involved in the functioning and evolution of these systems, including patterned variation in knowledge and the nonarbitrariness of nomenclature.
+
+**Subjects & Topics:**
+Ethnobotany, Plants (classification), Animals (classification), Science / Life Sciences / Ecology, Science / Life Sciences / Taxonomy, Nature / Cultural Botany.
+
+Please let me know if you would like more information on this title or if you have other questions!",5,0.6428571428571429,0.8354405240391903
+text_027,body image self-perception and social psychology,"Hello! I can certainly help you with that. Based on the library records provided, the following book appears to be most relevant to your interest in body image, self-perception, and social psychology:
+
+**TITLE: Body and Social Psychology**
+*   **Author:** Alan Radley
+*   **Description:** This book explores the relationship between social psychology and the human body, assuming that the body is of paramount importance for understanding social life. The author addresses why social psychology has historically paid little attention to the body and incorporates insights from medical sociology.
+*   **Subjects & Topics:** Human body, social aspects, Social psychology, Psychology / General, Psychology / Personality, Personality.
+*   **Table of Contents:** The book includes specific chapters such as ""The Object of Scrutiny,"" which covers ""Body Image and Attractiveness,"" ""The Look of Men and Women,"" and ""Body Images in Society."" Other sections address the embodiment of group relationships, the cultivation of the body, and the impact of sickness and illness.
+*   **Publication:** Published by Springer New York, 2012.
+
+Please let me know if you would like more information on this book or any of the other titles in our collection!",5,0.6666666666666666,0.8444281438712012
+text_028,epistemology autonomy and knowledge philosophy,"Hello! I would be happy to help you with your inquiry. Based on the library records provided, the book that most directly addresses your topic is:
+
+**Epistemic Autonomy**
+*   **Authors:** Jonathan Matheson and Kirk Lougheed
+*   **Description:** This book is the first dedicated to the topic of epistemic autonomy and features original essays from leading scholars. It explores several questions related to the field, including the nature of epistemic autonomy, the potential justification of epistemic paternalism, whether autonomy functions as an epistemic value or vice, and the relationship between epistemic autonomy, social epistemology, and epistemic injustice.
+*   **Subjects & Topics:** Philosophy / Epistemology, Philosophy / Ethics & Moral Philosophy, Philosophy / General, Philosophy / Political, Political Science / General, and Science / Philosophy & Social Aspects.
+*   **Table of Contents:** The book is organized into four parts: ""The Nature of Epistemic Autonomy,"" ""Epistemic Autonomy and Paternalism,"" ""Epistemic Autonomy and Epistemic Virtue and Value,"" and ""Epistemic Autonomy and Social Epistemology.""
+*   **Publication Information:** Published by Taylor & Francis Group, 2021.
+
+No other books in the provided records specifically address the subjects of epistemology or autonomy.",5,,0.8422556271409135
+text_029,post-humanist philosophy ethics and animals,"Hello! Based on the library records provided, the following book is relevant to your inquiry regarding post-humanist philosophy and ethics concerning animals:
+
+**Title:** *Beyond Anthropocentrism: Thoughts for a Post-Human Philosophy*
+*   **Author:** Roberto Marchesini
+*   **Description:** This book presents a proposal within post-human philosophy to overcome the separation between humans, non-human animals, and technology. It highlights the ""inspiring nature of the relationship with non-human beings"" (termed ""Epiphany"") and seeks to establish a non-anthropocentric Humanism that recognizes the essential role non-human alterities have played throughout history.
+*   **Subjects & Topics:** Human ecology, Human-animal relationships, Technology, Philosophical anthropology, and Philosophy.
+*   **Publication:** Mimesis Edizioni, 2018.
+*   **Identifiers:** ISBN-13: 9788869771545; OCLC: 1097366474
+
+The other records provided in the list do not contain information pertaining to post-humanist philosophy or animal ethics.",5,0.8125,0.9067268917544297
+text_030,Go programming language practical projects tutorial,"I found the following book that covers practical projects using the Go programming language:
+
+### **Go Crazy: A Fun Projects-Based Approach to Golang Programming**
+*   **Authors:** Nicolas Modrzyk, David Li, Jun Akiyama
+*   **Publication:** Apress L. P., 2023
+*   **Description:** This book focuses on building complete applications using Go, including a framework for a 2D Go-based game, an image random generator Rest API, financial time series handling for trading, a Kubernetes operator, and blockchain coding. It also covers how to develop an HTTP-based cloud-ready image generator.
+*   **Subjects:** Computers, Computer Science, Software Development & Engineering, Languages / GoLang
+*   **Key Projects and Topics:**
+    *   Building a ChatGPT client.
+    *   Writing a tested HTTP image generator API.
+    *   Creating a 2D game in Go using the Raylib library.
+    *   Building a trend follower for blockchain trading.
+    *   Writing a Kubernetes operator to run EVM-compatible blockchains.
+    *   Connecting to C for performance boosts, including GPU coding.
+*   **Additional Details:** The book includes free source code on its Apress GitHub page. The chapters are organized to cover requirements, user stories, library/framework introductions, and implementation details including common pitfalls.",5,0.7,0.838611969984214
+text_031,foreign aid political reform Congo Africa,"Hello! I can certainly help you with your inquiry regarding foreign aid and political reform in the Congo.
+
+Based on the library records provided, the book that addresses your query is:
+
+**Title:** *Aid Relations and State Reforms in the Democratic Republic of the Congo: The Politics of Mutual Accommodation and Administrative Neglect*
+**Author:** Stylianos Moshonas
+**Publication:** 2018, Taylor & Francis Group
+
+**Description:**
+This book examines the relationship between international aid partners and Congolese actors since 2001, a period during which the Democratic Republic of the Congo has undergone a transition toward liberalization, democratization, and peace. It specifically investigates how this relationship has influenced state reform processes, particularly regarding public administration.
+
+The author, Stylianos Moshonas, argues that the reform process has been hampered by inherent contradictions in the approach taken by international partners, as well as the ability of Congolese power holders to co-opt these reforms to fit their own political strategies. Rather than viewing the situation as a simple opposition between donors and local actors, the book focuses on the ""compromises and accommodative characteristics"" that have defined aid politics in the region.
+
+**Subjects & Topics:**
+Economic assistance, public administration, politics and government, comparative politics, economic policy, and African studies.
+
+**Content Preview:**
+The book includes chapters on the framing of Congo's aid relations, the history of politics and administration in Congo-Zaire, the politics of administrative reform (2001–2011), and a discussion on looking beyond ""reform failure"" in aid relations. 
+
+Please let me know if you need any further information from this record!",5,0.6666666666666666,0.8304083104773786
+text_032,building materials selection guide architects,"Based on the records provided, the book **""Materials for Architects and Builders""** by Arthur Lyons is the most relevant resource for your query.
+
+*   **Description:** This book provides an introduction to the broad range of materials used in the construction industry, covering their manufacture, physical properties, specification, and uses. It is intended for undergraduate students and has been updated to include information on sustainability, recycling, and relevant legislation.
+*   **Subjects & Topics:** Building materials, Architecture / Methods & Materials, and Technology & Engineering / Construction / General.
+*   **Table of Contents:** The book covers a wide variety of materials, including bricks, blocks, concrete, timber, metals, glass, ceramics, stone, plastics, insulation, sealants, and paints, as well as chapters on energy-saving, ecological materials, and sustainability.
+*   **Publication Information:** Published by Taylor & Francis Group in 2010.
+
+No other books in the provided list offer a guide for selecting building materials for architects.",5,0.8461538461538461,0.7583637924698975
+text_033,extradition law international treaties United States,"Based on the records provided, the following book contains information regarding your query:
+
+**Extradition to and from the United States**
+*   **Subjects & Topics:** Extradition -- United States, Extradition -- Great Britain, Extradition.
+*   **Content Preview:** The contents include an overview of the law and recent treaties concerning extradition to and from the United States, as well as information on the 2003 treaty between the United States and Great Britain.
+*   **Publication Information:** Published by Nova Science in New York, 2008.
+*   **Identifiers:** ISBN-13: 9781604565881; OCLC: 217253651.
+
+The other books provided in the records do not address international extradition law or treaties involving the United States.",5,0.8461538461538461,0.819942587449873
+text_034,confidentiality law privacy restatement legal guide,"Based on your request, the following book appears to be the most relevant:
+
+**Title:** *The Law of Confidentiality: A Restatement*
+*   **Author:** Paul Stanley
+*   **Description:** This book aims to serve as a guide for those looking to understand the main principles and controversies in the field of the equitable action for breach of confidence, as well as for practicing lawyers seeking a clear statement of basic principles. It explores how common law principles have adapted to twenty-first-century conditions, including concerns regarding press intrusion, the protection of privacy rights under the European Convention, and the protection of commercially valuable information in the ""information age."" The book examines the circumstances in which information is protected by law, how the law responds to conflicting public interests, and questions of procedure and remedies.
+*   **Publication Information:** Hart Publishing, April 14, 2008
+*   **Subjects & Topics:** English law: citizenship & nationality law, General, Law",5,1.0,0.6626619708185683
+text_035,business security economics risk management,"Based on the library records provided, here is information relevant to your query:
+
+*   ***State of war: the political economy of American warfare, 1945-2011***: The content preview explicitly lists ""National security and the economy"" as a chapter, and the book's subjects include ""Defenses.""
+*   ***Legal environment***: This book covers topics that relate to business risk and security management, such as ""Secured transactions and bankruptcy,"" ""Securities regulation,"" ""Crime,"" and ""Cyberlaw.""
+*   ***Trading complex assets***: This record discusses the impact of complexity on financial markets, specifically noting that complexity can be a driver of ""volatility and liquidity"" and affects ""trading behavior"" and ""trade efficiency.""
+
+The provided records do not contain a book that specifically addresses ""business security"" and ""risk management"" as a combined topic, though they touch on these themes through their coverage of law, economics, and national security.",5,0.75,0.0
+text_036,government contracting performance work statement guide,"I found a book in our collection that addresses your request for a guide on creating performance work statements:
+
+**Title:** *How to Create a Performance Work Statement: Guidance for Writing Proper Statements of Work for Performance*
+**Author:** Robert Knauer
+**Description:** This is a systematic, process-oriented guidebook on how to create a proper Performance Work Statement (PWS) for contract work.
+**Subjects & Topics:** Business & Economics / Business Writing
+**Publication Information:** CreateSpace Independent Publishing Platform, 2016
+**Content Preview:** The book covers a wide range of topics, including:
+* **Requirement Documents:** Alternatives to Statements of Work and policy.
+* **PWS Considerations:** Advance planning, market research, deliverables, data requirements, and key participants (such as Project Managers and Contracting Officers).
+* **Requirements Analysis:** Work Breakdown Structures (WBS), gathering historical data, and cost estimates.
+* **Writing Guidelines:** Specific guidance for routine services, hardware/end item deliverables, performance-based specifications, systems contracts, support services, and R&D contracts.
+* **Appendices:** Includes a document review checklist, definitions, an acronym list, and information on performance standards and incentives.
+
+Please let me know if you would like more information on this title!",5,0.9230769230769231,0.838458952853792
+text_037,romance novel small town love story contemporary fiction,"Based on your request for a romance novel that is a small-town love story, I recommend the following title from our collection:
+
+**Her Unexpected Catch: A Clean, Small Town Romance by Laura Ann**
+
+*   **Description:** This story follows Dr. Hadlee Ford, a college professor who travels to Seaside Bay to conduct research. She faces opposition from the local fishermen, but eventually finds herself working with a moody ship captain named Felix Mendez. Despite their conflicting plans and the gossip of the town, they must decide if they can find common ground and pursue their attraction.
+*   **Subjects & Topics:** Fiction / Romance / Contemporary, Fiction / Romance / General.
+*   **Publication Information:** Independently Published, 2021.
+
+The other books in our records do not specifically identify as small-town romances in their descriptions.",5,1.0,0.8425022700348824
+text_038,young adult paranormal romance novel,"Based on the records provided, there is no book that specifically fits the combination of ""young adult,"" ""paranormal,"" and ""romance"" genres.
+
+However, you may be interested in the following titles that contain elements of your request:
+
+*   **Juliet Toxic At the Crossroads** by Renine Osteen: This book is categorized under the subjects of Fiction, Fantasy, and Paranormal. The description mentions a character surviving a monster and being hunted, but it does not explicitly mention a romance plot.
+*   **Jeremy and the Crow Nation** by Tatiana Strelkoff: This is a juvenile fiction title about a ""Changer"" (a person who can shapeshift into animals). While it deals with supernatural themes, the record does not describe a romance.
+*   **Lizard love** by Wendy Townsend: This is a story about a teenager moving to Manhattan and meeting a boy, but it does not contain paranormal elements.
+
+The records for *There All Along* and *Red moon rising* do not meet the criteria for a young adult paranormal romance.",5,0.9166666666666666,0.0
+hybrid_001,ancient archaeological mystery conspiracy megalith,"Hello! The book on the cover you provided is *Uriel's Machine: The Ancient Origins of Science* by Christopher Knight and Robert Lomas.
+
+However, I do not have information about that specific book in my current records. My available records include:
+
+*   **Gwalior, virasat:** A pictorial work on historic buildings in Gwalior, India.
+*   **The paleo manifesto: ancient wisdom for lifelong health** by John Durant: A guide on health and lifestyle based on hunter-gatherer ancestors.
+*   **City of the Ram-man: the story of ancient Mendes** by Donald B. Redford: A history of the ancient Egyptian city of Mendes.
+*   **The magic island** by William Seabrook: An account of an author's experiences in Haiti, covering subjects like Voodooism and witchcraft.
+*   **Sacred places & popular practice in the Mediterranean** by Ayman El Gohary and Yasmine Hussein: A look at sacred spaces, religion, and architecture in the Mediterranean region.
+
+None of the provided records match the book in your image. Let me know if you would like more information on any of the titles listed above!",5,0.7777777777777778,
+hybrid_002,young adult romance novel couple,"Hello! It looks like you've shared the cover for **""Penn & Ava""** by Susan Victoria Becher.
+
+Based on the records, this is a young adult novel that fits your request for a story about a couple. Here is a summary based on the provided description:
+
+*   **Description:** The story follows Ava Pierson, a high school junior, who is paired with a classmate named Penn Abrams for an English project. As they work together, Penn introduces Ava to a path of community and creativity. The two eventually develop feelings for one another and go on their first official date. Much of the book follows their relationship as they navigate life challenges—including Ava's personal healing—and the difficulties of potentially being separated by college plans.
+*   **Subjects & Topics:** The book is categorized under Young Adult Fiction, with themes covering Coming of Age, Family/Multigenerational stories, and Girls & Women.
+*   **Publication:** Published in 2024 by Pen & Publish, LLC.
+
+If you are looking for other romance novels involving couples, I also have information on several other titles in our collection, such as ""Her Unexpected Catch,"" ""Lizard Love,"" ""Snowed in with the billionaire,"" and ""There All Along."" Please let me know if you would like details on any of those!",5,0.75,0.5826659480708208
+hybrid_003,philosophy of knowledge and belief,"Hello! I see you are interested in the philosophy of knowledge and belief. While the book you provided in the image, *Epistemic Autonomy* edited by Jonathan Matheson and Kirk Lougheed, is not in my specific database of records, I can certainly share some relevant titles from my collection that deal with philosophy:
+
+*   ***Essays I-XXX*** **by Arthur Searle (1910):** This work covers a broad range of philosophical topics. The table of contents indicates it touches on subjects related to knowledge and belief, including ""Existence,"" ""Consciousness,"" ""Inference,"" ""Mind and matter,"" ""Reality,"" and ""Hypotheses.""
+*   ***Prometheus Bedeviled: Science and the Contradictions of Contemporary Culture*** **by N. Levitt (1999):** This book examines the relations between science and society. Its listed subjects include ""Science — Philosophy,"" and it argues that science, due to its accuracy and reliability, should be at the top of the ""hierarchy of knowledge.""
+*   ***A New Philosophy of Life*** **by John Herman Randall Sr. (1909):** This book offers insights into the meaning of life and the nature of reality. Its table of contents includes chapters such as ""The universal mind,"" ""The powers and possibilities of the subconscious mind,"" and ""Spiritual consciousness.""
+*   ***Western Encounter with Indian Philosophy: Festschrift in Honour of Prof. Dr. Thomas Kadankavil*** **(2002):** This collection of research papers focuses on subjects including Indic Philosophy, Christianity, and Hinduism.
+*   ***Guru Ghāsīdāsa and His Satnām Philosophy*** **by Hira Lal Shukla (2004):** This book provides information on the philosophy of Ghāsīdāsa, a Hindu religious leader and social worker.
+
+Please let me know if you would like more details on any of these titles!",5,0.8,0.8414649255768958
+hybrid_004,religious doubt faith spiritual questioning,"Hello! Based on the image you provided, that is **""Questioning Faith: Indirect Journeys of Belief Through Terrains of Doubt""** by Randy Newman.
+
+This book is designed to help readers sort through their questions about faith and navigate the path from doubt to belief. Here is some information about it from our records:
+
+*   **Description:** The book addresses those who have honest questions, have walked away from a faith they once held, or are currently navigating a culture of cynicism and doubt. Author Randy Newman, a senior fellow for apologetics and evangelism, shares insights based on 40 years of listening to people's stories. He suggests that spiritual journeys are often a series of ""twists and turns"" rather than a direct path. The book explores topics such as morality, identity, suffering, sexuality, and science to help readers find answers and strengthen their beliefs.
+*   **Subjects & Topics:** Theology, practical; Religion / Christian Living / General; Religion / Christian Living / Spiritual Growth.
+*   **Table of Contents:** The book covers topics such as the question of motives, trust, confidence, differences, pain, and pleasure.
+*   **Publication:** Published by Crossway in 2024.
+
+If you are interested in other books regarding spiritual struggles and faith, please let me know and I would be happy to look through our collection for you!",5,0.7333333333333333,0.7123779349684055
+hybrid_005,materials for building and construction,"Hello! Based on the image you provided, that is the fourth edition of *Materials for Architects and Builders* by Arthur Lyons.
+
+This book is an excellent resource for level 1 and 2 undergraduates studying building or construction materials. It provides an introduction to a broad range of materials used in the construction industry, covering their manufacture, physical properties, specifications, and uses.
+
+The book is illustrated in color throughout and includes chapters on a wide variety of topics, including:
+*   Bricks and brickwork
+*   Blocks and blockwork
+*   Lime, cement, and concrete
+*   Timber and timber products
+*   Ferrous and non-ferrous metals
+*   Glass, plastics, and ceramics
+*   Insulation materials, sealants, and paints
+*   Sustainability and recycled materials
+
+This edition has been revised to include the latest developments in materials and legislation, with a particular focus on the ecological effects of construction and carbon targets. It was published in 2010 by the Taylor & Francis Group.
+
+Let me know if you would like more information on any of these topics!",5,0.8666666666666667,0.6854913115428091

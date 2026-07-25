@@ -1,0 +1,18 @@
+{
+  "n_queries": 50,
+  "mean_recall@1": 0.92,
+  "mean_recall@5": 0.98,
+  "mean_recall@10": 1.0,
+  "mrr": 0.9466666666666665,
+  "hit_rate@1": 0.92,
+  "hit_rate@5": 0.98,
+  "hit_rate@10": 1.0,
+  "ndcg@10": 0.9597427388135895,
+  "mean_latency_ms": 2237.5784,
+  "label": "jina",
+  "db_path": "E:\\D backup\\Compressed\\vector_db\\chroma_db_multimodal_jina",
+  "embedding_model": "jinaai/jina-embeddings-v5-omni-small",
+  "dataset_path": "E:\\D backup\\Compressed\\eval\\eval_dataset.csv",
+  "judge_used": false,
+  "judge_model": null
+}

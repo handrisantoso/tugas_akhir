@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
-"""
-RAG evaluation runner.
 
-Two main modes:
-
-1. EVAL — runs a queries CSV against a Chroma DB folder, computes retrieval
-   metrics per-query and in aggregate, and (optionally) calls a multimodal
-   LLM judge for response-quality grading. Outputs CSV + JSON + TXT to
-   `eval/results/<label>/`.
-
-2. COMPARE — reads existing aggregate.json files from previous EVAL runs and
-   prints a side-by-side table.
-
-Usage:
-
-  python eval\\run_eval.py --dataset eval\\sample_dataset.csv \\
-      --db-path vector_db\\chroma_db_multimodal_2 --label google
-
-  python eval\\run_eval.py --dataset my_eval.csv \\
-      --db-path vector_db\\chroma_db_openrouter --label openrouter --judge
-
-  python eval\\run_eval.py --compare openrouter google
-"""
 from __future__ import annotations
 
 import argparse
@@ -34,25 +12,20 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Ensure local-folder imports resolve regardless of CWD.
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-# Project root for resolving env file + DB paths.
 PROJECT_ROOT = HERE.parent
 
 from dataset import EvalQuery, load_dataset
 from retrieval_metrics import aggregate_per_query
 from runner import (
     EMBEDDING_MODEL_DEFAULT,
+    JINA_MODEL_NAME,
     metrics_for_query,
     run_query,
 )
 
-
-# ----------------------------------------------------------------------
-# Env / API key
-# ----------------------------------------------------------------------
 
 ENV_CANDIDATES = [
     HERE / ".env",
@@ -63,9 +36,8 @@ ENV_CANDIDATES = [
 
 
 def _load_env() -> str:
-    """Load GOOGLE_API_KEY from any nearby .env, else env. Returns key or empty string."""
     try:
-        from dotenv import load_dotenv  # type: ignore
+        from dotenv import load_dotenv
         for p in ENV_CANDIDATES:
             if p.exists():
                 load_dotenv(p, override=False)
@@ -83,15 +55,10 @@ def _load_env() -> str:
     return os.environ.get("GOOGLE_API_KEY", "")
 
 
-# ----------------------------------------------------------------------
-# Output helpers
-# ----------------------------------------------------------------------
-
 def _write_per_query(rows: List[Dict[str, Any]], out_path: Path) -> None:
     if not rows:
         out_path.write_text("", encoding="utf-8")
         return
-    # Stable column order: dataset fields first, then metrics, then latencies.
     preferred_order = [
         "query_id", "query_text", "image_path", "expected_book_ids",
         "search_mode", "primary_book_ids", "primary_similarities",
@@ -108,7 +75,6 @@ def _write_per_query(rows: List[Dict[str, Any]], out_path: Path) -> None:
     for k in preferred_order:
         if any(k in row for row in rows):
             columns.append(k)
-    # Append any extra keys we didn't anticipate.
     for row in rows:
         for k in row.keys():
             if k not in columns:
@@ -156,35 +122,21 @@ def _write_aggregate(metrics: Dict[str, Any],
     print("\n".join(lines))
 
 
-# ----------------------------------------------------------------------
-# EVAL command
-# ----------------------------------------------------------------------
-
 async def _maybe_judge(args, query: EvalQuery, primary_book_ids: List[str]) -> Optional[Dict[str, Any]]:
-    """If --judge was passed, run the full RAG engine for this query, judge it,
-    and return a dict of judge fields. Otherwise return None.
-
-    The judge step is intentionally heavy: it calls the live engine to generate
-    the response (so what gets graded matches what users see). Skip it for
-    pure retrieval-only comparisons.
-    """
     if not args.judge:
         return None
 
-    # Lazily import the engine so the retrieval-only path doesn't pay for it.
     sys.path.insert(0, str(PROJECT_ROOT / "RAG"))
-    from rag_engine import LibraryRAGEngine  # type: ignore
+    from rag_engine import LibraryRAGEngine
 
-    # Read image bytes if any so the engine and the judge both see it.
     image_bytes: Optional[bytes] = None
     image_jpeg: Optional[bytes] = None
     if query.has_image and query.resolved_image_path:
         image_bytes = query.resolved_image_path.read_bytes()
 
-    # Engine instance — single per process is fine for eval.
     if not hasattr(_maybe_judge, "_engine"):
-        _maybe_judge._engine = LibraryRAGEngine()  # type: ignore[attr-defined]
-    engine = _maybe_judge._engine  # type: ignore[attr-defined]
+        _maybe_judge._engine = LibraryRAGEngine()
+    engine = _maybe_judge._engine
 
     response_data = await engine.process_query(
         query.query_text or "",
@@ -194,13 +146,10 @@ async def _maybe_judge(args, query: EvalQuery, primary_book_ids: List[str]) -> O
     generated = response_data.get("response", "")
     retrieved_books = response_data.get("search_results", [])
 
-    # Try to also recover the resized JPEG the engine produced, for the judge.
-    # The engine stores it in conversation memory.
     cm = getattr(engine, "conversation_manager", None)
     if cm is not None and getattr(cm, "last_image_jpeg", None):
         image_jpeg = cm.last_image_jpeg
 
-    # Judge — uses the same google.genai client.
     from google import genai
     from llm_judge import call_judge
 
@@ -239,12 +188,12 @@ def _aggregate_judge(rows: List[Dict[str, Any]]) -> Optional[Dict[str, Optional[
 
 
 async def cmd_eval(args) -> int:
-    from runner import _is_gemini, QWEN_MODEL_NAME
+    from runner import _is_gemini, QWEN_MODEL_NAME, JINA_MODEL_NAME
 
-    # Resolve model id shorthand
     model_aliases = {
         "qwen": QWEN_MODEL_NAME,
         "gemini": EMBEDDING_MODEL_DEFAULT,
+        "jina": JINA_MODEL_NAME,
     }
     model_id = model_aliases.get(args.embedding_model, args.embedding_model)
     use_gemini = _is_gemini(model_id)
@@ -256,11 +205,10 @@ async def cmd_eval(args) -> int:
             print("ERROR: GOOGLE_API_KEY required for Gemini models.", file=sys.stderr)
             return 1
     else:
-        # Local model — try to load API key anyway (non-fatal, judge may need it later)
         try:
             _load_env()
         except RuntimeError:
-            pass  # fine for retrieval-only local runs
+            pass
 
     db_path = Path(args.db_path).resolve()
     if not db_path.exists():
@@ -272,7 +220,6 @@ async def cmd_eval(args) -> int:
     print(f"Loaded {len(queries):,} queries from {dataset_path}")
     print(f"Model:   {model_id}  ({'Gemini API' if use_gemini else 'local'})")
 
-    # Lazy-import heavy deps after we know the dataset is loadable.
     try:
         import chromadb
     except ImportError as e:
@@ -323,7 +270,6 @@ async def cmd_eval(args) -> int:
                   f"hit@10={row.get('hit@10')} mrr={row.get('mrr', 0):.3f}")
         rows.append(row)
 
-    # ---- Aggregate ----
     out_dir = HERE / "results" / args.label
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_per_query(rows, out_dir / "per_query.csv")
@@ -345,10 +291,6 @@ async def cmd_eval(args) -> int:
     print(f"\nResults written to: {out_dir}")
     return 0
 
-
-# ----------------------------------------------------------------------
-# COMPARE command
-# ----------------------------------------------------------------------
 
 def cmd_compare(args) -> int:
     payloads: Dict[str, Dict[str, Any]] = {}
@@ -392,7 +334,6 @@ def cmd_compare(args) -> int:
                 cells.append(f"{v:>{col_w}.4f}")
         print(f"{label_text:<14}" + "".join(cells))
 
-    # Judge summary if any payload has one.
     if any("judge" in p for p in payloads.values()):
         print()
         print("Judge (mean 1-5)")
@@ -412,10 +353,6 @@ def cmd_compare(args) -> int:
 
     return 0
 
-
-# ----------------------------------------------------------------------
-# Entrypoint
-# ----------------------------------------------------------------------
 
 def main() -> int:
     p = argparse.ArgumentParser(

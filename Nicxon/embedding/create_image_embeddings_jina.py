@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Library Chatbot — Image Embedding Generation (Jina CLIP v2, local)
+Library Chatbot — Image Embedding Generation (Jina Embeddings v5 Omni Small, local)
 
 Generates embeddings for book cover IMAGES using the
-jinaai/jina-clip-v2 model via transformers AutoModel.
+jinaai/jina-embeddings-v5-omni-small model via sentence-transformers.
 
-NOTE: We use AutoModel (not SentenceTransformer) because the
-sentence-transformers wrapper for jina-clip-v2 only registers the
-'text' modality.  AutoModel exposes encode_image() directly.
+Documentation: https://huggingface.co/jinaai/jina-embeddings-v5-omni-small
 
-The model is moved to GPU automatically if CUDA is available.
-
-Images do NOT use a retrieval prompt — Jina's asymmetric prompts only
-apply to text (passages use "document", queries use "retrieval.query").
+Key usage pattern (vision modality, retrieval task):
+  model = SentenceTransformer(MODEL, trust_remote_code=True,
+                               model_kwargs={"modality": "vision", "default_task": "retrieval"})
+  doc_emb   = model.encode_document([pil_image])   # for stored images
+  query_emb = model.encode_query([pil_image])       # for search queries
 
 Output
 ------
@@ -21,8 +20,7 @@ SAME record shape as the Google / Qwen versions.
 
 Install
 -------
-    conda install -c conda-forge transformers pillow
-    pip install einops timm
+    conda install -c conda-forge sentence-transformers pillow
 """
 
 from __future__ import annotations
@@ -51,26 +49,11 @@ except ImportError:
     print("ERROR: tqdm not installed.  conda install -c conda-forge tqdm")
     sys.exit(1)
 
-# ---- Compatibility patch for Jina CLIP v2 + transformers >= 4.49 ----
 try:
-    import torch
-    import torch.nn as nn
-    import transformers.models.clip.modeling_clip as _clip_module
-    if not hasattr(_clip_module, "clip_loss"):
-        def _clip_loss(similarity: torch.Tensor) -> torch.Tensor:
-            caption_loss = nn.functional.cross_entropy(
-                similarity, torch.arange(len(similarity), device=similarity.device))
-            image_loss = nn.functional.cross_entropy(
-                similarity.t(), torch.arange(len(similarity), device=similarity.device))
-            return (caption_loss + image_loss) / 2.0
-        _clip_module.clip_loss = _clip_loss
-except Exception:
-    pass
-
-try:
-    from transformers import AutoModel
+    from sentence_transformers import SentenceTransformer
 except ImportError:
-    print("ERROR: transformers not installed.  conda install -c conda-forge transformers")
+    print("ERROR: sentence-transformers not installed.")
+    print("       conda install -c conda-forge sentence-transformers")
     sys.exit(1)
 
 
@@ -85,8 +68,8 @@ OUTPUT_DIR  = PROJECT_ROOT / "embeddings_image"
 OUTPUT_FILE = OUTPUT_DIR   / "image_embeddings_jina.json"
 STATS_FILE  = OUTPUT_DIR   / "image_embedding_statistics_jina.txt"
 
-EMBEDDING_MODEL = "jinaai/jina-clip-v2"
-EMBEDDING_DIM   = 1024  # Jina CLIP v2 default output dimension
+EMBEDDING_MODEL = "jinaai/jina-embeddings-v5-omni-small"
+EMBEDDING_DIM   = 1024  # jina-embeddings-v5-omni-small default output dimension
 
 MAX_IMAGE_DIMENSION = 512
 JPEG_QUALITY        = 85
@@ -100,17 +83,22 @@ SAVE_INTERVAL = 25
 # Helpers
 # ======================================================================
 
-def _load_model(model_name: str):
-    """Load Jina CLIP v2 via AutoModel and move to GPU if available."""
+def _load_model(model_name: str) -> SentenceTransformer:
+    """Load jina-embeddings-v5-omni-small via SentenceTransformer.
+
+    Uses modality='vision' to support both text and image inputs.
+    Task defaults to retrieval via encode_document() / encode_query().
+    On first call the weights (~1-2 GB) are downloaded automatically.
+    """
     print(f"Loading model: {model_name}")
-    print("  (first run downloads ~1.5 GB; subsequent runs use cache)")
-    model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
-    if torch.cuda.is_available():
-        model = model.to("cuda")
-        print(f"  model loaded on GPU — embedding dim: {EMBEDDING_DIM}")
-    else:
-        print(f"  model loaded on CPU — embedding dim: {EMBEDDING_DIM}")
-        print("  WARNING: CPU mode is very slow. Enable CUDA for fast embedding.")
+    print("  (first run downloads model weights; subsequent runs use cache)")
+    model = SentenceTransformer(
+        model_name,
+        trust_remote_code=True,
+        model_kwargs={"modality": "vision"},
+    )
+    dim = model.get_sentence_embedding_dimension()
+    print(f"  model loaded — embedding dim: {dim}")
     return model
 
 
@@ -131,17 +119,21 @@ def _preprocess_image(image_path: Path) -> Optional[Image.Image]:
         return None
 
 
-def _embed_image(model, pil_image: Image.Image) -> List[float]:
-    """Embed one image via AutoModel.encode_image() — normalised output."""
-    with torch.no_grad():
-        embedding = model.encode_image([pil_image])
-    if hasattr(embedding, "cpu"):
-        embedding = embedding.cpu()
-    arr = np.array(embedding).flatten().astype(np.float32)
-    norm = np.linalg.norm(arr)
-    if norm > 0:
-        arr = arr / norm
-    return arr.tolist()
+def _embed_image(model: SentenceTransformer, pil_image: Image.Image) -> List[float]:
+    """Embed one image with task='retrieval' — normalised output.
+
+    encode_document() is text-only in sentence-transformers; for PIL Images
+    we must use encode() with an explicit task parameter.
+    """
+    embeddings = model.encode(
+        [pil_image],
+        task="retrieval",
+        batch_size=1,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    )
+    return embeddings[0].tolist()
 
 
 # ======================================================================

@@ -1,13 +1,3 @@
-"""
-Run a dataset of queries through the retrieval pipeline and capture per-query
-results. Mirrors the embedding pipeline used in `RAG/rag_engine.py` exactly so
-results are directly comparable to what the live system produces.
-
-Stays close to the metal: this driver doesn't call the full RAG engine. It
-embeds the query and queries Chroma directly, returning ranked book_ids per
-query. Optional response-quality grading via LLM-as-judge is layered on
-top in `run_eval.py` and only fires through the engine when requested.
-"""
 from __future__ import annotations
 
 import io
@@ -26,28 +16,19 @@ from retrieval_metrics import (
 )
 
 
-# ----------------------------------------------------------------------
-# Config — keep aligned with RAG/config.py
-# ----------------------------------------------------------------------
-
 EMBEDDING_MODEL_DEFAULT = "gemini-embedding-2"
 QWEN_MODEL_NAME = "Qwen/Qwen3-VL-Embedding-2B"
+JINA_MODEL_NAME = "jinaai/jina-embeddings-v5-omni-small"
 MAX_IMAGE_DIM = 512
 JPEG_QUALITY = 85
-TOP_K = 10  # always retrieve 10; metrics compute @1, @5, @10 from this list
+TOP_K = 10
 
-# Model IDs that use the Gemini API. Everything else is treated as a local
-# Sentence-Transformers model (e.g. Qwen3-VL-Embedding-2B, jina-clip-v2).
 _GEMINI_PREFIXES = ("gemini-", "text-embedding-", "embedding-", "models/")
 
 
 def _is_gemini(model_id: str) -> bool:
     return any(model_id.startswith(p) for p in _GEMINI_PREFIXES)
 
-
-# ----------------------------------------------------------------------
-# Result types
-# ----------------------------------------------------------------------
 
 @dataclass
 class QueryResult:
@@ -57,7 +38,6 @@ class QueryResult:
     retrieved_text_similarities: List[float] = field(default_factory=list)
     retrieved_image_book_ids: List[str] = field(default_factory=list)
     retrieved_image_similarities: List[float] = field(default_factory=list)
-    # The "primary" ranked list used for metrics — depends on search_mode.
     primary_book_ids: List[str] = field(default_factory=list)
     primary_similarities: List[float] = field(default_factory=list)
     embedding_latency_ms: float = 0.0
@@ -84,10 +64,6 @@ class QueryResult:
         }
 
 
-# ----------------------------------------------------------------------
-# Embedding helpers — same shape as RAG/rag_engine.py
-# ----------------------------------------------------------------------
-
 def _embed_text(client, model_id: str, text: str) -> List[float]:
     resp = client.models.embed_content(model=model_id, contents=text)
     return list(resp.embeddings[0].values)
@@ -107,21 +83,13 @@ def _embed_image(client, model_id: str, image_path: Path) -> List[float]:
     return list(resp.embeddings[0].values)
 
 
-# --- Local model helpers (SentenceTransformers: Qwen, Jina, etc.) ---
-
 _LOCAL_MODEL_CACHE: Dict[str, Any] = {}
 
 
 def _load_local_model(model_id: str):
-    """Load a local SentenceTransformer model, cached per process.
-
-    Mirrors the same loading pattern used in the embedding scripts so
-    query embeddings are bit-for-bit equivalent to stored embeddings.
-    """
     if model_id in _LOCAL_MODEL_CACHE:
         return _LOCAL_MODEL_CACHE[model_id]
 
-    # Compatibility patch for Jina CLIP v2 + newer transformers
     try:
         import torch
         import torch.nn as nn
@@ -137,55 +105,66 @@ def _load_local_model(model_id: str):
 
     from sentence_transformers import SentenceTransformer
     print(f"  [local] loading model: {model_id}")
-    model = SentenceTransformer(model_id, trust_remote_code=True)
+    kwargs = {"trust_remote_code": True}
+    if "jina" in model_id.lower():
+        kwargs["model_kwargs"] = {"modality": "vision", "default_task": "retrieval"}
+    model = SentenceTransformer(model_id, **kwargs)
     print(f"  [local] model ready — dim={model.get_embedding_dimension() or model.get_sentence_embedding_dimension()}")
     _LOCAL_MODEL_CACHE[model_id] = model
     return model
 
 
 def _embed_text_local(model_id: str, text: str) -> List[float]:
-    """Embed text via SentenceTransformer.encode() — no prompts, normalised."""
     import numpy as np
     model = _load_local_model(model_id)
-    emb = model.encode(
-        [text],
-        batch_size=1,
-        show_progress_bar=False,
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-    )
+    if "jina" in model_id.lower():
+        emb = model.encode(
+            [text],
+            task="retrieval",
+            batch_size=1,
+            show_progress_bar=False,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )
+    else:
+        emb = model.encode(
+            [text],
+            batch_size=1,
+            show_progress_bar=False,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )
     return emb[0].tolist()
 
 
 def _embed_image_local(model_id: str, image_path: Path) -> List[float]:
-    """Embed an image via SentenceTransformer.encode() — normalised."""
     import numpy as np
     from PIL import Image
     model = _load_local_model(model_id)
     img = Image.open(image_path).convert("RGB")
     if max(img.size) > MAX_IMAGE_DIM:
         img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
-    emb = model.encode(
-        [img],
-        batch_size=1,
-        show_progress_bar=False,
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-    )
+    if "jina" in model_id.lower():
+        emb = model.encode(
+            [img],
+            task="retrieval",
+            batch_size=1,
+            show_progress_bar=False,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )
+    else:
+        emb = model.encode(
+            [img],
+            batch_size=1,
+            show_progress_bar=False,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )
     return emb[0].tolist()
 
 
-# ----------------------------------------------------------------------
-# Search-mode resolution
-# ----------------------------------------------------------------------
-
 def _decide_search_mode(query: EvalQuery) -> str:
-    """Resolve the search mode for a query.
-
-    If the dataset specifies `expected_search_mode`, use that. Otherwise mirror
-    the engine's fast-path heuristic so results match what the live system
-    would do without paying for the LLM-driven classifier.
-    """
     if query.expected_search_mode:
         return query.expected_search_mode
 
@@ -203,16 +182,8 @@ def _decide_search_mode(query: EvalQuery) -> str:
     if any(p in msg for p in generic_phrases):
         return "IMAGE"
 
-    # When ambiguous, default to HYBRID. This mirrors the engine's safe-default
-    # behaviour when its LLM classifier fails, and is cheaper than calling the
-    # classifier here in eval (we control the dataset, so the dataset itself
-    # can override via expected_search_mode if a different mode is desired).
     return "HYBRID"
 
-
-# ----------------------------------------------------------------------
-# Title resolution — for nicer per-query CSV output
-# ----------------------------------------------------------------------
 
 _TITLE_RE = re.compile(r"TITLE:\s*([^\n]+)")
 
@@ -228,10 +199,6 @@ def _title_from_record(metadata: Optional[dict], document: Optional[str]) -> str
         return f"<no title — {metadata['book_id']}>"
     return "<unknown>"
 
-
-# ----------------------------------------------------------------------
-# Core run
-# ----------------------------------------------------------------------
 
 def _query_collection(collection, embedding: List[float]):
     return collection.query(
@@ -259,18 +226,12 @@ def _format_results(raw: dict) -> tuple[List[str], List[float], List[dict]]:
 def run_query(client, model_id: str,
               text_collection, image_collection,
               query: EvalQuery) -> QueryResult:
-    """Run a single query end-to-end through retrieval. Returns a QueryResult.
-
-    `client` is a google.genai.Client for Gemini models, or None for local
-    models (Qwen, Jina). The correct path is selected based on model_id.
-    """
     result = QueryResult(query_id=query.query_id, search_mode=_decide_search_mode(query))
     use_local = not _is_gemini(model_id)
 
     text_emb: Optional[List[float]] = None
     image_emb: Optional[List[float]] = None
 
-    # ---- Embeddings ----
     embed_start = time.perf_counter()
     try:
         if result.search_mode in ("TEXT", "HYBRID") and query.has_text:
@@ -289,7 +250,6 @@ def run_query(client, model_id: str,
     finally:
         result.embedding_latency_ms = (time.perf_counter() - embed_start) * 1000.0
 
-    # ---- Queries ----
     query_start = time.perf_counter()
     try:
         if text_emb is not None:
@@ -309,18 +269,13 @@ def run_query(client, model_id: str,
     finally:
         result.query_latency_ms = (time.perf_counter() - query_start) * 1000.0
 
-    # ---- Pick the "primary" ranked list per mode ----
-    # TEXT: text→TEXT collection ranking
-    # IMAGE: image→IMAGE collection ranking (by book_id)
-    # HYBRID: weighted merge by book_id, mirroring the engine's _search_hybrid
     if result.search_mode == "TEXT":
         result.primary_book_ids = result.retrieved_text_book_ids
         result.primary_similarities = result.retrieved_text_similarities
     elif result.search_mode == "IMAGE":
         result.primary_book_ids = result.retrieved_image_book_ids
         result.primary_similarities = result.retrieved_image_similarities
-    else:  # HYBRID
-        # 0.7/0.3 weighting + "no penalty for text-only" rule, same as engine.
+    else:
         TW, IW = 0.7, 0.3
         merged: Dict[str, Dict[str, float]] = {}
         for bid, sim in zip(result.retrieved_text_book_ids,
@@ -338,7 +293,6 @@ def run_query(client, model_id: str,
             else:
                 entry["img_sim"] = sim
                 entry["score"] = TW * entry["text_sim"] + IW * sim
-        # Sort by combined score
         ranked = sorted(merged.items(), key=lambda kv: kv[1]["score"], reverse=True)
         result.primary_book_ids = [bid for bid, _ in ranked][:TOP_K]
         result.primary_similarities = [d["score"] for _, d in ranked][:TOP_K]
@@ -346,12 +300,7 @@ def run_query(client, model_id: str,
     return result
 
 
-# ----------------------------------------------------------------------
-# Per-query metric row
-# ----------------------------------------------------------------------
-
 def metrics_for_query(query: EvalQuery, result: QueryResult) -> Dict[str, Any]:
-    """Compute per-query metrics + a flat dict ready for CSV emission."""
     expected = query.expected_book_ids
     primary = result.primary_book_ids
 

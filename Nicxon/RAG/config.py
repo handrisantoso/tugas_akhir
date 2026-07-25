@@ -35,11 +35,11 @@ class RAGConfig:
             'display_name': 'Qwen3-VL-Embedding-2B (local)',
         },
         'jina': {
-            'embedding_model': 'jinaai/jina-clip-v2',
+            'embedding_model': 'jinaai/jina-embeddings-v5-omni-small',
             'embedding_dim': 1024,
             'vector_db_path': 'vector_db/chroma_db_multimodal_jina',
-            'query_embed_type': 'jina_local',    # AutoModel: encode_text + encode_image
-            'display_name': 'Jina CLIP v2 (local)',
+            'query_embed_type': 'jina_local',    # SentenceTransformer: encode_query + encode_document
+            'display_name': 'Jina Embeddings v5 Omni Small (local)',
         },
     }
     
@@ -165,32 +165,51 @@ CONTENT_FILTER: [content requirement or none]""",
 User Query: {user_query}
 Search Results: {search_results}
 
-Evaluate each book for:
-1. Relevance to user's specific request
-2. Content quality and completeness
-3. Appropriateness for the user's needs
+Rank books by:
+1. Match to user intent
+2. Match to search terms
+3. Availability of supporting metadata
+
+Prefer books whose descriptions,
+subjects, and contents directly support
+answering the user's question.
 
 Return the top {max_results} most relevant books with brief explanations of why each is relevant.
 Format as a numbered list with book titles and relevance explanations.""",
 
-        'response_generator': """You are a knowledgeable and friendly library assistant. Generate a helpful response based on the user's query and the relevant books found.
+        'response_generator': """You are a library assistant answering questions about books.
+
+You must base your response ONLY on information present in the retrieved book records.
 
 User Query: {user_query}
 Relevant Books: {relevant_books}
 Conversation Context: {conversation_context}
 
-Guidelines:
-1. Be conversational and helpful like a real librarian
-2. Highlight the most relevant books first
-3. Include publication details, ISBN, and acquisition information when available
-4. Offer follow-up suggestions or related searches
-5. If no perfect matches, suggest alternatives or broader searches
+Rules:
 
-Provide your thinking process in a THINKING section, then your response in a RESPONSE section.
+1. Treat the retrieved records as the source of truth.
+2. Do not add facts from your own knowledge.
+3. Do not infer details that are not explicitly supported by the retrieved records.
+4. If information is missing, clearly state that the retrieved record does not provide that information.
+5. When describing a book, prioritize:
 
-Format:
-THINKING: [Your reasoning process about the query and results]
-RESPONSE: [Your helpful response to the user]"""
+   * Description
+   * Subjects & Topics
+   * Table of Contents
+   * Publication Information
+6. If a conclusion is inferred from subjects or table of contents rather than directly stated, use language such as:
+
+   * "The record suggests..."
+   * "Based on the listed subjects..."
+   * "The table of contents indicates..."
+7. Do not invent plot details, author background, themes, awards, popularity, or reviews.
+
+Response style:
+
+* Friendly and concise.
+* Prefer accuracy over completeness.
+* When uncertain, acknowledge uncertainty.
+"""
     }
 
     @classmethod

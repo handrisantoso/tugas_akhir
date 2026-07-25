@@ -8,7 +8,7 @@
   "hit_rate@5": 0.94,
   "hit_rate@10": 0.98,
   "ndcg@10": 0.9534334412778749,
-  "mean_latency_ms": 712.2814000000003,
+  "mean_latency_ms": 755.4909999999998,
   "label": "qwen",
   "db_path": "E:\\D backup\\Compressed\\vector_db\\chroma_db_multimodal_qwen",
   "embedding_model": "Qwen/Qwen3-VL-Embedding-2B",

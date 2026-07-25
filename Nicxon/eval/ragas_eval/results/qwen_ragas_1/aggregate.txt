@@ -1,0 +1,12 @@
+RAGAS evaluation
+label:          qwen_ragas_1
+db_path:        E:\D backup\Compressed\vector_db\chroma_db_multimodal_qwen
+judge_provider: openrouter
+judge:          meta-llama/llama-3.3-70b-instruct
+embedder:       gemini-embedding-2
+queries:        43
+with refs:      False
+
+Mean scores:
+  mean_faithfulness              0.5630
+  mean_answer_relevancy          0.7828

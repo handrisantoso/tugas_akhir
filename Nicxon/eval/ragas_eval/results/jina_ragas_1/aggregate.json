@@ -1,0 +1,14 @@
+{
+  "n_queries": 43,
+  "mean_faithfulness": 0.5404707118789319,
+  "n_scored_faithfulness": 39,
+  "mean_answer_relevancy": 0.8059614595333758,
+  "n_scored_answer_relevancy": 39,
+  "label": "jina_ragas_1",
+  "db_path": "E:\\D backup\\Compressed\\vector_db\\chroma_db_multimodal_jina",
+  "judge_provider": "openrouter",
+  "judge_model": "meta-llama/llama-3.3-70b-instruct",
+  "embedding_model": "gemini-embedding-2",
+  "with_references": false,
+  "dataset_path": "E:\\D backup\\Compressed\\eval\\eval_dataset.csv"
+}

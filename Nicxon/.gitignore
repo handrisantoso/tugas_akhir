@@ -1,0 +1,53 @@
+# ── Secrets ───────────────────────────────────────────────────
+.env
+# Keep .env.example (it has placeholder values only)
+!.env.example
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Large data / vector DBs (mount as Docker volumes instead) ─
+vector_db/chroma_db/
+vector_db/chroma_db_multimodal/
+vector_db/chroma_db_multimodal_google/
+vector_db/chroma_db_multimodal_jina/
+vector_db/chroma_db_multimodal_qwen/
+chroma_db_multimodal/
+
+# ── Large embedding JSON files ────────────────────────────────
+embeddings_text/
+embeddings_image/
+embedding/embeddings_text/
+embedding/image_embeddings_openrouter.json
+embedding/text_embeddings_openrouter.json
+
+# ── Misc ──────────────────────────────────────────────────────
+.vscode/
+.kiro/
+*.log
+
+# -- Docker image exports (too large for git) --
+*.tar
+*.tar.gz
+*.zip
+
+# -- Chainlit IDE cache --
+.chainlit/
+
+# -- Large raw data JSON files (processed outputs) --
+books.json
+books_output.json
+books_updated.json
+books_updated_cleaned.json
+Cleaned_data/books_*.json
+Cleaned_data/books_updated_cleaned.json
+
+# -- Sub-folder .env files --
+RAG/.env
+

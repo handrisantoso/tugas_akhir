@@ -8,3 +8,4 @@
 ragas>=0.2.0
 datasets>=2.18.0
 langchain-google-genai>=2.0.0
+langchain-groq>=0.2.0

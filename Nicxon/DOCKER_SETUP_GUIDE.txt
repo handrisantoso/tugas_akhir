@@ -1,0 +1,373 @@
+================================================================
+  LIBRARY RAG CHATBOT � FULL DOCKER SETUP GUIDE
+  Covers: Install ? Build ? Export ? Setup on another machine
+================================================================
+
+----------------------------------------------------------------
+  WHO THIS GUIDE IS FOR
+----------------------------------------------------------------
+
+  YOUR MACHINE  : Windows, NVIDIA RTX 5050, CUDA 12.8
+  COLLEGE PC    : Likely Windows, may or may not have a GPU
+
+
+================================================================
+  PART 1 � INSTALL DOCKER ON YOUR MACHINE (do this first)
+================================================================
+
+Docker on Windows requires WSL2 (Windows Subsystem for Linux 2).
+Follow these steps in order.
+
+----------------------------------------------------------------
+  STEP 1.1 � Enable WSL2
+----------------------------------------------------------------
+
+Open PowerShell as Administrator and run:
+
+    wsl --install
+
+Then RESTART your computer.
+
+After restart, open PowerShell again and confirm it worked:
+
+    wsl --list --verbose
+
+You should see a Linux distro (e.g. Ubuntu) with VERSION 2.
+
+
+----------------------------------------------------------------
+  STEP 1.2 � Install Docker Desktop
+----------------------------------------------------------------
+
+1. Download from: https://www.docker.com/products/docker-desktop/
+2. Run the installer
+3. During setup: make sure "Use WSL 2 instead of Hyper-V" is checked
+4. After install, restart your computer again
+5. Launch Docker Desktop from the Start menu
+6. Wait for the whale icon in the system tray to stop animating
+
+
+Verify Docker is working � open PowerShell and run:
+
+    docker --version
+    docker compose version
+wwwl
+Both should print a version number.
+
+
+----------------------------------------------------------------
+  STEP 1.3 � Enable NVIDIA GPU support inside Docker
+----------------------------------------------------------------
+
+This allows Docker containers to use your RTX 5050.
+
+Open PowerShell and run these commands one by one:
+
+    wsl -d Ubuntu
+    (you are now inside the Ubuntu terminal)
+
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+    sudo apt-get update
+
+    sudo apt-get install -y nvidia-container-toolkit
+
+    sudo nvidia-ctk runtime configure --runtime=docker
+
+    sudo service docker restart
+
+    exit
+    (back to Windows PowerShell)
+
+Verify GPU access works:
+
+    docker run --rm --gpus all nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04 nvidia-smi
+
+You should see your GPU listed (RTX 5050).
+
+
+================================================================
+  PART 2 � BUILD THE DOCKER IMAGE (on your machine)
+================================================================
+
+----------------------------------------------------------------
+  STEP 2.1 � Make sure your .env file is filled in
+----------------------------------------------------------------
+
+In your project folder (e.g. "e:\D backup\Compressed"):
+
+1. Open .env in a text editor
+2. Fill in: GOOGLE_API_KEY=your_actual_key_here
+3. Save the file
+
+The .env file is YOURS ONLY � never share it.
+
+
+----------------------------------------------------------------
+  STEP 2.2 � Build the image
+----------------------------------------------------------------
+
+Open PowerShell, navigate to the project folder, and run:
+
+    cd "e:\D backup\Compressed"
+    docker build -t library-rag:latest .
+
+This will take 10�30 minutes the first time (downloading PyTorch
+and other large packages). Subsequent builds are much faster
+because Docker caches the layers.
+
+When it finishes you should see:
+    Successfully tagged library-rag:latest
+
+
+----------------------------------------------------------------
+  STEP 2.3 � Populate the vector database volumes
+----------------------------------------------------------------
+
+This copies your ChromaDB data into Docker named volumes.
+Run this ONCE (not needed again unless you rebuild the DB):
+
+    .\init-db.ps1
+
+You should see:
+    Copying vector_db\chroma_db_multimodal_google -> volume: chroma_google ... Done.
+    Copying vector_db\chroma_db_multimodal_jina   -> volume: chroma_jina   ... Done.
+    Copying vector_db\chroma_db_multimodal_qwen   -> volume: chroma_qwen   ... Done.
+    All volumes ready. Run: docker compose up
+
+
+----------------------------------------------------------------
+  STEP 2.4 � Test locally
+----------------------------------------------------------------
+
+    docker compose up
+
+Open your browser at: http://localhost:8000
+
+The chatbot should load. First run may take a minute while
+the RAG engine initialises. Press Ctrl+C to stop.
+
+
+================================================================
+  PART 3 � EXPORT THE IMAGE FOR SHARING
+================================================================
+
+----------------------------------------------------------------
+  STEP 3.1 � Save the image to a file
+----------------------------------------------------------------
+
+    docker save library-rag:latest | gzip > library-rag.tar.gz
+
+This creates a compressed file (~3-5 GB) containing everything
+needed to run the app � except your API keys and the DB data.
+
+Note: This will take a few minutes.
+
+
+----------------------------------------------------------------
+  STEP 3.2 � What to package for the college computer
+----------------------------------------------------------------
+
+Create a folder (e.g. "library-rag-package") containing:
+
+    library-rag-package/
+    +-- library-rag.tar.gz          <-- the Docker image (from step 3.1)
+    +-- docker-compose.yml
+    +-- .env.example
+    +-- init-db.ps1
+    +-- vector_db/
+        +-- chroma_db_multimodal_google/    <-- these 3 folders
+        +-- chroma_db_multimodal_jina/      <-- are needed by
+        +-- chroma_db_multimodal_qwen/      <-- init-db.ps1
+
+Zip the entire "library-rag-package" folder and copy it to
+a USB drive or share via Google Drive / OneDrive.
+
+NOTE: The total size will be roughly:
+  - Image:   ~3-5 GB
+  - DB data: ~185 MB
+  - Total:   ~4-5 GB
+
+
+================================================================
+  PART 4 � SETUP ON THE COLLEGE COMPUTER
+================================================================
+
+----------------------------------------------------------------
+  STEP 4.1 � Install Docker Desktop (same as Part 1)
+----------------------------------------------------------------
+
+Follow the same steps as Part 1 (STEPS 1.1 and 1.2).
+
+  STEP 1.1 � Enable WSL2 + restart
+  STEP 1.2 � Install Docker Desktop + restart
+
+If the college PC has an NVIDIA GPU, also do STEP 1.3.
+If it has NO GPU, skip STEP 1.3 � the app will run on CPU
+(slower for local embedding models, but still functional).
+
+
+----------------------------------------------------------------
+  STEP 4.2 � Copy and extract the package
+----------------------------------------------------------------
+
+1. Copy the zip from your USB / Drive to the college PC
+2. Extract it (right-click ? Extract All)
+3. Open PowerShell inside the extracted folder:
+
+    cd "C:\path\to\library-rag-package"
+
+
+----------------------------------------------------------------
+  STEP 4.3 � Load the Docker image
+----------------------------------------------------------------
+
+    docker load < library-rag.tar.gz
+
+You should see:
+    Loaded image: library-rag:latest
+
+This may take a few minutes.
+
+
+----------------------------------------------------------------
+  STEP 4.4 � Create the .env file with API keys
+----------------------------------------------------------------
+
+    copy .env.example .env
+
+Open .env in Notepad and fill in:
+
+    GOOGLE_API_KEY=the_actual_google_api_key
+
+Save the file.
+
+NOTE: The person at the college will need their own Google API
+key (or you can provide yours � your choice). Get a free key at:
+https://aistudio.google.com/app/apikey
+
+
+----------------------------------------------------------------
+  STEP 4.5 � Populate the vector databases
+----------------------------------------------------------------
+
+    .\init-db.ps1
+
+This copies the 3 DB folders from the package into Docker volumes.
+Run ONCE only.
+
+
+----------------------------------------------------------------
+  STEP 4.6 � Start the app
+----------------------------------------------------------------
+
+  IF the college PC HAS an NVIDIA GPU:
+
+    docker compose up
+
+  IF the college PC has NO GPU (CPU only):
+
+    docker compose -f docker-compose.yml run --rm \
+      --entrypoint "" \
+      -e NVIDIA_VISIBLE_DEVICES="" \
+      rag python -m chainlit run RAG/chainlit_app.py --host 0.0.0.0 --port 8000
+
+  Or easier � edit docker-compose.yml on that machine:
+  Remove the entire "deploy:" block (lines starting with deploy:),
+  then run:
+
+    docker compose up
+
+Open browser at: http://localhost:8000
+
+The app is running!
+
+
+----------------------------------------------------------------
+  STEP 4.7 � To stop the app
+----------------------------------------------------------------
+
+    Press Ctrl+C  (if running in foreground)
+
+    OR
+
+    docker compose down  (to stop and remove containers)
+
+The volumes (ChromaDB data + HF cache) are preserved.
+Run "docker compose up" again anytime to restart.
+
+
+================================================================
+  QUICK REFERENCE � COMMON COMMANDS
+================================================================
+
+  Build image:
+    docker build -t library-rag:latest .
+
+  Populate DB volumes (once):
+    .\init-db.ps1
+
+  Start app:
+    docker compose up
+
+  Start app (background / detached):
+    docker compose up -d
+
+  Stop app:
+    docker compose down
+
+  View live logs:
+    docker compose logs -f
+
+  Check if GPU is visible to Docker:
+    docker run --rm --gpus all nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04 nvidia-smi
+
+  Export image to file:
+    docker save library-rag:latest | gzip > library-rag.tar.gz
+
+  Import image from file:
+    docker load < library-rag.tar.gz
+
+  List all Docker images:
+    docker images
+
+  List running containers:
+    docker ps
+
+
+================================================================
+  TROUBLESHOOTING
+================================================================
+
+  Problem: "docker: command not found"
+  Solution: Docker Desktop is not installed or not started.
+            Launch Docker Desktop and wait for it to fully start.
+
+  Problem: "Error: could not select device driver nvidia"
+  Solution: NVIDIA Container Toolkit is not installed.
+            Follow STEP 1.3 again, or skip GPU and run on CPU.
+
+  Problem: "GOOGLE_API_KEY environment variable not set"
+  Solution: Your .env file is missing or the key is empty.
+            Check that .env exists and has GOOGLE_API_KEY=your_key
+
+  Problem: chromadb "Collection not found" error
+  Solution: The vector DB volumes are empty.
+            Run .\init-db.ps1 again.
+
+  Problem: Port 8000 already in use
+  Solution: Another app is using port 8000. Edit docker-compose.yml
+            and change "8000:8000" to e.g. "8080:8000",
+            then access at http://localhost:8080
+
+  Problem: Very slow first startup
+  Solution: If using jina or qwen backend, the model is downloading
+            (~600 MB or ~4 GB). This is normal on first run.
+            Set EMBEDDING_BACKEND=google in .env for instant startup.
+
+
+================================================================
+  END OF GUIDE
+================================================================

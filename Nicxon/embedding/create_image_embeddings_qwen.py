@@ -1,27 +1,4 @@
 #!/usr/bin/env python3
-"""
-Library Chatbot — Image Embedding Generation (Qwen3-VL-Embedding, local)
-
-Generates embeddings for book cover IMAGES using the
-Qwen/Qwen3-VL-Embedding-2B (or -8B) model loaded locally via
-sentence-transformers.  No API key required — model weights are
-downloaded automatically from HuggingFace on first run.
-
-Output
-------
-JSON file at `embeddings_image/image_embeddings_qwen.json` with the
-SAME record shape as the Google / OpenRouter versions so that
-`vector_db/create_vector_db_multimodal.py` can ingest it without
-changes (point IMAGE_EMBEDDINGS_FILE at the new path).
-
-Install (conda-forge first, then pip for qwen-vl-utils)
--------
-    conda install -c conda-forge "transformers>=4.57" sentence-transformers pillow
-    pip install qwen-vl-utils
-
-The Google version of this script (`create_image_embeddings_google.py`)
-is intentionally left untouched.
-"""
 
 from __future__ import annotations
 
@@ -59,10 +36,6 @@ except ImportError:
     sys.exit(1)
 
 
-# ======================================================================
-# Configuration
-# ======================================================================
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 INPUT_FILE  = PROJECT_ROOT / "chunking"       / "book_chunks_image.json"
@@ -70,30 +43,17 @@ OUTPUT_DIR  = PROJECT_ROOT / "embeddings_image"
 OUTPUT_FILE = OUTPUT_DIR   / "image_embeddings_qwen.json"
 STATS_FILE  = OUTPUT_DIR   / "image_embedding_statistics_qwen.txt"
 
-# Switch to "Qwen/Qwen3-VL-Embedding-8B" if you have the VRAM for it.
 EMBEDDING_MODEL = "Qwen/Qwen3-VL-Embedding-2B"
 
-# Mirror the preprocessing used in the Google version.
 MAX_IMAGE_DIMENSION = 512
 JPEG_QUALITY        = 85
 MAX_IMAGE_SIZE_MB   = 4
 SUPPORTED_FORMATS   = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
-# How often (chunks processed) to flush results to disk.
 SAVE_INTERVAL = 25
 
 
-# ======================================================================
-# Helpers
-# ======================================================================
-
 def _load_model(model_name: str) -> SentenceTransformer:
-    """Load the Qwen embedding model.
-
-    On first call the weights (~4-5 GB for 2B) are downloaded from
-    HuggingFace and cached in ~/.cache/huggingface/hub automatically.
-    Subsequent runs load from the local cache instantly.
-    """
     print(f"Loading model: {model_name}")
     print("  (first run downloads ~4-5 GB; subsequent runs use cache)")
     model = SentenceTransformer(model_name, trust_remote_code=True)
@@ -102,14 +62,6 @@ def _load_model(model_name: str) -> SentenceTransformer:
 
 
 def _preprocess_image(image_path: Path) -> Optional[Image.Image]:
-    """Load → RGB → thumbnail to MAX_IMAGE_DIMENSION.
-
-    Mirrors the preprocessing used in `create_image_embeddings_google.py`
-    so both scripts operate on the same effective image content.
-
-    Returns the PIL Image ready for encoding, or None if the file
-    cannot be processed.
-    """
     if not image_path.exists():
         return None
 
@@ -130,24 +82,15 @@ def _preprocess_image(image_path: Path) -> Optional[Image.Image]:
 
 
 def _embed_image(model: SentenceTransformer, pil_image: Image.Image) -> List[float]:
-    """Return a normalised embedding vector (plain Python list) for one image.
-
-    sentence-transformers accepts PIL Image objects directly for
-    Qwen3-VL-Embedding.
-    """
     embeddings = model.encode(
         [pil_image],
         batch_size=1,
         show_progress_bar=False,
-        normalize_embeddings=True,   # cosine-ready; mirrors Qwen's recommended usage
+        normalize_embeddings=True,
         convert_to_numpy=True,
     )
     return embeddings[0].tolist()
 
-
-# ======================================================================
-# Main pipeline
-# ======================================================================
 
 def main() -> int:
     print(f"Image embedder (Qwen local, model={EMBEDDING_MODEL})")
@@ -160,11 +103,9 @@ def main() -> int:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ---- Load model ----
     model = _load_model(EMBEDDING_MODEL)
     embedding_dim = model.get_sentence_embedding_dimension()
 
-    # ---- Load chunks ----
     with INPUT_FILE.open("r", encoding="utf-8") as f:
         chunks: List[Dict[str, Any]] = json.load(f)
 
@@ -175,13 +116,11 @@ def main() -> int:
         print("Nothing to do.")
         return 0
 
-    # Quick disk check
     existing_on_disk = sum(
         1 for c in chunks if Path(c.get("image_path", "")).exists()
     )
     print(f"  images found on disk: {existing_on_disk:,}/{total:,}")
 
-    # ---- Resume if an output already exists ----
     embedded: List[Dict[str, Any]] = []
     done_book_ids: set[str] = set()
     if OUTPUT_FILE.exists():
@@ -197,7 +136,6 @@ def main() -> int:
     pending = [c for c in chunks if c.get("book_id") not in done_book_ids]
     print(f"  to embed: {len(pending):,}")
 
-    # ---- Stats ----
     stats: Dict[str, Any] = {
         "started":         datetime.now(),
         "total_chunks":    total,
@@ -210,7 +148,6 @@ def main() -> int:
         "embedding_dim":   embedding_dim,
     }
 
-    # ---- Embed ----
     try:
         with tqdm(total=len(pending), desc="image embeddings") as pbar:
             for i, chunk in enumerate(pending):
@@ -218,7 +155,6 @@ def main() -> int:
                 image_path_str = chunk.get("image_path", "")
                 image_path     = Path(image_path_str)
 
-                # Pre-flight checks (mirroring Google version)
                 if not image_path.exists():
                     stats["skipped_missing"] += 1
                     pbar.update(1)
@@ -246,7 +182,6 @@ def main() -> int:
                     pbar.update(1)
                     continue
 
-                # Dimension sanity check
                 if len(embedding) != embedding_dim:
                     pbar.write(
                         f"  WARNING: dim mismatch for {book_id}: "
@@ -284,13 +219,11 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nInterrupted — saving partial results...")
 
-    # ---- Final save ----
     OUTPUT_FILE.write_text(
         json.dumps(embedded, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
 
-    # ---- Stats report ----
     stats["ended"] = datetime.now()
     duration = stats["ended"] - stats["started"]
 

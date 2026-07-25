@@ -62,7 +62,7 @@ MAX_IMAGE_DIM    = 512  # mirrors RAGConfig.MAX_UPLOAD_IMAGE_DIMENSION
 # Model names per backend
 GEMINI_MODEL_NAME = "gemini-embedding-2"
 QWEN_MODEL_NAME   = "Qwen/Qwen3-VL-Embedding-2B"
-JINA_MODEL_NAME   = "jinaai/jina-clip-v2"
+JINA_MODEL_NAME   = "jinaai/jina-embeddings-v5-omni-small"
 
 
 # ----------------------------------------------------------------------
@@ -364,59 +364,47 @@ def main() -> int:
         embed_image = lambda path:  _qwen_embed_image(qwen_model, path)
 
     else:  # jina
-        # clip_loss patch
-        try:
-            import torch as _t
-            import torch.nn as nn
-            import transformers.models.clip.modeling_clip as _clip_module
-            if not hasattr(_clip_module, "clip_loss"):
-                def _clip_loss(similarity: _t.Tensor) -> _t.Tensor:
-                    caption_loss = nn.functional.cross_entropy(
-                        similarity, _t.arange(len(similarity), device=similarity.device))
-                    image_loss = nn.functional.cross_entropy(
-                        similarity.t(), _t.arange(len(similarity), device=similarity.device))
-                    return (caption_loss + image_loss) / 2.0
-                _clip_module.clip_loss = _clip_loss
-        except Exception:
-            pass
-
-        # Single AutoModel handles both encode_text() and encode_image()
-        from transformers import AutoModel as _AutoModel
+        # Jina Embeddings v5 Omni Small — Qwen3-based, no clip_loss patch needed.
+        # SentenceTransformer with modality='vision' supports text + image in
+        # one shared vector space.  encode_query() for queries, encode_document()
+        # for stored passages/images.
+        from sentence_transformers import SentenceTransformer as _ST
         import numpy as _np
         print(f"Loading model: {JINA_MODEL_NAME}  (uses local cache if already downloaded)")
-        jina_image_model = _AutoModel.from_pretrained(JINA_MODEL_NAME, trust_remote_code=True)
-        if _t.cuda.is_available():
-            jina_image_model = jina_image_model.to("cuda")
-            print("  model on GPU (encode_text + encode_image)")
-        else:
-            print("  model on CPU (slow — enable CUDA)")
+        jina_model = _ST(
+            JINA_MODEL_NAME,
+            trust_remote_code=True,
+            model_kwargs={"modality": "vision", "default_task": "retrieval"},
+        )
+        print(f"  model ready — dim={jina_model.get_sentence_embedding_dimension()}")
 
         def _jina_embed_text(text: str) -> List[float]:
-            # AutoModel.encode_text() — no prompt, matches stored embeddings
-            with _t.no_grad():
-                emb = jina_image_model.encode_text([text])
-            if hasattr(emb, "cpu"):
-                emb = emb.cpu()
-            arr = _np.array(emb).flatten().astype(_np.float32)
-            norm = _np.linalg.norm(arr)
-            if norm > 0:
-                arr = arr / norm
-            return arr.tolist()
+            # encode() with task='retrieval.query' — works for text and images.
+            emb = jina_model.encode(
+                [text],
+                task="retrieval",
+                batch_size=1,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+            )
+            return emb[0].tolist()
 
         def _jina_embed_image(path: Path) -> List[float]:
             from PIL import Image
             img = Image.open(path).convert("RGB")
             if max(img.size) > MAX_IMAGE_DIM:
                 img.thumbnail((MAX_IMAGE_DIM, MAX_IMAGE_DIM), Image.LANCZOS)
-            with _t.no_grad():
-                emb = jina_image_model.encode_image([img])
-            if hasattr(emb, "cpu"):
-                emb = emb.cpu()
-            arr = _np.array(emb).flatten().astype(_np.float32)
-            norm = _np.linalg.norm(arr)
-            if norm > 0:
-                arr = arr / norm
-            return arr.tolist()
+            # encode() with task='retrieval.query' for image search queries
+            emb = jina_model.encode(
+                [img],
+                task="retrieval",
+                batch_size=1,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+            )
+            return emb[0].tolist()
 
         embed_text  = _jina_embed_text
         embed_image = _jina_embed_image

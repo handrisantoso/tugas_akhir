@@ -1,0 +1,63 @@
+# --------------------------------------------------------------
+#  .dockerignore — keeps the build context lean
+#  Only what the running app needs goes into the image.
+# --------------------------------------------------------------
+
+# -- Secrets (NEVER bake these in) ----------------------------
+.env
+RAG/.env
+embedding/.env
+Evaluation/.env
+
+# -- Python artifacts -----------------------------------------
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# -- Development tool configs ----------------------------------
+.vscode
+.kiro
+.gemini
+.git
+.gitignore
+
+# -- Logs & temp files -----------------------------------------
+*.log
+**/*.log
+*.txt.bak
+
+# -- Large root-level data files (not needed at runtime) -------
+books.json
+books_output.json
+books_updated.json
+books_updated_cleaned.json
+
+# -- Entire directories not needed at runtime -----------------
+embedding/
+Evaluation/
+eval/
+chunking/
+created_scripts/
+extracted_data/
+
+# -- Large embedding JSON blobs --------------------------------
+embeddings_text/
+embeddings_image/
+
+# -- Root-level one-off scripts (not part of the app) ---------
+clean_authors_fixed.py
+clean_books_fields.py
+convert_to_json.py
+quick_sample.py
+check_env.py
+
+# -- vector_db: Python scripts & docs (only the DB dirs are COPYed) --
+vector_db/*.py
+vector_db/*.txt
+vector_db/*.md
+vector_db/README.md
+vector_db/__pycache__
+
+# -- Root .chainlit dir (dev only; app uses RAG/.chainlit) -----
+.chainlit/

@@ -1,0 +1,14 @@
+{
+  "n_queries": 43,
+  "mean_faithfulness": 0.536537591919114,
+  "n_scored_faithfulness": 39,
+  "mean_answer_relevancy": 0.8168952996124756,
+  "n_scored_answer_relevancy": 40,
+  "label": "gemini_ragas_1",
+  "db_path": "E:\\D backup\\Compressed\\vector_db\\chroma_db_multimodal_google",
+  "judge_provider": "openrouter",
+  "judge_model": "meta-llama/llama-3.3-70b-instruct",
+  "embedding_model": "gemini-embedding-2",
+  "with_references": false,
+  "dataset_path": "E:\\D backup\\Compressed\\eval\\eval_dataset.csv"
+}

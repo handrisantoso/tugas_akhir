@@ -13,4 +13,4 @@ RETRIEVAL METRICS
   hit_rate@5           0.9400
   hit_rate@10          0.9800
   ndcg@10              0.9534
-  mean_latency_ms      712.2814
+  mean_latency_ms      755.4910

@@ -1,7 +1,3 @@
-"""
-Core RAG Engine for Library Chatbot
-Handles intent classification, search, filtering, and response generation
-"""
 import asyncio
 import os
 import io
@@ -9,18 +5,36 @@ import json
 import logging
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 import chromadb
 from google import genai
 from config import RAGConfig
 from conversation_manager import ConversationManager
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Project root = parent of this file's directory (RAG/ -> project root)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _resolve_image_path(raw: str) -> str:
+    """Turn a stored image path into an absolute path usable by the OS.
+
+    Stored paths are relative to the project root (e.g.
+    ``Cleaned_data/cover_images/foo.png``) so they work on any machine
+    or Docker container regardless of mount point.  Absolute legacy paths
+    are returned unchanged.
+    """
+    if not raw:
+        return raw
+    p = Path(raw)
+    if p.is_absolute():
+        return raw
+    return str(_PROJECT_ROOT / p)
+
 class LibraryRAGEngine:
-    """Main RAG engine for library book search and recommendations"""
     
     def __init__(self):
         self.config = RAGConfig()
@@ -28,19 +42,14 @@ class LibraryRAGEngine:
         self._initialize_components()
     
     def _initialize_components(self):
-        """Initialize all RAG components"""
         try:
-            # Configure Google AI — always needed for LLM calls
             if not self.config.GOOGLE_API_KEY:
                 raise ValueError("GOOGLE_API_KEY environment variable not set")
             
             self.genai_client = genai.Client(api_key=self.config.GOOGLE_API_KEY)
             
-            # ----------------------------------------------------------
-            # Embedding backend setup
-            # ----------------------------------------------------------
-            self.qwen_model = None  # sentence-transformers model (qwen)
-            self.jina_model = None  # AutoModel (jina)
+            self.qwen_model = None
+            self.jina_model = None
             
             if self.config.QUERY_EMBED_TYPE == 'qwen_local':
                 try:
@@ -65,46 +74,27 @@ class LibraryRAGEngine:
                 )
             
             elif self.config.QUERY_EMBED_TYPE == 'jina_local':
-                # Jina CLIP v2 compat patch
                 try:
-                    import torch
-                    import torch.nn as nn
-                    import transformers.models.clip.modeling_clip as _clip_module
-                    if not hasattr(_clip_module, "clip_loss"):
-                        def _clip_loss(similarity: torch.Tensor) -> torch.Tensor:
-                            caption_loss = nn.functional.cross_entropy(
-                                similarity,
-                                torch.arange(len(similarity), device=similarity.device))
-                            image_loss = nn.functional.cross_entropy(
-                                similarity.t(),
-                                torch.arange(len(similarity), device=similarity.device))
-                            return (caption_loss + image_loss) / 2.0
-                        _clip_module.clip_loss = _clip_loss
-                except Exception:
-                    pass
-                
-                try:
-                    from transformers import AutoModel as _AutoModel
+                    from sentence_transformers import SentenceTransformer as _ST
                 except ImportError:
                     raise ImportError(
-                        "transformers is required for the Jina backend."
+                        "sentence-transformers is required for the Jina v5 backend. "
+                        "conda install -c conda-forge sentence-transformers"
                     )
-                
-                import torch as _t
+
                 logger.info(
                     f"Loading Jina model: {self.config.EMBEDDING_MODEL} ..."
                 )
-                # Single AutoModel: encode_text() for text, encode_image() for images
-                self.jina_model = _AutoModel.from_pretrained(
-                    self.config.EMBEDDING_MODEL, trust_remote_code=True
+                self.jina_model = _ST(
+                    self.config.EMBEDDING_MODEL,
+                    trust_remote_code=True,
+                    model_kwargs={"modality": "vision", "default_task": "retrieval"},
                 )
-                if _t.cuda.is_available():
-                    self.jina_model = self.jina_model.to("cuda")
-                    logger.info(f"Jina model loaded on GPU — dim={self.config.EMBEDDING_DIM}")
-                else:
-                    logger.info(f"Jina model loaded on CPU — dim={self.config.EMBEDDING_DIM}")
+                logger.info(
+                    f"Jina model loaded — dim="
+                    f"{self.jina_model.get_sentence_embedding_dimension()}"
+                )
             
-            # Initialize ChromaDB — two collections for text and image embeddings
             self.chroma_client = chromadb.PersistentClient(path=self.config.VECTOR_DB_PATH)
             self.text_collection = self.chroma_client.get_collection(
                 name=self.config.TEXT_COLLECTION_NAME
@@ -128,24 +118,9 @@ class LibraryRAGEngine:
     async def process_query(self, user_message: str,
                              image_bytes: bytes = None,
                              mime_type: str = None) -> Dict[str, Any]:
-        """Main entry point for processing user queries.
-
-        Args:
-            user_message: Text from the user.
-            image_bytes: Optional raw bytes of an uploaded image.
-            mime_type: MIME type of the uploaded image (e.g. 'image/jpeg').
-        """
         try:
             has_image = image_bytes is not None
 
-            # Step 1: Intent Classification.
-            # An attached image is the strongest possible signal that the
-            # user wants to *search* — only `_handle_search_intent` knows
-            # how to consume the image; FOLLOWUP / CLARIFICATION / GENERAL
-            # all silently drop it. The LLM-driven classifier only sees
-            # the text, so vague text accompanying an upload (empty, "?",
-            # "what is this", "any thoughts") is routinely classified
-            # GENERAL and the image is thrown away. Short-circuit here.
             if has_image:
                 intent, confidence = "SEARCH", 1.0
                 logger.info(
@@ -157,7 +132,6 @@ class LibraryRAGEngine:
                 intent, confidence = await self._classify_intent(user_message)
                 logger.info(f"Intent classified: {intent} (confidence: {confidence})")
             
-            # Step 2: Process based on intent
             if intent == "SEARCH":
                 return await self._handle_search_intent(user_message, intent, image_bytes, mime_type)
             elif intent == "FOLLOWUP":
@@ -170,7 +144,7 @@ class LibraryRAGEngine:
                     user_message, intent,
                     image_bytes=image_bytes, mime_type=mime_type
                 )
-            else:  # GENERAL
+            else:
                 return await self._handle_general_intent(user_message, intent)
         
         except Exception as e:
@@ -178,7 +152,6 @@ class LibraryRAGEngine:
             return self._create_error_response(str(e))
     
     async def _classify_intent(self, user_message: str) -> Tuple[str, float]:
-        """Classify user intent using LLM"""
         prompt = self.config.SYSTEM_PROMPTS['intent_classifier'].format(
             user_message=user_message
         )
@@ -190,33 +163,26 @@ class LibraryRAGEngine:
             )
             result = response.text.strip()
             
-            # Parse result (format: INTENT|CONFIDENCE)
             if '|' in result:
                 intent, confidence_str = result.split('|', 1)
                 confidence = float(confidence_str)
             else:
                 intent = result
-                confidence = 0.8  # Default confidence
+                confidence = 0.8
             
             return intent.strip(), confidence
             
         except Exception as e:
             logger.error(f"Intent classification failed: {e}")
-            return "SEARCH", 0.5  # Default to search
+            return "SEARCH", 0.5
     
     async def _handle_search_intent(self, user_message: str, intent: str,
                                      image_bytes: bytes = None,
                                      mime_type: str = None) -> Dict[str, Any]:
-        """Handle search queries, optionally with an uploaded cover image."""
-        # Step 1: Determine search mode (TEXT / IMAGE / HYBRID)
         has_image = image_bytes is not None
         search_mode = await self._classify_search_mode(user_message, has_image)
         logger.info(f"Search mode: {search_mode}")
 
-        # Step 2: Embed uploaded image if provided. The helper now
-        # also returns the resized JPEG bytes so we can pass them as
-        # context to downstream multimodal LLM calls (rerank + response
-        # generator) without re-running PIL or another resize pass.
         image_embedding: Optional[List[float]] = None
         image_jpeg: Optional[bytes] = None
         if has_image:
@@ -227,10 +193,8 @@ class LibraryRAGEngine:
             else:
                 image_embedding, image_jpeg = preprocessed
 
-        # Step 3: Extract search parameters from text
         search_params = await self._extract_search_parameters(user_message)
 
-        # Step 4: Perform vector search
         search_results = await self._perform_vector_search(
             search_params['search_terms'],
             search_params,
@@ -238,31 +202,20 @@ class LibraryRAGEngine:
             search_mode=search_mode,
         )
         
-        # Step 5: Post-retrieval filtering. When an image is in play,
-        # let the rerank LLM see it so visual cues (genre, audience,
-        # tone signalled by the cover) can influence ordering.
         filtered_results = await self._post_retrieval_filter(
             user_message,
             search_results,
             image_jpeg=image_jpeg,
         )
         
-        # Step 6: Generate response. The response LLM also sees the
-        # image when one was uploaded — this is what closes the bug
-        # where the assistant said "the user has not provided a
-        # specific search query" while clearly displaying an image.
         response_data = await self._generate_response(
             user_message,
             filtered_results,
             intent,
             image_jpeg=image_jpeg,
         )
-        response_data['search_mode'] = search_mode  # Surface to UI
+        response_data['search_mode'] = search_mode
         
-        # Step 7: Update conversation memory. Persist the image
-        # embedding AND the JPEG bytes so a follow-up turn can refine
-        # the search with new filters at zero embedding cost AND keep
-        # showing the image to the LLM for context.
         self.conversation_manager.add_turn(
             user_message=user_message,
             assistant_response=response_data['full_response'],
@@ -280,36 +233,15 @@ class LibraryRAGEngine:
     async def _handle_followup_intent(self, user_message: str, intent: str,
                                        image_bytes: bytes = None,
                                        mime_type: str = None) -> Dict[str, Any]:
-        """Handle follow-up questions using previous search context.
-
-        Three cases, in order of preference:
-
-        1. The user attached a *new* image with their followup. Treat it
-           as a fresh search — the new image is the dominant signal.
-        2. A previous turn embedded an image and the user is now adding
-           text-based filters ("only English", "before 1980"). Re-run
-           the vector search using the cached image embedding plus the
-           freshly-extracted filters. This is the path the previous
-           implementation lacked entirely; followups could only re-rank
-           the cached top-5, never expand or constrain the candidate
-           pool against the original image.
-        3. No image context at all. Re-rank the cached previous results
-           with the LLM (the original behaviour).
-        """
-        # Case 1: a fresh image trumps the cached context.
         if image_bytes is not None:
             return await self._handle_search_intent(
                 user_message, "SEARCH",
                 image_bytes=image_bytes, mime_type=mime_type
             )
 
-        # Case 2: previous turn carried an image. Refine against it.
         prior_image = self.conversation_manager.get_last_image_context()
         if prior_image and prior_image.get('embedding'):
             search_params = await self._extract_search_parameters(user_message)
-            # Decide search mode for the refinement: if the followup text
-            # is substantive, blend it with the cached image; otherwise
-            # stay in the prior mode (typically IMAGE).
             has_substantive_text = bool(
                 (user_message or '').strip()
                 and len(user_message.strip()) >= 10
@@ -328,10 +260,6 @@ class LibraryRAGEngine:
                 image_embedding=prior_image['embedding'],
                 search_mode=refined_mode,
             )
-            # Reuse the cached JPEG bytes from the originating turn so
-            # the rerank and response LLMs still see the cover during
-            # the followup. No re-embedding, no re-resize, no extra
-            # bytes from the user.
             cached_jpeg = prior_image.get('jpeg')
             filtered_results = await self._post_retrieval_filter(
                 user_message, search_results,
@@ -343,8 +271,6 @@ class LibraryRAGEngine:
             )
             response_data['search_mode'] = refined_mode
 
-            # Persist the image context forward so the next followup
-            # can keep refining without losing context.
             self.conversation_manager.add_turn(
                 user_message=user_message,
                 assistant_response=response_data['full_response'],
@@ -358,10 +284,8 @@ class LibraryRAGEngine:
             )
             return response_data
 
-        # Case 3: no image context anywhere. Original cached-rerank path.
         last_results = self.conversation_manager.get_last_search_context()
         if not last_results:
-            # No previous search either, treat as new search
             return await self._handle_search_intent(user_message, "SEARCH")
 
         filtered_results = await self._post_retrieval_filter(
@@ -385,15 +309,12 @@ class LibraryRAGEngine:
     async def _handle_clarification_intent(self, user_message: str, intent: str,
                                             image_bytes: bytes = None,
                                             mime_type: str = None) -> Dict[str, Any]:
-        """Handle clarification requests about specific books"""
-        # Similar to follow-up but focused on explaining/elaborating
         return await self._handle_followup_intent(
             user_message, intent,
             image_bytes=image_bytes, mime_type=mime_type
         )
     
     async def _handle_general_intent(self, user_message: str, intent: str) -> Dict[str, Any]:
-        """Handle general conversation and library questions"""
         thinking = f"This is a general library question that doesn't require book search. I should respond helpfully about library services or general information."
         
         prompt = f"""You are a friendly library assistant. Respond to this general question or comment:
@@ -431,7 +352,6 @@ Provide a helpful, conversational response about library services, general book 
             return self._create_error_response(str(e))
     
     async def _extract_search_parameters(self, user_message: str) -> Dict[str, Any]:
-        """Extract search terms and filters from user message"""
         prompt = self.config.SYSTEM_PROMPTS['query_processor'].format(
             user_message=user_message
         )
@@ -443,7 +363,6 @@ Provide a helpful, conversational response about library services, general book 
             )
             result = response.text.strip()
             
-            # Parse the structured response
             params = {
                 'search_terms': '',
                 'language_filter': None,
@@ -460,7 +379,6 @@ Provide a helpful, conversational response about library services, general book 
                     key = key.strip().lower()
                     value = value.strip()
                     
-                    # Clean up the value - remove brackets, quotes, and common artifacts
                     if value:
                         value = value.strip('[](){}""\'\'`')
                         value = value.replace('[', '').replace(']', '')
@@ -479,7 +397,6 @@ Provide a helpful, conversational response about library services, general book 
                     elif 'genre' in key:
                         params['genre_filter'] = value
                     elif 'format' in key:
-                        # Only keep actual format values, ignore generic terms
                         if value and value.lower() not in ['books', 'book', 'literature', 'text']:
                             params['format_filter'] = value
                         else:
@@ -489,7 +406,6 @@ Provide a helpful, conversational response about library services, general book 
                     elif 'content' in key:
                         params['content_filter'] = value
             
-            # Log the extracted parameters
             logger.info(f"Extracted search parameters: {params}")
             return params
             
@@ -509,25 +425,11 @@ Provide a helpful, conversational response about library services, general book 
     async def _perform_vector_search(self, query_text: str, search_params: Dict,
                                       image_embedding: List[float] = None,
                                       search_mode: str = "TEXT") -> List[Dict]:
-        """Perform semantic search using ChromaDB.
-
-        Routes to the appropriate collection(s) based on search_mode:
-        - TEXT (default): query text_collection with a text embedding
-        - IMAGE: query image_collection with an image embedding, look up full
-                 text chunks by book_id for LLM context (Option A)
-        - HYBRID: query both, merge by book_id with weighted scoring
-        """
         try:
-            # ------------------------------------------------------------------
-            # 1. Generate text query embedding (skipped for pure IMAGE mode)
-            # ------------------------------------------------------------------
             text_embedding = None
             if search_mode in ("TEXT", "HYBRID") and query_text:
                 text_embedding = await self._embed_text(query_text)
 
-            # ------------------------------------------------------------------
-            # 2. Build where clause (applies to text collection only)
-            # ------------------------------------------------------------------
             where_clause = {}
 
             if search_params.get('language_filter'):
@@ -593,9 +495,6 @@ Provide a helpful, conversational response about library services, general book 
             if where_clause:
                 logger.info(f"Applying filters: {where_clause}")
 
-            # ------------------------------------------------------------------
-            # 3. Route to the appropriate search strategy
-            # ------------------------------------------------------------------
             if search_mode == "IMAGE":
                 if image_embedding is None:
                     logger.warning("IMAGE mode but no image_embedding; falling back to TEXT")
@@ -610,26 +509,13 @@ Provide a helpful, conversational response about library services, general book 
                     )
                 logger.warning("HYBRID mode missing an embedding; falling back to TEXT")
 
-            # Default: TEXT
             return await self._search_text_only(text_embedding, where_clause)
 
         except Exception as e:
             logger.error(f"Vector search failed: {e}")
             return []
 
-    # ------------------------------------------------------------------
-    # Search mode classification
-    # ------------------------------------------------------------------
-
     async def _classify_search_mode(self, user_message: str, has_image: bool) -> str:
-        """Determine whether to use TEXT, IMAGE, or HYBRID search.
-
-        Rules (fast-path before LLM call):
-        - No image → always TEXT
-        - Image + empty/very short text → IMAGE
-        - Image + generic similarity phrase → IMAGE
-        - Image + substantive query → ask LLM (HYBRID or TEXT)
-        """
         if not has_image:
             return "TEXT"
 
@@ -659,21 +545,10 @@ Provide a helpful, conversational response about library services, general book 
         except Exception as e:
             logger.warning(f"Search mode classification failed: {e}")
 
-        return "HYBRID"  # Safe default when image + substantial text
-
-    # ------------------------------------------------------------------
-    # Embedding dispatch (text & image) — backend-aware
-    # ------------------------------------------------------------------
+        return "HYBRID"
 
     async def _embed_text(self, text: str) -> List[float]:
-        """Generate a text embedding using the active backend.
-
-        - gemini_api: calls Google GenAI async API
-        - qwen_local: runs sentence-transformers model.encode() in a thread
-        - jina_local: runs AutoModel.encode_text() in a thread
-        """
         if self.config.QUERY_EMBED_TYPE == 'qwen_local':
-            # Qwen's encode() is synchronous — offload to a thread
             def _encode():
                 emb = self.qwen_model.encode(
                     [text],
@@ -685,54 +560,27 @@ Provide a helpful, conversational response about library services, general book 
                 return emb[0].tolist()
             return await asyncio.to_thread(_encode)
         elif self.config.QUERY_EMBED_TYPE == 'jina_local':
-            # Text: AutoModel.encode_text() — no prompt, matches stored embeddings.
-            import numpy as _np
-            import torch as _t
             def _encode_jina_text():
-                with _t.no_grad():
-                    emb = self.jina_model.encode_text([text])
-                if hasattr(emb, "cpu"):
-                    emb = emb.cpu()
-                arr = _np.array(emb).flatten().astype(_np.float32)
-                norm = _np.linalg.norm(arr)
-                if norm > 0:
-                    arr = arr / norm
-                return arr.tolist()
+                emb = self.jina_model.encode(
+                    [text],
+                    task="retrieval",
+                    batch_size=1,
+                    show_progress_bar=False,
+                    normalize_embeddings=True,
+                    convert_to_numpy=True,
+                )
+                return emb[0].tolist()
             return await asyncio.to_thread(_encode_jina_text)
         else:
-            # Default: Gemini API
             response = await self.genai_client.aio.models.embed_content(
                 model=self.config.EMBEDDING_MODEL,
                 contents=text,
             )
             return list(response.embeddings[0].values)
 
-    # ------------------------------------------------------------------
-    # Image preprocessing and embedding
-    # ------------------------------------------------------------------
-
     async def _preprocess_and_embed_image(self, image_bytes: bytes,
                                            mime_type: str = "image/jpeg"
                                            ) -> Optional[Tuple[List[float], bytes]]:
-        """Resize an uploaded image and generate its embedding.
-
-        Preprocessing is deliberately identical to the image-embedding
-        ingest pipeline so query and ingest land in the same input
-        distribution:
-        - Convert to RGB
-        - Thumbnail to MAX_UPLOAD_IMAGE_DIMENSION px (preserves aspect ratio)
-        - Re-encode as JPEG quality 85 (minimises token cost)
-
-        Embedding is then routed to the active backend:
-        - gemini_api: sends a typed Part to the Google GenAI API
-        - qwen_local: passes the PIL Image directly to model.encode()
-
-        Returns:
-            (embedding, jpeg_bytes) so callers can reuse the resized
-            JPEG bytes for downstream multimodal LLM calls without
-            re-doing the resize/re-encode work. Returns None on any
-            failure (PIL error, embedding API error, etc.).
-        """
         try:
             from PIL import Image
 
@@ -746,10 +594,8 @@ Provide a helpful, conversational response about library services, general book 
             jpeg_bytes = buf.getvalue()
             logger.info(f"Image preprocessed: {img.size}, {len(jpeg_bytes) / 1024:.1f} KB")
 
-            # --- Embed with active backend ---
             if self.config.QUERY_EMBED_TYPE == 'qwen_local':
-                # Qwen accepts PIL Image objects directly
-                pil_for_embed = img  # already RGB + resized
+                pil_for_embed = img
 
                 def _encode_img():
                     emb = self.qwen_model.encode(
@@ -763,25 +609,21 @@ Provide a helpful, conversational response about library services, general book 
 
                 embedding = await asyncio.to_thread(_encode_img)
             elif self.config.QUERY_EMBED_TYPE == 'jina_local':
-                # Image: AutoModel.encode_image() — no prompt, same as stored embeddings.
-                import numpy as _np
-                import torch as _t
                 pil_for_embed = img
 
                 def _encode_img_jina():
-                    with _t.no_grad():
-                        emb = self.jina_model.encode_image([pil_for_embed])
-                    if hasattr(emb, "cpu"):
-                        emb = emb.cpu()
-                    arr = _np.array(emb).flatten().astype(_np.float32)
-                    norm = _np.linalg.norm(arr)
-                    if norm > 0:
-                        arr = arr / norm
-                    return arr.tolist()
+                    emb = self.jina_model.encode(
+                        [pil_for_embed],
+                        task="retrieval",
+                        batch_size=1,
+                        show_progress_bar=False,
+                        normalize_embeddings=True,
+                        convert_to_numpy=True,
+                    )
+                    return emb[0].tolist()
 
                 embedding = await asyncio.to_thread(_encode_img_jina)
             else:
-                # Default: Gemini API
                 from google.genai import types
                 part = types.Part.from_bytes(data=jpeg_bytes, mime_type='image/jpeg')
                 result = await self.genai_client.aio.models.embed_content(
@@ -797,33 +639,12 @@ Provide a helpful, conversational response about library services, general book 
             logger.error(f"Image preprocessing/embedding failed: {e}")
             return None
 
-    # ------------------------------------------------------------------
-    # Search helpers (called by _perform_vector_search)
-    # ------------------------------------------------------------------
-
     def _fetch_text_chunks_by_book_ids(self, book_ids: List[str]) -> Dict[str, Dict]:
-        """Look up text chunks for a list of book_ids.
-
-        Joins on the canonical `book_id` metadata field via a `where`
-        clause instead of the prior `text_{book_id}` id pattern. The id
-        pattern silently misses whenever the text collection holds more
-        than one chunk per book (chunk-suffixed ids) or whenever chunk
-        ids collided at ingest, leaving the LLM with a `[Cover Image]`
-        placeholder instead of real text context.
-
-        Returns:
-            {book_id: {'document': str, 'metadata': dict}}.
-            If a book has multiple text chunks, the first one returned
-            wins — fine for surfacing book-level context to the LLM.
-        """
         out: Dict[str, Dict] = {}
         unique_ids = list(dict.fromkeys(bid for bid in book_ids if bid))
         if not unique_ids:
             return out
 
-        # ChromaDB accepts `$in` with any number of values. Use the
-        # equality shorthand for a single id for slightly cheaper paths
-        # in older Chroma builds.
         where = (
             {"book_id": unique_ids[0]}
             if len(unique_ids) == 1
@@ -846,26 +667,12 @@ Provide a helpful, conversational response about library services, general book 
                 continue
             bid = meta.get('book_id', '')
             if not bid or bid in out:
-                # First chunk per book wins
                 continue
             out[bid] = {'document': doc, 'metadata': meta}
 
         return out
 
     def _fetch_image_paths_by_book_ids(self, book_ids: List[str]) -> Dict[str, str]:
-        """Look up cover image paths for a list of book_ids.
-
-        Joins on the canonical `book_id` metadata field in
-        `library_books_image`. Used to attach `cover_image_path` to
-        text-mode results so the UI can render covers — the text
-        collection's metadata does not carry `cover_image_path`, only a
-        `has_cover_image` boolean.
-
-        Returns:
-            {book_id: image_path} for books that have a non-empty cover
-            path on disk. Books without an image record, or whose record
-            is missing `image_path`, are simply absent from the map.
-        """
         out: Dict[str, str] = {}
         unique_ids = list(dict.fromkeys(bid for bid in book_ids if bid))
         if not unique_ids:
@@ -899,21 +706,9 @@ Provide a helpful, conversational response about library services, general book 
         return out
 
     def _attach_cover_image_paths(self, results: List[Dict]) -> None:
-        """Mutate `results` in place, adding `cover_image_path` to each
-        result's `metadata` when the book has an entry in
-        `library_books_image`.
-
-        The Chainlit UI in `chainlit_app.py::show_search_details` reads
-        `metadata.get('cover_image_path', '')` when `has_cover_image` is
-        truthy. Without this enrichment the field is never populated for
-        text-mode results and covers are silently skipped.
-        """
         if not results:
             return
 
-        # Fast path: image-mode and image-only hybrid results already
-        # carry `image_path` from `library_books_image` — promote it to
-        # `cover_image_path` without an extra DB lookup.
         missing: List[Dict] = []
         for r in results:
             meta = r.get('metadata')
@@ -924,7 +719,7 @@ Provide a helpful, conversational response about library services, general book 
             local_path = meta.get('image_path')
             if local_path:
                 new_meta = dict(meta)
-                new_meta['cover_image_path'] = local_path
+                new_meta['cover_image_path'] = _resolve_image_path(local_path)
                 new_meta.setdefault('has_cover_image', True)
                 r['metadata'] = new_meta
                 continue
@@ -933,8 +728,6 @@ Provide a helpful, conversational response about library services, general book 
         if not missing:
             return
 
-        # Slow path: text-mode results need a join into
-        # `library_books_image` to find the on-disk cover path.
         book_ids = [
             r['metadata'].get('book_id', '') for r in missing
         ]
@@ -947,18 +740,13 @@ Provide a helpful, conversational response about library services, general book 
             bid = meta.get('book_id', '')
             path = path_by_book.get(bid)
             if path:
-                # Mutate a shallow copy so we don't disturb the
-                # underlying ChromaDB-returned dict (some Chroma builds
-                # share metadata references across calls).
                 new_meta = dict(meta)
-                new_meta['cover_image_path'] = path
-                # Helpful for the UI's `has_cover_image` check too.
+                new_meta['cover_image_path'] = _resolve_image_path(path)
                 new_meta.setdefault('has_cover_image', True)
                 r['metadata'] = new_meta
 
     async def _search_text_only(self, text_embedding: List[float],
                                  where_clause: Dict) -> List[Dict]:
-        """Query the text collection and return formatted results."""
         try:
             results = self.text_collection.query(
                 query_embeddings=[text_embedding],
@@ -990,25 +778,12 @@ Provide a helpful, conversational response about library services, general book 
             })
 
         logger.info(f"Text search returned {len(formatted)} results")
-        # Attach cover_image_path so the UI can render covers — text
-        # collection metadata only stores `has_cover_image`, not the path.
         self._attach_cover_image_paths(formatted)
         return formatted
 
     async def _search_image_only(self, image_embedding: List[float],
                                   search_mode: str,
                                   where_clause: Optional[Dict] = None) -> List[Dict]:
-        """Query the image collection, then look up full text chunks by book_id (Option A).
-
-        `where_clause` is an optional ChromaDB metadata filter. The image
-        collection only carries the canonical `book_id`, `chunk_type`,
-        `image_path`, `title`, `authors` fields by default — additional
-        filterable fields (language, publish_year, page_count, format,
-        ...) are populated by `vector_db/backfill_image_metadata.py`.
-        Until that backfill is run, applying the filter would erase
-        every result, so we transparently retry without the filter on
-        failure or empty match.
-        """
         applied_where = where_clause if where_clause else None
         try:
             img_results = self.image_collection.query(
@@ -1033,10 +808,6 @@ Provide a helpful, conversational response about library services, general book 
                 logger.error(f"Image collection query failed: {e2}")
                 return []
 
-        # If a filter was applied but matched nothing, retry unfiltered.
-        # The image collection's metadata schema is sparser than the
-        # text collection's, so a strict filter that the text branch
-        # would still satisfy can wipe out all image hits.
         if applied_where is not None and (
             not img_results.get('documents')
             or not img_results['documents'][0]
@@ -1058,11 +829,6 @@ Provide a helpful, conversational response about library services, general book 
         if not img_results['documents'] or not img_results['documents'][0]:
             return []
 
-        # Look up full text chunks from text_collection by book_id metadata.
-        # Joining via `where={"book_id": ...}` is robust to the actual id
-        # scheme in `library_books_text` (which may suffix chunk indices
-        # or hold multiple chunks per book), unlike the prior
-        # `text_{book_id}` id pattern which silently missed.
         book_ids = [meta.get('book_id', '') for meta in img_results['metadatas'][0]]
         text_by_book = self._fetch_text_chunks_by_book_ids(book_ids)
 
@@ -1087,9 +853,6 @@ Provide a helpful, conversational response about library services, general book 
             })
 
         logger.info(f"Image search returned {len(formatted)} results")
-        # Image-mode results come from `library_books_image`, whose
-        # metadata stores `image_path` rather than the `cover_image_path`
-        # key the UI looks for. Attach it so covers render.
         self._attach_cover_image_paths(formatted)
         return formatted
 
@@ -1097,17 +860,9 @@ Provide a helpful, conversational response about library services, general book 
                               image_embedding: List[float],
                               where_clause: Dict,
                               search_mode: str) -> List[Dict]:
-        """Query both collections and merge results by book_id.
-
-        Scoring strategy (safe — no penalty for books without image embeddings):
-        - In both:  combined = TEXT_WEIGHT * text_sim + IMAGE_WEIGHT * img_sim
-        - Text only: combined = text_sim  (full score, no penalty)
-        - Image only: combined = IMAGE_WEIGHT * img_sim
-        """
         tw = self.config.TEXT_SEARCH_WEIGHT
         iw = self.config.IMAGE_SEARCH_WEIGHT
 
-        # --- Text query ---
         try:
             txt_r = self.text_collection.query(
                 query_embeddings=[text_embedding],
@@ -1122,12 +877,6 @@ Provide a helpful, conversational response about library services, general book 
                 include=['documents', 'metadatas', 'distances']
             )
 
-        # --- Image query ---
-        # Apply the same metadata filter as the text branch so HYBRID
-        # mode actually constrains both halves of the merge. Until the
-        # image-metadata backfill has been run, the image collection
-        # may not carry every filterable field — fall back gracefully
-        # by retrying without filters on failure or empty match.
         applied_where_image = where_clause if where_clause else None
         try:
             img_r = self.image_collection.query(
@@ -1153,7 +902,6 @@ Provide a helpful, conversational response about library services, general book 
                 img_r = {'documents': [[]], 'metadatas': [[]],
                          'distances': [[]], 'ids': [[]]}
 
-        # Retry unfiltered if a filter erased every image hit.
         if applied_where_image is not None and (
             not img_r.get('documents') or not img_r['documents'][0]
         ):
@@ -1172,7 +920,6 @@ Provide a helpful, conversational response about library services, general book 
                 img_r = {'documents': [[]], 'metadatas': [[]],
                          'distances': [[]], 'ids': [[]]}
 
-        # --- Merge by book_id ---
         merged: Dict[str, Dict] = {}
 
         if txt_r['documents'] and txt_r['documents'][0]:
@@ -1184,7 +931,7 @@ Provide a helpful, conversational response about library services, general book 
                 merged[bid] = {
                     'document': doc, 'metadata': meta,
                     'text_similarity': ts, 'image_similarity': None,
-                    'combined_score': ts,  # no penalty if no image match
+                    'combined_score': ts,
                 }
 
         image_only_ids: List[str] = []
@@ -1204,10 +951,6 @@ Provide a helpful, conversational response about library services, general book 
                         'combined_score': iw * img_sim,
                     }
 
-        # Look up text chunks for image-only results. Joins via
-        # `where={"book_id": ...}` (canonical key) instead of the brittle
-        # `text_{book_id}` id pattern that silently misses for any book
-        # with chunk-suffixed ids or multiple text chunks.
         if image_only_ids:
             text_by_book = self._fetch_text_chunks_by_book_ids(image_only_ids)
             for bid, text_data in text_by_book.items():
@@ -1215,7 +958,6 @@ Provide a helpful, conversational response about library services, general book 
                     merged[bid]['document'] = text_data['document']
                     merged[bid]['metadata'] = text_data['metadata']
 
-        # --- Sort and format ---
         sorted_items = sorted(
             merged.values(), key=lambda x: x['combined_score'], reverse=True
         )
@@ -1235,29 +977,11 @@ Provide a helpful, conversational response about library services, general book 
             })
 
         logger.info(f"Hybrid search returned {len(formatted)} merged results")
-        # Hybrid results may be text-only, image-only, or both. Image-only
-        # entries already carry `image_path`; text-only entries do not.
-        # Normalise so the UI can render covers regardless of branch.
         self._attach_cover_image_paths(formatted)
         return formatted
     
-    # ------------------------------------------------------------------
-    # Multimodal LLM helper
-    # ------------------------------------------------------------------
-
     async def _llm_generate(self, prompt: str,
                              image_jpeg: Optional[bytes] = None) -> str:
-        """Run a `generate_content` call with optional image context.
-
-        When `image_jpeg` is provided the call is multimodal — the
-        image is sent as a typed `Part` alongside the text prompt so
-        the LLM can ground its reasoning in the cover. On any error
-        (corrupt bytes, transient API hiccup), we retry text-only so
-        the conversation never silently fails because the image
-        couldn't be sent. The caller still gets a usable response.
-
-        Returns the raw `.text` of the LLM response (stripped).
-        """
         contents: Any
         if image_jpeg:
             try:
@@ -1265,8 +989,6 @@ Provide a helpful, conversational response about library services, general book 
                 image_part = types.Part.from_bytes(
                     data=image_jpeg, mime_type='image/jpeg'
                 )
-                # Image first, then prompt — typical multimodal layout
-                # for Gemini and lets the LLM "look" before "thinking".
                 contents = [image_part, prompt]
                 response = await self.genai_client.aio.models.generate_content(
                     model=self.config.LLM_MODEL,
@@ -1278,7 +1000,6 @@ Provide a helpful, conversational response about library services, general book 
                     f"Multimodal LLM call failed ({e}); retrying text-only"
                 )
 
-        # Text-only path (default, and the fallback when multimodal fails)
         response = await self.genai_client.aio.models.generate_content(
             model=self.config.LLM_MODEL,
             contents=prompt,
@@ -1289,30 +1010,21 @@ Provide a helpful, conversational response about library services, general book 
                                       search_results: List[Dict],
                                       image_jpeg: Optional[bytes] = None
                                       ) -> List[Dict]:
-        """Use LLM to filter and rank search results.
-
-        When `image_jpeg` is supplied the rerank LLM also sees the
-        uploaded cover, so visual cues (subject portrait vs. abstract
-        art, audience signalling, tone) can influence the ordering.
-        """
         if not search_results:
             return []
         
-        # Prepare search results for LLM evaluation
         results_text = ""
-        for i, result in enumerate(search_results[:10]):  # Limit for prompt size
+        for i, result in enumerate(search_results[:10]):
             doc = result['document']
             metadata = result.get('metadata', {})
             similarity = result.get('similarity_score', 0)
             
-            # Extract title from document (first line usually contains title)
             title_line = doc.split('\n')[0] if doc else "Unknown Title"
             
             results_text += f"\n{i+1}. TITLE: {title_line}\n"
             results_text += f"   SIMILARITY: {similarity:.3f}\n"
             results_text += f"   CONTENT: {doc[:400]}...\n"
             
-            # Add metadata if available
             if metadata.get('language'):
                 results_text += f"   LANGUAGE: {metadata['language']}\n"
             if metadata.get('publish_year'):
@@ -1329,20 +1041,6 @@ Provide a helpful, conversational response about library services, general book 
         try:
             filter_response = await self._llm_generate(prompt, image_jpeg=image_jpeg)
             
-            # Parse LLM response to get ranked book numbers.
-            #
-            # The previous implementation used `re.findall(r'\b(\d+)\b', line)`
-            # which matches ANY integer on the line — page counts, years,
-            # ISBNs, similarity scores like "0.872", references like
-            # "1990s", etc. — and treats whichever number appears first as
-            # a book index. That made the rerank essentially noise whenever
-            # the parser didn't fall through to similarity ordering.
-            #
-            # The pattern below is anchored to start-of-line and only
-            # matches a leading numbered-list marker like "1.", "2)",
-            # "3:", "4]" with optional surrounding whitespace. Each line
-            # contributes at most one book index, so explanations no
-            # longer get clobbered by trailing digits in the same line.
             ranked_results = []
             list_marker_re = re.compile(r'^\s*(\d+)\s*[.):\]]')
 
@@ -1361,33 +1059,22 @@ Provide a helpful, conversational response about library services, general book 
 
                 book_numbers.append(book_num)
 
-                # Capture explanation only on the first line that mentions
-                # this book — later mentions (e.g. cross-references)
-                # would otherwise overwrite the primary justification.
                 explanation = line.strip()
                 if explanation:
                     search_results[book_num - 1].setdefault(
                         'llm_explanation', explanation
                     )
             
-            # Reorder results based on LLM ranking
-            for book_num in book_numbers[:5]:  # Top 5
+            for book_num in book_numbers[:5]:
                 if book_num <= len(search_results):
                     ranked_results.append(search_results[book_num - 1])
             
-            # If parsing failed or incomplete, fall back to similarity ranking
             if len(ranked_results) < 3:
                 logger.warning("LLM filtering parsing incomplete, falling back to similarity ranking")
                 ranked_results = sorted(search_results[:5], 
                                       key=lambda x: x.get('similarity_score', 0), 
                                       reverse=True)
             
-            # Add LLM filtering metadata. Stamp wall-clock time directly
-            # rather than reaching into `logger.handlers[0].format(...)`
-            # to extract a date string — that path crashes when the root
-            # handler has no formatter, depends on the format string
-            # containing ' - ', and pollutes log output via a synthetic
-            # LogRecord just to get a timestamp.
             stamp = datetime.now().isoformat()
             for result in ranked_results:
                 result['filtered_by_llm'] = True
@@ -1398,7 +1085,6 @@ Provide a helpful, conversational response about library services, general book 
             
         except Exception as e:
             logger.error(f"Post-retrieval filtering failed: {e}")
-            # Fallback to similarity-based ranking
             fallback_results = sorted(search_results[:5], 
                                     key=lambda x: x.get('similarity_score', 0), 
                                     reverse=True)
@@ -1414,26 +1100,12 @@ Provide a helpful, conversational response about library services, general book 
                                   intent: str,
                                   image_jpeg: Optional[bytes] = None
                                   ) -> Dict[str, Any]:
-        """Generate final response using LLM.
-
-        When `image_jpeg` is supplied the response LLM also sees the
-        uploaded cover. This is what lets the assistant acknowledge
-        and reason about the image — without it, the LLM only saw
-        the user's text (often empty for image-only queries) and the
-        retrieved books, leading to thinking like "the user has not
-        provided a specific search query" while the user clearly had.
-        """
-        # Prepare book information
         books_text = ""
         for book in relevant_books:
             books_text += f"- {book['document']}\n"
         
-        # Get conversation context
         conversation_context = self.conversation_manager.format_for_llm_context()
         
-        # When an image is in play, surface that fact in the prompt so
-        # the LLM is reliably aware of it even on the text-only retry
-        # path (where the image bytes themselves don't reach the API).
         prompt_user_query = user_query
         if image_jpeg:
             note = (
@@ -1455,18 +1127,10 @@ Provide a helpful, conversational response about library services, general book 
         
         try:
             full_response = await self._llm_generate(prompt, image_jpeg=image_jpeg)
-            
-            # Parse thinking and response sections
-            if "THINKING:" in full_response and "RESPONSE:" in full_response:
-                thinking = full_response.split("THINKING:")[1].split("RESPONSE:")[0].strip()
-                response_text = full_response.split("RESPONSE:")[-1].strip()
-            else:
-                thinking = "Processing the user's query and searching for relevant books."
-                response_text = full_response
-            
+
             return {
-                'thinking': thinking,
-                'response': response_text,
+                'thinking': '',
+                'response': full_response,
                 'full_response': full_response,
                 'search_results': relevant_books,
                 'intent': intent
@@ -1477,28 +1141,23 @@ Provide a helpful, conversational response about library services, general book 
             return self._create_error_response(str(e))
     
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """Create standardized error response"""
-        thinking = f"An error occurred while processing the request: {error_message}"
         response = "I apologize, but I encountered an issue while searching for books. Please try rephrasing your question or contact the librarian for assistance."
         
         return {
-            'thinking': thinking,
+            'thinking': '',
             'response': response,
-            'full_response': f"THINKING: {thinking}\nRESPONSE: {response}",
+            'full_response': response,
             'search_results': [],
             'intent': 'ERROR'
         }
     
     def get_conversation_stats(self) -> Dict[str, Any]:
-        """Get current conversation statistics"""
         return self.conversation_manager.get_conversation_stats()
     
     def clear_conversation(self):
-        """Clear conversation history"""
         self.conversation_manager.clear_conversation()
     
     def get_system_status(self) -> Dict[str, Any]:
-        """Get system status and configuration"""
         config_status = self.config.validate_config()
         conversation_stats = self.get_conversation_stats()
         
@@ -1514,4 +1173,4 @@ Provide a helpful, conversational response about library services, general book 
                 'embedding': self.config.EMBEDDING_MODEL,
                 'llm': self.config.LLM_MODEL
             }
-        } 
+        }

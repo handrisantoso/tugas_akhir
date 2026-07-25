@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""
-Library Chatbot — Multimodal Vector Database Setup
-Creates and populates ChromaDB with BOTH text and image embeddings
-from the OpenRouter embedding pipeline (Approach A).
-
-Two collections:
-  - library_books_text   → text embeddings   (318 chunks)
-  - library_books_image  → image embeddings  (48 chunks)
-
-Both are linked by book_id for cross-modal retrieval.
-
-Query workflow:
-  1. User sends a text query
-  2. Generate a query embedding using the SAME model (gemini-embedding-2-preview)
-  3. Search the text collection for semantic matches
-  4. Optionally search the image collection for visual matches
-  5. Combine results by book_id
-"""
 
 import json
 import os
@@ -26,7 +8,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from tqdm import tqdm
 
-# Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
@@ -46,39 +27,20 @@ except ImportError:
     sys.exit(1)
 
 
-# ======================================================================
-# Configuration
-# ======================================================================
-
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-# Input files (relative to project root)
 TEXT_EMBEDDINGS_FILE = "embeddings_text/text_embeddings_jina.json"
 IMAGE_EMBEDDINGS_FILE = "embeddings_image/image_embeddings_jina.json"
 
-# Database
 DB_PATH = "vector_db/chroma_db_multimodal_jina"
 TEXT_COLLECTION_NAME = "library_books_text"
 IMAGE_COLLECTION_NAME = "library_books_image"
 
 
-# ======================================================================
-# Multimodal Vector Database
-# ======================================================================
-
 class MultimodalLibraryVectorDB:
     def __init__(self, db_path: str = DB_PATH,
                  openrouter_api_key: str = None,
                  embedding_model: str = "google/gemini-embedding-2-preview"):
-        """Initialize the multimodal vector database.
-
-        Args:
-            db_path: Path where ChromaDB stores its data on disk.
-            openrouter_api_key: OpenRouter API key for generating query
-                embeddings at search time.
-            embedding_model: Must match the model used to generate the
-                stored text/image embeddings.
-        """
         self.db_path = db_path
         self.client = None
         self.text_collection = None
@@ -86,7 +48,6 @@ class MultimodalLibraryVectorDB:
         self.openrouter_api_key = openrouter_api_key
         self.embedding_model = embedding_model
 
-        # Statistics
         self.stats = {
             'text_total': 0,
             'text_processed': 0,
@@ -100,12 +61,7 @@ class MultimodalLibraryVectorDB:
 
         self.setup_database()
 
-    # ------------------------------------------------------------------
-    # Database setup
-    # ------------------------------------------------------------------
-
     def setup_database(self):
-        """Initialize ChromaDB client and both collections."""
         try:
             print("🗄️  Setting up ChromaDB (multimodal)...")
 
@@ -117,13 +73,11 @@ class MultimodalLibraryVectorDB:
                 )
             )
 
-            # --- Text collection ---
             self.text_collection = self._get_or_create_collection(
                 TEXT_COLLECTION_NAME,
                 "Text embeddings for semantic book search"
             )
 
-            # --- Image collection ---
             self.image_collection = self._get_or_create_collection(
                 IMAGE_COLLECTION_NAME,
                 "Image embeddings for visual book search"
@@ -136,25 +90,6 @@ class MultimodalLibraryVectorDB:
             raise
 
     def _get_or_create_collection(self, name: str, description: str):
-        """Get an existing collection or create a new one.
-
-        Both collections are created with `hnsw:space=cosine`. The
-        previous default was Chroma's squared-L2 distance, which —
-        because the stored embeddings are unit-normalised — produced a
-        displayed similarity of `2*cos - 1` rather than the cosine
-        itself. Switching to cosine makes the `1 - distance` formula
-        used in `RAG/rag_engine.py` yield the actual cosine similarity,
-        so UI numbers match the conventional [-1, 1] cosine range and
-        moderately-related hits no longer look like 0.1.
-
-        Note: ranking is unchanged. Squared L2 and cosine are
-        monotonically related on unit vectors, so the same books
-        surface in the same order — only the magnitude of the score
-        shifts.
-        """
-        # Chroma fixes the distance space at collection-creation time;
-        # there is no way to mutate it later. Keeping the metadata in a
-        # named local makes both create paths use the same value.
         creation_metadata = {
             "description": description,
             "hnsw:space": "cosine",
@@ -188,13 +123,7 @@ class MultimodalLibraryVectorDB:
             print(f"  ✅ New collection '{name}' created (cosine space)")
             return collection
 
-    # ------------------------------------------------------------------
-    # Query embedding generation (for search time)
-    # ------------------------------------------------------------------
-
     def generate_query_embedding(self, query_text: str) -> List[float]:
-        """Generate a query embedding via OpenRouter using the same model
-        that produced the stored embeddings."""
         if not self.openrouter_api_key:
             raise Exception("OpenRouter API key required for query embeddings")
 
@@ -223,11 +152,6 @@ class MultimodalLibraryVectorDB:
             print(f"❌ Error generating query embedding: {e}")
             raise
 
-    # ------------------------------------------------------------------
-    # Metadata extraction (from text chunks)
-    # ------------------------------------------------------------------
-
-    # Comprehensive language mapping (same as original create_vector_db.py)
     LANGUAGE_MAP = {
         'english': 'English', 'eng': 'English',
         'spanish': 'Spanish', 'spa': 'Spanish',
@@ -263,7 +187,6 @@ class MultimodalLibraryVectorDB:
     }
 
     def extract_text_metadata(self, chunk: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract and normalise metadata from a text chunk for ChromaDB filtering."""
         text = chunk.get('text', '')
         orig_meta = chunk.get('metadata', {})
 
@@ -276,7 +199,6 @@ class MultimodalLibraryVectorDB:
             'field_count': orig_meta.get('field_count', 0),
         }
 
-        # Extract language
         if 'LANGUAGE:' in text:
             lang_match = re.search(r'LANGUAGE:\s*([^\n]+)', text)
             if lang_match:
@@ -290,32 +212,26 @@ class MultimodalLibraryVectorDB:
                     clean = raw.lower().strip()
                     metadata['language'] = self.LANGUAGE_MAP.get(clean, raw.title())
 
-        # Extract publication year
         pub_match = re.search(r'Published:\s*(\d{4})', text)
         if pub_match:
             metadata['publish_year'] = int(pub_match.group(1))
 
-        # Extract page count
         pages_match = re.search(r'Pages:\s*(\d+)', text)
         if pages_match:
             metadata['page_count'] = int(pages_match.group(1))
 
-        # Extract format
         format_match = re.search(r'Format:\s*([^;,\n]+)', text)
         if format_match:
             metadata['format'] = format_match.group(1).strip()
 
-        # Extract subjects
         subjects_match = re.search(r'SUBJECTS & TOPICS:\s*([^\n]+)', text)
         if subjects_match:
             metadata['subjects_text'] = subjects_match.group(1)
 
-        # Extract author
         author_match = re.search(r'AUTHOR\(S\):\s*([^\n]+)', text)
         if author_match:
             metadata['author'] = author_match.group(1).strip()
 
-        # Extract title
         title_match = re.search(r'TITLE:\s*([^\n]+)', text)
         if title_match:
             metadata['title'] = title_match.group(1).strip()
@@ -323,7 +239,6 @@ class MultimodalLibraryVectorDB:
         return metadata
 
     def extract_image_metadata(self, chunk: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract metadata from an image chunk for ChromaDB filtering."""
         orig_meta = chunk.get('metadata', {})
 
         metadata = {
@@ -336,12 +251,7 @@ class MultimodalLibraryVectorDB:
 
         return metadata
 
-    # ------------------------------------------------------------------
-    # Data loading
-    # ------------------------------------------------------------------
-
     def load_embeddings(self, filepath: str, label: str) -> List[Dict[str, Any]]:
-        """Load embeddings from a JSON file."""
         print(f"📖 Loading {label} from {filepath}...")
 
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -350,12 +260,7 @@ class MultimodalLibraryVectorDB:
         print(f"✅ Loaded {len(data):,} {label}")
         return data
 
-    # ------------------------------------------------------------------
-    # Database population
-    # ------------------------------------------------------------------
-
     def _clean_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Ensure all metadata values are ChromaDB-compatible types."""
         clean = {}
         for key, value in metadata.items():
             if isinstance(value, (str, int, float, bool)):
@@ -366,7 +271,6 @@ class MultimodalLibraryVectorDB:
 
     def populate_text_collection(self, text_embeddings: List[Dict[str, Any]],
                                   batch_size: int = 100):
-        """Populate the text collection."""
         print(f"\n🚀 Populating text collection with {len(text_embeddings):,} chunks...")
 
         total_batches = (len(text_embeddings) + batch_size - 1) // batch_size
@@ -416,7 +320,6 @@ class MultimodalLibraryVectorDB:
 
     def populate_image_collection(self, image_embeddings: List[Dict[str, Any]],
                                    batch_size: int = 50):
-        """Populate the image collection."""
         print(f"\n🚀 Populating image collection with {len(image_embeddings):,} chunks...")
 
         total_batches = (len(image_embeddings) + batch_size - 1) // batch_size
@@ -438,7 +341,6 @@ class MultimodalLibraryVectorDB:
                         book_id = chunk.get('book_id', f'unknown_{start + len(ids)}')
                         ids.append(f"image_{book_id}")
 
-                        # ChromaDB requires a document string; use title as placeholder
                         meta_title = chunk.get('metadata', {}).get('title', book_id)
                         documents.append(f"[Cover Image] {meta_title}")
 
@@ -468,13 +370,8 @@ class MultimodalLibraryVectorDB:
 
         print(f"✅ Image collection: {self.image_collection.count():,} documents")
 
-    # ------------------------------------------------------------------
-    # Search
-    # ------------------------------------------------------------------
-
     def search_text(self, query: str, n_results: int = 5,
                     where: Dict = None) -> Dict[str, Any]:
-        """Search the text collection with a text query."""
         query_embedding = self.generate_query_embedding(query)
 
         kwargs = {
@@ -488,12 +385,6 @@ class MultimodalLibraryVectorDB:
         return self.text_collection.query(**kwargs)
 
     def search_image(self, query: str, n_results: int = 5) -> Dict[str, Any]:
-        """Search the image collection with a text query.
-
-        Because text and images share the same embedding space
-        (gemini-embedding-2-preview), a plain text query can retrieve
-        visually relevant book covers.
-        """
         query_embedding = self.generate_query_embedding(query)
 
         return self.image_collection.query(
@@ -504,11 +395,9 @@ class MultimodalLibraryVectorDB:
 
     def search_multimodal(self, query: str, n_text: int = 5,
                           n_image: int = 3) -> Dict[str, Any]:
-        """Combined cross-modal search: text + image results merged by book_id."""
         text_results = self.search_text(query, n_results=n_text)
         image_results = self.search_image(query, n_results=n_image)
 
-        # Merge by book_id
         combined = {}
 
         if text_results['documents'] and text_results['documents'][0]:
@@ -556,13 +445,7 @@ class MultimodalLibraryVectorDB:
 
         return combined
 
-    # ------------------------------------------------------------------
-    # Testing
-    # ------------------------------------------------------------------
-
     def test_search(self, test_queries: List[str] = None, n_results: int = 5):
-        """Test the search functionality across both collections."""
-
         if not test_queries:
             test_queries = [
                 "mystery novels",
@@ -582,7 +465,6 @@ class MultimodalLibraryVectorDB:
             print(f"\n📝 Query: '{query}'")
 
             try:
-                # --- Text search ---
                 text_results = self.search_text(query, n_results=n_results)
 
                 if text_results['documents'] and text_results['documents'][0]:
@@ -597,7 +479,6 @@ class MultimodalLibraryVectorDB:
                         if i >= 3:
                             break
 
-                # --- Image search ---
                 image_results = self.search_image(query, n_results=3)
 
                 if image_results['documents'] and image_results['documents'][0]:
@@ -616,8 +497,6 @@ class MultimodalLibraryVectorDB:
                 print(f"  ❌ Search error: {e}")
 
     def test_filtered_search(self):
-        """Test search with metadata filters."""
-
         print(f"\n🎯 Testing filtered search...")
 
         if not self.openrouter_api_key:
@@ -659,8 +538,6 @@ class MultimodalLibraryVectorDB:
                 print(f"❌ Filtered search error: {e}")
 
     def test_multimodal_search(self):
-        """Test the combined cross-modal search."""
-
         print(f"\n🌐 Testing cross-modal (multimodal) search...")
 
         if not self.openrouter_api_key:
@@ -688,13 +565,7 @@ class MultimodalLibraryVectorDB:
         except Exception as e:
             print(f"❌ Multimodal search error: {e}")
 
-    # ------------------------------------------------------------------
-    # Statistics
-    # ------------------------------------------------------------------
-
     def generate_statistics(self):
-        """Generate and print database statistics."""
-
         print(f"\n📊 DATABASE STATISTICS")
         print("=" * 55)
 
@@ -703,7 +574,6 @@ class MultimodalLibraryVectorDB:
         print(f"Text collection:   {text_count:,} documents")
         print(f"Image collection:  {image_count:,} documents")
 
-        # Database size on disk
         if os.path.exists(self.db_path):
             total_size = 0
             for dirpath, dirnames, filenames in os.walk(self.db_path):
@@ -712,7 +582,6 @@ class MultimodalLibraryVectorDB:
                     total_size += os.path.getsize(fp)
             print(f"Database size:     {total_size / (1024*1024):.1f} MB")
 
-        # Processing stats
         if self.stats['processing_start'] and self.stats['processing_end']:
             duration = self.stats['processing_end'] - self.stats['processing_start']
             print(f"Processing time:   {duration}")
@@ -720,7 +589,6 @@ class MultimodalLibraryVectorDB:
         print(f"\nText:  {self.stats['text_processed']:,} ok, {self.stats['text_failed']:,} failed")
         print(f"Image: {self.stats['image_processed']:,} ok, {self.stats['image_failed']:,} failed")
 
-        # Metadata analysis from text collection
         if text_count > 0:
             sample = self.text_collection.get(
                 limit=min(100, text_count),
@@ -749,13 +617,7 @@ class MultimodalLibraryVectorDB:
                 print(f"    {lang}: {count}")
 
 
-# ======================================================================
-# Main
-# ======================================================================
-
 def main():
-    """Main entry point — interactive CLI."""
-
     print("🗄️  Library Chatbot — Multimodal Vector Database Creator")
     print("=" * 55)
     print("Ingests BOTH text and image embeddings from OpenRouter.")
@@ -763,13 +625,11 @@ def main():
     print(f"  Image file: {IMAGE_EMBEDDINGS_FILE}")
     print()
 
-    # ---- API key (for search testing) ----
     api_key = input("🔑 Enter OpenRouter API key (for search tests, or press Enter to skip): ").strip()
     if not api_key:
         print("⚠️  No API key — search tests will be skipped")
         api_key = None
 
-    # ---- Initialize ----
     try:
         db = MultimodalLibraryVectorDB(
             openrouter_api_key=api_key,
@@ -779,7 +639,6 @@ def main():
         print(f"❌ Failed to initialize: {e}")
         return
 
-    # ---- Load embeddings ----
     if not os.path.exists(TEXT_EMBEDDINGS_FILE):
         print(f"❌ Text embeddings not found: {TEXT_EMBEDDINGS_FILE}")
         return
@@ -797,7 +656,6 @@ def main():
     db.stats['text_total'] = len(text_embeddings)
     db.stats['image_total'] = len(image_embeddings)
 
-    # ---- Populate ----
     db.stats['processing_start'] = datetime.now()
 
     try:
@@ -809,7 +667,6 @@ def main():
 
     db.stats['processing_end'] = datetime.now()
 
-    # ---- Test ----
     print(f"\n{'='*55}")
     print("🧪 TESTING DATABASE FUNCTIONALITY")
     print(f"{'='*55}")

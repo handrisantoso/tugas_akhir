@@ -1,14 +1,5 @@
 #!/usr/bin/env python3
-"""
-Library Chatbot Chunking Script
-Creates optimized text and image chunks from cleaned book catalog data
-for multimodal RAG retrieval.
 
-Approach A: Separate Embeddings
-  - One text chunk per book  → for text embedding
-  - One image chunk per book with a cover image → for image embedding
-  - Both linked by a shared book_id in the same vector DB
-"""
 import json
 import os
 import time
@@ -29,34 +20,24 @@ class BookChunker:
             'processing_end': None
         }
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def generate_book_id(self, book, index):
-        """Generate a unique book ID from available identifiers."""
-        # Prefer ISBN-13
         isbn_13 = book.get('isbn_13')
         if isbn_13 and isinstance(isbn_13, list) and isbn_13[0]:
             return f"isbn13_{isbn_13[0]}"
 
-        # Fall back to ISBN-10
         isbn_10 = book.get('isbn_10')
         if isbn_10 and isinstance(isbn_10, list) and isbn_10[0]:
             return f"isbn10_{isbn_10[0]}"
 
-        # Fall back to OCLC
         oclc = book.get('oclc_numbers') or book.get('oclc_number')
         if oclc and isinstance(oclc, list) and oclc[0]:
             return f"oclc_{oclc[0]}"
 
-        # Last resort: index + sanitised title
         title = book.get('title', 'unknown')
         safe_title = "".join(c if c.isalnum() else '_' for c in title[:50]).strip('_')
         return f"book_{index}_{safe_title}"
 
     def safe_get_text(self, value):
-        """Safely extract text from various field formats."""
         if not value:
             return ""
 
@@ -65,10 +46,8 @@ class BookChunker:
         elif isinstance(value, list):
             if not value:
                 return ""
-            # Handle list of strings
             if all(isinstance(item, str) for item in value):
                 return ", ".join(value)
-            # Handle list of objects (like authors)
             elif all(isinstance(item, dict) for item in value):
                 texts = []
                 for item in value:
@@ -87,7 +66,6 @@ class BookChunker:
             elif 'name' in value:
                 return str(value['name'])
             elif 'key' in value:
-                # Handle language keys
                 key = value['key']
                 if key == 'english':
                     return 'English'
@@ -105,17 +83,12 @@ class BookChunker:
             return str(value)
 
     def format_table_of_contents(self, toc):
-        """Format table of contents into readable text.
-        Handles both plain-string TOCs and list-of-dict TOCs.
-        """
         if not toc:
             return ""
 
-        # String TOC (common in the new cleaned data)
         if isinstance(toc, str):
             return toc.strip()
 
-        # List TOC (original OpenLibrary format)
         if isinstance(toc, list):
             contents = []
             for item in toc:
@@ -131,12 +104,7 @@ class BookChunker:
 
         return ""
 
-    # ------------------------------------------------------------------
-    # Chunk creation
-    # ------------------------------------------------------------------
-
     def create_text_chunk(self, book, book_id):
-        """Create a text chunk for a single book (for text embedding)."""
         chunk_parts = []
         metadata = {
             'book_id': book_id,
@@ -148,7 +116,6 @@ class BookChunker:
             'field_count': len(book.keys())
         }
 
-        # TITLE SECTION
         title = self.safe_get_text(book.get('title', ''))
         subtitle = self.safe_get_text(book.get('subtitle', ''))
         full_title = self.safe_get_text(book.get('full_title', ''))
@@ -164,19 +131,16 @@ class BookChunker:
         self.stats['field_inclusion_counts']['title'] += 1
         metadata['title'] = title
 
-        # AUTHOR SECTION
         authors = self.safe_get_text(book.get('authors', ''))
         if authors:
             chunk_parts.append(f"AUTHOR(S): {authors}")
             self.stats['field_inclusion_counts']['authors'] += 1
 
-        # DESCRIPTION SECTION (very valuable for RAG)
         description = self.safe_get_text(book.get('description', ''))
         if description:
             chunk_parts.append(f"DESCRIPTION: {description}")
             self.stats['field_inclusion_counts']['description'] += 1
 
-        # SUBJECTS & TOPICS SECTION
         topics = []
 
         subjects = self.safe_get_text(book.get('subjects', ''))
@@ -207,7 +171,6 @@ class BookChunker:
         if topics:
             chunk_parts.append(f"SUBJECTS & TOPICS: {'; '.join(topics)}")
 
-        # PUBLICATION SECTION
         pub_parts = []
 
         publishers = self.safe_get_text(book.get('publishers', ''))
@@ -238,7 +201,6 @@ class BookChunker:
         if pub_parts:
             chunk_parts.append(f"PUBLICATION: {'; '.join(pub_parts)}")
 
-        # FORMAT & DETAILS SECTION
         format_parts = []
 
         physical_format = self.safe_get_text(book.get('physical_format', ''))
@@ -264,19 +226,16 @@ class BookChunker:
         if format_parts:
             chunk_parts.append(f"FORMAT & DETAILS: {'; '.join(format_parts)}")
 
-        # LANGUAGE SECTION
         languages = self.safe_get_text(book.get('languages', ''))
         if languages:
             chunk_parts.append(f"LANGUAGE: {languages}")
             self.stats['field_inclusion_counts']['languages'] += 1
 
-        # SERIES SECTION
         series = self.safe_get_text(book.get('series', ''))
         if series:
             chunk_parts.append(f"SERIES: {series}")
             self.stats['field_inclusion_counts']['series'] += 1
 
-        # CONTENT PREVIEW SECTION
         content_parts = []
 
         first_sentence = self.safe_get_text(book.get('first_sentence', ''))
@@ -294,7 +253,6 @@ class BookChunker:
         if content_parts:
             chunk_parts.append(f"CONTENT PREVIEW: {'; '.join(content_parts)}")
 
-        # CLASSIFICATION SECTION
         class_parts = []
 
         dewey = self.safe_get_text(book.get('dewey_decimal_class', ''))
@@ -310,7 +268,6 @@ class BookChunker:
         if class_parts:
             chunk_parts.append(f"CLASSIFICATION: {'; '.join(class_parts)}")
 
-        # IDENTIFIERS SECTION (important for acquisition)
         id_parts = []
 
         isbn_13 = self.safe_get_text(book.get('isbn_13', ''))
@@ -331,13 +288,11 @@ class BookChunker:
         if id_parts:
             chunk_parts.append(f"IDENTIFIERS: {'; '.join(id_parts)}")
 
-        # NOTES SECTION
         notes = self.safe_get_text(book.get('notes', ''))
         if notes:
             chunk_parts.append(f"NOTES: {notes}")
             self.stats['field_inclusion_counts']['notes'] += 1
 
-        # Create final chunk
         chunk_text = "\n\n".join(chunk_parts)
         self.stats['chunk_lengths'].append(len(chunk_text))
 
@@ -349,9 +304,6 @@ class BookChunker:
         }
 
     def create_image_chunk(self, book, book_id):
-        """Create an image chunk for a book with a cover image (for image embedding).
-        Returns None if the book has no cover image.
-        """
         if not book.get('has_cover_image', False):
             return None
 
@@ -359,7 +311,6 @@ class BookChunker:
         if not image_path:
             return None
 
-        # Verify image file exists
         if not os.path.exists(image_path):
             print(f"  ⚠ Cover image not found: {image_path}")
             return None
@@ -379,12 +330,7 @@ class BookChunker:
             }
         }
 
-    # ------------------------------------------------------------------
-    # Processing pipeline
-    # ------------------------------------------------------------------
-
     def process_all_books(self, input_file, text_output_file, image_output_file):
-        """Process all books and create separate text and image chunks."""
         print("Starting chunking process (Approach A: Separate Embeddings)...")
         print(f"  Input:        {input_file}")
         print(f"  Text output:  {text_output_file}")
@@ -392,7 +338,6 @@ class BookChunker:
 
         self.stats['processing_start'] = datetime.now()
 
-        # Load data
         print("\nLoading book data...")
         with open(input_file, 'r', encoding='utf-8') as f:
             books = json.load(f)
@@ -400,7 +345,6 @@ class BookChunker:
         self.stats['total_books'] = len(books)
         print(f"Loaded {len(books):,} books")
 
-        # Process books
         print("Creating chunks...")
         text_chunks = []
         image_chunks = []
@@ -411,12 +355,10 @@ class BookChunker:
 
             book_id = self.generate_book_id(book, i)
 
-            # Always create a text chunk
             text_chunk = self.create_text_chunk(book, book_id)
             text_chunks.append(text_chunk)
             self.stats['text_chunks_created'] += 1
 
-            # Create image chunk only if cover exists
             image_chunk = self.create_image_chunk(book, book_id)
             if image_chunk:
                 image_chunks.append(image_chunk)
@@ -426,13 +368,11 @@ class BookChunker:
 
         self.stats['processing_end'] = datetime.now()
 
-        # Save text chunks
         print(f"\nSaving {len(text_chunks):,} text chunks...")
         with open(text_output_file, 'w', encoding='utf-8') as f:
             json.dump(text_chunks, f, indent=2, ensure_ascii=False)
         print(f"  → {text_output_file}")
 
-        # Save image chunks
         print(f"Saving {len(image_chunks):,} image chunks...")
         with open(image_output_file, 'w', encoding='utf-8') as f:
             json.dump(image_chunks, f, indent=2, ensure_ascii=False)
@@ -440,12 +380,7 @@ class BookChunker:
 
         return text_chunks, image_chunks
 
-    # ------------------------------------------------------------------
-    # Reporting
-    # ------------------------------------------------------------------
-
     def generate_statistics_report(self, output_file):
-        """Generate detailed statistics report."""
         report = []
         report.append("LIBRARY CHATBOT CHUNKING STATISTICS (Approach A: Separate Embeddings)")
         report.append("=" * 65)
@@ -489,14 +424,12 @@ class BookChunker:
         report.append("")
         report.append("CHUNKING PROCESS COMPLETE ✅")
 
-        # Save report
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(report))
 
         print('\n'.join(report))
 
     def create_sample_chunks(self, text_chunks, image_chunks, output_file, num_samples=10):
-        """Create human-readable sample chunks for review."""
         samples = []
         samples.append("LIBRARY CHATBOT CHUNK SAMPLES (Approach A: Separate Embeddings)")
         samples.append("=" * 65)
@@ -511,7 +444,6 @@ class BookChunker:
             samples.append(f"SAMPLE #{i + 1} — Book ID: {book_id}")
             samples.append(f"{'=' * 80}")
 
-            # Text chunk
             samples.append("")
             samples.append("[TEXT CHUNK]")
             samples.append("-" * 40)
@@ -519,7 +451,6 @@ class BookChunker:
             samples.append("")
             samples.append(f"Metadata: {text_chunk['metadata']}")
 
-            # Matching image chunk
             matching_image = next((ic for ic in image_chunks if ic['book_id'] == book_id), None)
             samples.append("")
             if matching_image:
@@ -538,24 +469,17 @@ class BookChunker:
         print(f"Sample chunks saved to {output_file}")
 
 
-# ======================================================================
-# Main
-# ======================================================================
-
 def main():
     chunker = BookChunker()
 
-    # Process books — creates separate text and image chunk files
     text_chunks, image_chunks = chunker.process_all_books(
         'cleaned_data/books_with_content.json',
         'chunking/book_chunks_text.json',
         'chunking/book_chunks_image.json'
     )
 
-    # Generate statistics
     chunker.generate_statistics_report('chunking/chunk_statistics.txt')
 
-    # Create samples for quality review
     chunker.create_sample_chunks(text_chunks, image_chunks, 'chunking/sample_chunks.txt')
 
     print("\n✅ Chunking process completed successfully!")

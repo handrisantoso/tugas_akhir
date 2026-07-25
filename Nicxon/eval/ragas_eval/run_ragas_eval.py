@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
-"""
-Optional RAGAS-based evaluation for the library RAG system.
 
-This script is fully separate from the main `eval/run_eval.py` harness. It is
-not imported anywhere else; running it requires the packages listed in
-`eval/ragas_eval/requirements.txt` (RAGAS + datasets + langchain-google-genai),
-which are NOT installed by default.
-
-Usage:
-    python eval\\ragas_eval\\run_ragas_eval.py --check
-    python eval\\ragas_eval\\run_ragas_eval.py --dataset eval\\my_eval.csv --db-path vector_db\\chroma_db_multimodal_2 --label google_ragas
-    python eval\\ragas_eval\\run_ragas_eval.py --dataset eval\\my_eval.csv --db-path ... --label ... --with-references
-
-Notes
------
-- Reuses the main harness's `dataset.py` loader (so the same CSV drives both
-  pipelines) and `runner.py` for the actual retrieval step.
-- Skips image-only queries — RAGAS does not support multimodal input. HYBRID
-  queries are evaluated using only their text portion. The script logs which
-  queries were skipped at the start of each run.
-- Calls the live RAG engine to generate the responses that RAGAS will rate, so
-  what gets graded is exactly what users would see.
-"""
 from __future__ import annotations
 
 import argparse
@@ -32,22 +10,19 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Local imports from the main eval folder.
-HERE = Path(__file__).resolve().parent          # eval/ragas_eval/
-EVAL_ROOT = HERE.parent                          # eval/
-PROJECT_ROOT = EVAL_ROOT.parent                  # repo root
-sys.path.insert(0, str(EVAL_ROOT))               # for dataset.py, runner.py
+HERE = Path(__file__).resolve().parent
+EVAL_ROOT = HERE.parent
+PROJECT_ROOT = EVAL_ROOT.parent
+sys.path.insert(0, str(EVAL_ROOT))
 
-from dataset import EvalQuery, load_dataset      # noqa: E402
+from dataset import EvalQuery, load_dataset
 
-# ---------------------------------------------------------------------------
-# Defaults — kept conservative on cost
-# ---------------------------------------------------------------------------
+JUDGE_PROVIDER_DEFAULT     = "groq"
+JUDGE_MODEL_GROQ_DEFAULT   = "llama-3.3-70b-versatile"
+JUDGE_MODEL_GOOGLE_DEFAULT = "gemini-3.1-flash-lite"
+JUDGE_MODEL_OPENROUTER_DEFAULT = "meta-llama/llama-3.3-70b-instruct"
+EMBEDDING_MODEL_DEFAULT    = "gemini-embedding-2"
 
-JUDGE_MODEL_DEFAULT = "gemini-2.5-flash"
-EMBEDDING_MODEL_DEFAULT = "text-embedding-004"   # RAGAS uses an embedder for answer_relevancy
-
-# Same constants as RAG/config.py — only used by the retrieval step here.
 GENERATION_EMBEDDING_MODEL = "gemini-embedding-2"
 TEXT_COLLECTION = "library_books_text"
 IMAGE_COLLECTION = "library_books_image"
@@ -61,13 +36,9 @@ ENV_CANDIDATES = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Env loading
-# ---------------------------------------------------------------------------
-
-def _load_env() -> str:
+def _load_env() -> Dict[str, str]:
     try:
-        from dotenv import load_dotenv  # type: ignore
+        from dotenv import load_dotenv
         for p in ENV_CANDIDATES:
             if p.exists():
                 load_dotenv(p, override=False)
@@ -82,20 +53,19 @@ def _load_env() -> str:
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
-    key = os.environ.get("GOOGLE_API_KEY")
-    if not key:
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    if not google_key:
         raise RuntimeError(
             "GOOGLE_API_KEY not found. Put it in eval/.env or RAG/.env."
         )
-    return key
+    return {
+        "google": google_key,
+        "groq": os.environ.get("GROQ_API_KEY") or "",
+        "openrouter": os.environ.get("OPENROUTER_API_KEY") or "",
+    }
 
-
-# ---------------------------------------------------------------------------
-# Lazy imports for the optional packages
-# ---------------------------------------------------------------------------
 
 def _check_optional_imports() -> Dict[str, str]:
-    """Return {package: version_or_error} for each required package."""
     statuses: Dict[str, str] = {}
 
     def _try(name: str, import_path: str) -> str:
@@ -110,6 +80,8 @@ def _check_optional_imports() -> Dict[str, str]:
     statuses["langchain_google_genai"] = _try(
         "langchain-google-genai", "langchain_google_genai"
     )
+    statuses["langchain_groq"] = _try("langchain-groq", "langchain_groq")
+    statuses["langchain_openai"] = _try("langchain-openai", "langchain_openai")
     return statuses
 
 
@@ -117,18 +89,32 @@ def _missing_packages(statuses: Dict[str, str]) -> List[str]:
     return [k for k, v in statuses.items() if v.startswith("NOT INSTALLED")]
 
 
-# ---------------------------------------------------------------------------
-# Building the RAGAS LLM + embedding wrappers
-# ---------------------------------------------------------------------------
+def _build_ragas_llms_groq(judge_model: str, embedding_model: str, keys: Dict[str, str]):
+    from langchain_groq import ChatGroq
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    from ragas.llms import LangchainLLMWrapper
+    from ragas.embeddings import LangchainEmbeddingsWrapper
 
-def _build_ragas_llms(judge_model: str, embedding_model: str, api_key: str):
-    """Wrap Google GenAI for RAGAS via LangChain adapters.
+    groq_key = keys.get("groq")
+    if not groq_key:
+        raise RuntimeError(
+            "GROQ_API_KEY not found. Add it to your .env file.\n"
+            "Get a free key at: https://console.groq.com/keys"
+        )
 
-    RAGAS's `evaluate()` accepts plain LangChain LLMs/Embeddings, so we wrap
-    Gemini through `langchain-google-genai`. Returns a tuple
-    `(judge_llm_wrapper, embeddings_wrapper)` where the wrappers are the
-    RAGAS-side adapters that point at LangChain primitives.
-    """
+    chat = ChatGroq(
+        model=judge_model,
+        api_key=groq_key,
+        temperature=0.0,
+    )
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model=f"models/{embedding_model}" if not embedding_model.startswith("models/") else embedding_model,
+        google_api_key=keys["google"],
+    )
+    return LangchainLLMWrapper(chat), LangchainEmbeddingsWrapper(embeddings)
+
+
+def _build_ragas_llms_google(judge_model: str, embedding_model: str, keys: Dict[str, str]):
     from langchain_google_genai import (
         ChatGoogleGenerativeAI,
         GoogleGenerativeAIEmbeddings,
@@ -138,58 +124,129 @@ def _build_ragas_llms(judge_model: str, embedding_model: str, api_key: str):
 
     chat = ChatGoogleGenerativeAI(
         model=judge_model,
-        google_api_key=api_key,
-        temperature=0.0,  # determinism over creativity for grading
+        google_api_key=keys["google"],
+        temperature=0.0,
     )
     embeddings = GoogleGenerativeAIEmbeddings(
         model=f"models/{embedding_model}" if not embedding_model.startswith("models/") else embedding_model,
-        google_api_key=api_key,
+        google_api_key=keys["google"],
     )
     return LangchainLLMWrapper(chat), LangchainEmbeddingsWrapper(embeddings)
 
 
-def _check_models(judge_model: str, embedding_model: str, api_key: str) -> None:
-    """Verify both models actually respond. Used by --check."""
-    from langchain_google_genai import (
-        ChatGoogleGenerativeAI,
-        GoogleGenerativeAIEmbeddings,
+def _build_ragas_llms_openrouter(judge_model: str, embedding_model: str, keys: Dict[str, str]):
+    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    from ragas.llms import LangchainLLMWrapper
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+
+    openrouter_key = keys.get("openrouter")
+    if not openrouter_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY not found. Add it to your .env file.\n"
+            "Get a key at: https://openrouter.ai/keys"
+        )
+
+    chat = ChatOpenAI(
+        model=judge_model,
+        api_key=openrouter_key,
+        base_url="https://openrouter.ai/api/v1",
+        temperature=0.0,
+        max_tokens=4096,
+        default_headers={
+            "HTTP-Referer": "https://github.com/library-rag",
+            "X-Title": "Library RAG Eval",
+        },
     )
-    chat = ChatGoogleGenerativeAI(
-        model=judge_model, google_api_key=api_key, temperature=0.0
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model=f"models/{embedding_model}" if not embedding_model.startswith("models/") else embedding_model,
+        google_api_key=keys["google"],
     )
+    return LangchainLLMWrapper(chat), LangchainEmbeddingsWrapper(embeddings)
+
+
+def _build_ragas_llms(judge_provider: str, judge_model: str, embedding_model: str, keys: Dict[str, str]):
+    if judge_provider == "groq":
+        return _build_ragas_llms_groq(judge_model, embedding_model, keys)
+    elif judge_provider == "google":
+        return _build_ragas_llms_google(judge_model, embedding_model, keys)
+    elif judge_provider == "openrouter":
+        return _build_ragas_llms_openrouter(judge_model, embedding_model, keys)
+    else:
+        raise ValueError(f"Unknown judge_provider={judge_provider!r}. Use 'groq', 'google', or 'openrouter'.")
+
+
+def _check_models(judge_provider: str, judge_model: str, embedding_model: str, keys: Dict[str, str]) -> None:
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+    if judge_provider == "groq":
+        from langchain_groq import ChatGroq
+        groq_key = keys.get("groq")
+        if not groq_key:
+            raise RuntimeError("GROQ_API_KEY not found. Add it to your .env file.")
+        chat = ChatGroq(model=judge_model, api_key=groq_key, temperature=0.0)
+        print(f"  judge provider: Groq (Meta/Llama — independent from Gemini RAG engine)")
+    elif judge_provider == "openrouter":
+        from langchain_openai import ChatOpenAI
+        or_key = keys.get("openrouter")
+        if not or_key:
+            raise RuntimeError("OPENROUTER_API_KEY not found. Add it to your .env file.")
+        chat = ChatOpenAI(
+            model=judge_model,
+            api_key=or_key,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=0.0,
+        )
+        print(f"  judge provider: OpenRouter")
+    else:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        chat = ChatGoogleGenerativeAI(
+            model=judge_model, google_api_key=keys["google"], temperature=0.0
+        )
+        print(f"  judge provider: Google")
+
     msg = chat.invoke("Reply with the single word OK.")
     print(f"  judge {judge_model}: ok ({(msg.content or '').strip()[:40]!r})")
 
     emb = GoogleGenerativeAIEmbeddings(
         model=f"models/{embedding_model}" if not embedding_model.startswith("models/") else embedding_model,
-        google_api_key=api_key,
+        google_api_key=keys["google"],
     )
     vec = emb.embed_query("smoke test")
     print(f"  embedding {embedding_model}: ok (dim={len(vec)})")
 
 
-# ---------------------------------------------------------------------------
-# Live engine — generate responses for RAGAS to grade
-# ---------------------------------------------------------------------------
-
-async def _generate_responses(queries: List[EvalQuery]) -> List[Dict[str, Any]]:
-    """Run each query through the live engine and capture the inputs RAGAS needs.
-
-    Image-only queries (no text) are skipped with a warning. HYBRID queries
-    keep their text and image goes through the engine, but only the text
-    portion makes it into the RAGAS dataset (RAGAS doesn't see the image).
-    """
+async def _generate_responses(queries: List[EvalQuery], delay: float = 0.0, cache_path: Optional[Path] = None) -> List[Dict[str, Any]]:
     sys.path.insert(0, str(PROJECT_ROOT / "RAG"))
-    from rag_engine import LibraryRAGEngine  # type: ignore
+    from rag_engine import LibraryRAGEngine
 
     engine = LibraryRAGEngine()
     rows: List[Dict[str, Any]] = []
     skipped: List[str] = []
 
+    if cache_path and cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                loaded_rows = json.load(f)
+            for r in loaded_rows:
+                if "I apologize, but I encountered an issue" not in r.get("response", ""):
+                    rows.append(r)
+            print(f"Loaded {len(rows)} valid previously generated responses from cache (discarded {len(loaded_rows) - len(rows)} API errors).")
+        except Exception as e:
+            print(f"Warning: Failed to load cache from {cache_path}: {e}")
+
+    cached_ids = {r["query_id"] for r in rows}
+
     for i, q in enumerate(queries, start=1):
         if not q.has_text:
             skipped.append(f"{q.query_id} (image-only — RAGAS needs text)")
             continue
+
+        if q.query_id in cached_ids:
+            print(f"  [{i}/{len(queries)}] {q.query_id}: SKIP (loaded from cache)")
+            continue
+
+        engine.clear_conversation()
 
         image_bytes = (
             q.resolved_image_path.read_bytes()
@@ -206,21 +263,28 @@ async def _generate_responses(queries: List[EvalQuery]) -> List[Dict[str, Any]]:
             print(f"  [{i}/{len(queries)}] {q.query_id}: ENGINE ERROR {e}")
             continue
 
-        # RAGAS wants `retrieved_contexts` as a list of strings — the document
-        # text per retrieved book. Strip metadata; RAGAS only needs the prose.
+        if delay > 0 and i < len(queries):
+            await asyncio.sleep(delay)
+
         contexts: List[str] = []
         for sr in resp.get("search_results", []):
             doc = sr.get("document") or ""
             if doc:
-                contexts.append(doc[:2000])  # bound prompt size
+                contexts.append(doc[:2000])
 
-        rows.append({
+        row_data = {
             "query_id": q.query_id,
             "user_input": q.query_text,
             "response": resp.get("response", ""),
             "retrieved_contexts": contexts,
-            "reference": "",  # filled in later if --with-references
-        })
+            "reference": "",
+        }
+        rows.append(row_data)
+
+        if cache_path and "I apologize, but I encountered an issue" not in row_data["response"]:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(rows, f, indent=2)
+
         print(f"  [{i}/{len(queries)}] {q.query_id}: response generated "
               f"(contexts={len(contexts)})")
 
@@ -233,7 +297,6 @@ async def _generate_responses(queries: List[EvalQuery]) -> List[Dict[str, Any]]:
 
 
 def _read_references_from_csv(csv_path: Path) -> Dict[str, str]:
-    """Return {query_id: reference} for rows that have a non-empty reference cell."""
     import csv as _csv
     out: Dict[str, str] = {}
     with csv_path.open("r", encoding="utf-8", newline="") as f:
@@ -248,18 +311,16 @@ def _read_references_from_csv(csv_path: Path) -> Dict[str, str]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# RAGAS evaluation
-# ---------------------------------------------------------------------------
-
 def _run_ragas(rows: List[Dict[str, Any]],
+                judge_provider: str,
                 judge_model: str,
                 embedding_model: str,
                 with_references: bool,
-                api_key: str) -> Dict[str, Any]:
-    """Call ragas.evaluate and return aggregate + per-query scores."""
+                keys: Dict[str, str],
+                max_workers: int = 1) -> Dict[str, Any]:
     from datasets import Dataset
     from ragas import evaluate
+    from ragas.run_config import RunConfig
     from ragas.metrics import (
         faithfulness,
         answer_relevancy,
@@ -271,12 +332,12 @@ def _run_ragas(rows: List[Dict[str, Any]],
         metrics += [context_precision, context_recall]
 
     judge_wrapped, embed_wrapped = _build_ragas_llms(
+        judge_provider=judge_provider,
         judge_model=judge_model,
         embedding_model=embedding_model,
-        api_key=api_key,
+        keys=keys,
     )
 
-    # Build the HF dataset RAGAS expects
     ds_dict: Dict[str, List[Any]] = {
         "user_input": [r["user_input"] for r in rows],
         "response": [r["response"] for r in rows],
@@ -294,15 +355,16 @@ def _run_ragas(rows: List[Dict[str, Any]],
         metrics=metrics,
         llm=judge_wrapped,
         embeddings=embed_wrapped,
+        run_config=RunConfig(max_workers=max_workers),
     )
 
-    # `result` is a RAGAS `EvaluationResult`; convert to per-query rows + means
     df = result.to_pandas()
     per_query: List[Dict[str, Any]] = []
     for i, r in enumerate(rows):
         row_out = {
             "query_id": r["query_id"],
             "user_input": r["user_input"][:200],
+            "response": r["response"],
             "n_contexts": len(r["retrieved_contexts"]),
         }
         for m in metrics:
@@ -324,14 +386,10 @@ def _run_ragas(rows: List[Dict[str, Any]],
 
 def _is_nan(v: Any) -> bool:
     try:
-        return v != v  # standard NaN check, dependency-free
+        return v != v
     except Exception:
         return False
 
-
-# ---------------------------------------------------------------------------
-# Output
-# ---------------------------------------------------------------------------
 
 def _write_outputs(label: str,
                     per_query: List[Dict[str, Any]],
@@ -340,7 +398,6 @@ def _write_outputs(label: str,
     out_dir = HERE / "results" / label
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # per_query.csv
     import csv as _csv
     if per_query:
         cols: List[str] = []
@@ -354,21 +411,20 @@ def _write_outputs(label: str,
             for row in per_query:
                 writer.writerow(row)
 
-    # aggregate.json
     payload = {**aggregate, **extra}
     (out_dir / "aggregate.json").write_text(
         json.dumps(payload, indent=2, default=str), encoding="utf-8"
     )
 
-    # aggregate.txt
     lines = [
         f"RAGAS evaluation",
-        f"label:     {label}",
-        f"db_path:   {extra.get('db_path')}",
-        f"judge:     {extra.get('judge_model')}",
-        f"embedder:  {extra.get('embedding_model')}",
-        f"queries:   {aggregate.get('n_queries', 0)}",
-        f"with refs: {extra.get('with_references', False)}",
+        f"label:          {label}",
+        f"db_path:        {extra.get('db_path')}",
+        f"judge_provider: {extra.get('judge_provider')}",
+        f"judge:          {extra.get('judge_model')}",
+        f"embedder:       {extra.get('embedding_model')}",
+        f"queries:        {aggregate.get('n_queries', 0)}",
+        f"with refs:      {extra.get('with_references', False)}",
         "",
         "Mean scores:",
     ]
@@ -383,28 +439,42 @@ def _write_outputs(label: str,
     return out_dir
 
 
-# ---------------------------------------------------------------------------
-# Commands
-# ---------------------------------------------------------------------------
-
 def cmd_check(args) -> int:
     print("Checking optional packages...")
     statuses = _check_optional_imports()
     for k, v in statuses.items():
         print(f"  {k}: {v}")
     missing = _missing_packages(statuses)
+    if args.judge_provider == "google":
+        missing = [m for m in missing if m not in ("langchain_groq", "langchain_openai")]
+    elif args.judge_provider == "groq":
+        missing = [m for m in missing if m != "langchain_openai"]
+    elif args.judge_provider == "openrouter":
+        missing = [m for m in missing if m != "langchain_groq"]
     if missing:
         print(f"\nInstall missing packages with:\n"
               f"    pip install -r eval\\ragas_eval\\requirements.txt")
         return 1
 
-    print("\nLoading API key...")
-    api_key = _load_env()
+    print("\nLoading API keys...")
+    keys = _load_env()
     print("  GOOGLE_API_KEY: ok")
+    if keys.get("groq"):
+        print("  GROQ_API_KEY:   ok")
+    elif args.judge_provider == "groq":
+        print("  GROQ_API_KEY:   MISSING — add to .env before running eval")
+        print("  Get a free key at: https://console.groq.com/keys")
+        return 1
+    if keys.get("openrouter"):
+        print("  OPENROUTER_API_KEY: ok")
+    elif args.judge_provider == "openrouter":
+        print("  OPENROUTER_API_KEY: MISSING — add to .env before running eval")
+        print("  Get a key at: https://openrouter.ai/keys")
+        return 1
 
-    print(f"\nProbing models (judge={args.judge_model}, embed={args.embedding_model})...")
+    print(f"\nProbing models (provider={args.judge_provider}, judge={args.judge_model}, embed={args.embedding_model})...")
     try:
-        _check_models(args.judge_model, args.embedding_model, api_key)
+        _check_models(args.judge_provider, args.judge_model, args.embedding_model, keys)
     except Exception as e:
         print(f"  model probe failed: {e}")
         return 1
@@ -416,12 +486,26 @@ def cmd_check(args) -> int:
 def cmd_eval(args) -> int:
     statuses = _check_optional_imports()
     missing = _missing_packages(statuses)
+    if args.judge_provider == "google":
+        missing = [m for m in missing if m not in ("langchain_groq", "langchain_openai")]
+    elif args.judge_provider == "groq":
+        missing = [m for m in missing if m != "langchain_openai"]
+    elif args.judge_provider == "openrouter":
+        missing = [m for m in missing if m != "langchain_groq"]
     if missing:
         print("ERROR: missing required packages:", ", ".join(missing))
         print("Install with:  pip install -r eval\\ragas_eval\\requirements.txt")
         return 1
 
-    api_key = _load_env()
+    keys = _load_env()
+    if args.judge_provider == "groq" and not keys.get("groq"):
+        print("ERROR: GROQ_API_KEY not found. Add it to your .env file.")
+        print("  Get a free key at: https://console.groq.com/keys")
+        return 1
+    if args.judge_provider == "openrouter" and not keys.get("openrouter"):
+        print("ERROR: OPENROUTER_API_KEY not found. Add it to your .env file.")
+        print("  Get a key at: https://openrouter.ai/keys")
+        return 1
 
     dataset_path = Path(args.dataset).resolve()
     queries = load_dataset(dataset_path, project_root=PROJECT_ROOT)
@@ -441,9 +525,14 @@ def cmd_eval(args) -> int:
         print(f"ERROR: Chroma DB not found at {db_path}")
         return 1
 
-    # Generate responses via the live engine
+    out_dir = Path(HERE / "results" / args.label)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = out_dir / "generation_cache.json"
+
     print("\nGenerating responses through the RAG engine...")
-    rows = asyncio.run(_generate_responses(queries))
+    if args.delay > 0:
+        print(f"  (throttling: {args.delay}s delay between queries)")
+    rows = asyncio.run(_generate_responses(queries, delay=args.delay, cache_path=cache_path))
     if not rows:
         print("No responses generated; nothing to evaluate.")
         return 1
@@ -460,14 +549,15 @@ def cmd_eval(args) -> int:
             print("No queries with references; cannot run reference-based metrics.")
             return 1
 
-    # Run RAGAS
     try:
         result = _run_ragas(
             rows=rows,
+            judge_provider=args.judge_provider,
             judge_model=args.judge_model,
             embedding_model=args.embedding_model,
             with_references=args.with_references,
-            api_key=api_key,
+            keys=keys,
+            max_workers=args.max_workers,
         )
     except Exception as e:
         print(f"ERROR: RAGAS evaluate failed: {e}")
@@ -476,6 +566,7 @@ def cmd_eval(args) -> int:
     extra = {
         "label": args.label,
         "db_path": str(db_path),
+        "judge_provider": args.judge_provider,
         "judge_model": args.judge_model,
         "embedding_model": args.embedding_model,
         "with_references": args.with_references,
@@ -491,10 +582,6 @@ def cmd_eval(args) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# Entrypoint
-# ---------------------------------------------------------------------------
-
 def main() -> int:
     p = argparse.ArgumentParser(
         description="Run RAGAS evaluation against the library RAG system."
@@ -507,15 +594,38 @@ def main() -> int:
                    help="Path to a ChromaDB folder.")
     p.add_argument("--label", default="ragas_default",
                    help="Output label; results land in eval/ragas_eval/results/<label>/.")
-    p.add_argument("--judge-model", default=JUDGE_MODEL_DEFAULT,
-                   help=f"Judge LLM model id (default: {JUDGE_MODEL_DEFAULT}).")
+    p.add_argument("--judge-provider", default=JUDGE_PROVIDER_DEFAULT,
+                   choices=["groq", "google", "openrouter"],
+                   help=f"Provider for the RAGAS judge LLM (default: {JUDGE_PROVIDER_DEFAULT}). "
+                        f"'groq' uses Llama via Groq API (requires GROQ_API_KEY, free at console.groq.com). "
+                        f"'openrouter' routes to any model via OpenRouter (requires OPENROUTER_API_KEY). "
+                        f"'google' uses Gemini via Google API.")
+    p.add_argument("--judge-model", default=None,
+                   help="Judge LLM model id. Defaults to llama-3.3-70b-versatile for Groq, "
+                        "meta-llama/llama-3.3-70b-instruct for OpenRouter, "
+                        "and gemini-3.1-flash-lite for Google.")
     p.add_argument("--embedding-model", default=EMBEDDING_MODEL_DEFAULT,
                    help=f"Embedding model used by RAGAS internals "
-                        f"(default: {EMBEDDING_MODEL_DEFAULT}).")
+                        f"(default: {EMBEDDING_MODEL_DEFAULT}; always Google).")
     p.add_argument("--with-references", action="store_true",
                    help="Also run context_precision + context_recall. "
                         "Dataset must have a `reference` column with ground-truth answers.")
+    p.add_argument("--delay", type=float, default=12.0, metavar="SECONDS",
+                   help="Seconds to wait between RAG engine queries during the generation "
+                        "phase. Default: 12.0 (ensures we stay under Gemini's 15 RPM free tier limit).")
+    p.add_argument("--max-workers", type=int, default=1,
+                   help="Number of concurrent workers RAGAS uses to grade the results. "
+                        "Defaults to 1 to bypass strict free-tier concurrency limits "
+                        "(like OpenRouter). Set higher if you have paid API access.")
     args = p.parse_args()
+
+    if args.judge_model is None:
+        if args.judge_provider == "groq":
+            args.judge_model = JUDGE_MODEL_GROQ_DEFAULT
+        elif args.judge_provider == "openrouter":
+            args.judge_model = JUDGE_MODEL_OPENROUTER_DEFAULT
+        else:
+            args.judge_model = JUDGE_MODEL_GOOGLE_DEFAULT
 
     if args.check:
         return cmd_check(args)
