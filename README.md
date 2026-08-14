@@ -15,7 +15,9 @@ An end-to-end Machine Learning pipeline for a gesture-controlled glove using **X
     *   **Embedded**: Optimized for ESP32 (int8 quantized or pure C).
     *   **PC-Side**: High-accuracy float32 inference for real-time debugging.
 *   **Live Debugging**: Side-by-side comparison of device vs. PC predictions.
-*   **USB HID**: Control your PC (Arrow keys, etc.) directly via hand gestures.
+*   **Hardware Integration**:
+    *   **USB HID**: Control your PC directly via USB cable.
+    *   **Wireless Smartboard (BLE)**: Control presentations (PowerPoint, PDF) remotely using Bluetooth Low Energy and Python.
 
 ---
 
@@ -30,7 +32,7 @@ An end-to-end Machine Learning pipeline for a gesture-controlled glove using **X
 *   **UI**: `CustomTkinter` (Modern Dark UI).
 *   **ML**: `Scikit-Learn`, `TensorFlow 2.x`, `m2cgen`.
 *   **Visualization**: `Matplotlib`, `Seaborn`.
-*   **Serial**: `PySerial`.
+*   **Connectivity & Automation**: `PySerial`, `Bleak` (BLE), `PyAutoGUI` (Smartboard).
 
 ### Firmware (C++/Arduino)
 *   **Engine**: `TensorFlow Lite for Microcontrollers` (ESP32 optimized).
@@ -50,6 +52,7 @@ gesture_glove/
 │   └── gesture_glove_mlp/    # TFLite-only (MLP/CNN)
 ├── models/              # Saved .keras and .joblib files
 ├── output_headers/      # Generated C headers for ESP32
+├── ble_manager.py       # BLE connection handler for ESP32
 ├── config.py            # Central settings (Sample rate, Window size, etc.)
 ├── gui.py               # Main application entry
 ├── gui_recorder.py      # Dataset collection tab
@@ -57,7 +60,16 @@ gesture_glove/
 ├── gui_debug.py         # Live visualization & dual-inference tab
 ├── inference.py         # PC-side inference engine
 ├── models.py            # ML training & header generation logic
-└── recorder.py          # Serial communication & recording manager
+├── recorder.py          # Serial communication & recording manager
+├── smartboard.py        # Wireless presentation control via BLE (pyautogui)
+│
+│   # --- Analysis & Utility Scripts ---
+├── thesis_scripts/              # Folder for thesis evaluation and reporting scripts
+├── augment_dataset.py           # Augments gesture dataset for robustness
+├── regenerate_deploy.py         # Regenerates C headers without full retraining
+├── test_actual_data.py          # Quick test script using real-world data
+├── thesis_all_metrics.py        # Computes comprehensive thesis metrics
+└── _inspect_data.py             # Script to inspect and debug dataset contents
 ```
 
 ---
@@ -107,6 +119,16 @@ pip install -r requirements.txt
 1.  Go to the **🔍 Live Debug** tab in the Python app.
 2.  Click **Start Live**.
 3.  Compare the real-time predictions from the ESP32 vs. the PC's high-accuracy engine.
+
+#### Step E: Wireless Smartboard (BLE)
+1.  Run `python smartboard.py` to open the standalone Smartboard app.
+2.  Ensure your ESP32 is running a firmware with BLE enabled.
+3.  Click **Scan** and **Connect** to your `GestureGlove` device.
+4.  Perform gestures to control your PC:
+    *   **flick_up**: F5 (Start Presentation)
+    *   **wave_left**: Left Arrow (Previous Slide)
+    *   **wave_right**: Right Arrow (Next Slide)
+    *   **flick_down**: Escape (End Presentation)
 
 ---
 

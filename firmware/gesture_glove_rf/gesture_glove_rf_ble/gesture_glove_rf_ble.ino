@@ -28,8 +28,15 @@
 #define WINDOW_SIZE         250
 #define NUM_AXES            6
 #define STEP_SIZE           125
+#define DEBOUNCE_MS         400
 #define CONF_THRESH         0.80
-#define OUTPUT_COOLDOWN_MS  1500   // jeda antar aksi (smartboard responsif tapi tak spam)
+#define OUTPUT_COOLDOWN_MS  5000
+// Minimum peak gyro magnitude (rad/s, MPU6050 native units) required within
+// a window before a non-idle prediction is accepted. Idle/small hand jitter
+// measures ~0.01-0.02 rad/s in this dataset; real flick/wave gestures are
+// ~3.6-9.3 rad/s. Raise this if slight movements still trigger false gestures,
+// lower it if intentional-but-gentle gestures get suppressed.
+#define GYRO_MOTION_THRESHOLD 1.0f
 
 // Nordic UART Service (sama dengan ble_manager.py)
 #define NUS_SERVICE_UUID  "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -93,6 +100,7 @@ static float feat_buf[MODEL_NUM_FEATURES];
 static int last_shown = -1;
 static unsigned long last_gesture_ms = 0;
 static unsigned long last_sample_us = 0;
+static bool cooldown_active = false;
 
 // ─── Feature extraction (36 features, in-place normalize) ────
 static inline void extract_features(int start) {
@@ -122,6 +130,20 @@ static inline void extract_features(int start) {
         feat_buf[b + 4] = (rms  - scaler_mean[b + 4]) / scaler_scale[b + 4];
         feat_buf[b + 5] = (((float)crossings / (WINDOW_SIZE - 1)) - scaler_mean[b + 5]) / scaler_scale[b + 5];
     }
+}
+
+// ─── Motion gate: peak gyro magnitude over the window ─────────
+// Used to reject low-motion windows (slight/unintentional movement) before
+// accepting a non-idle prediction, independent of model confidence.
+static inline float motion_gyro_peak(int start) {
+    float peak = 0.0f;
+    for (int i = 0; i < WINDOW_SIZE; i++) {
+        int idx = (start + i) % WINDOW_SIZE;
+        float gx = imu_buf[idx][3], gy = imu_buf[idx][4], gz = imu_buf[idx][5];
+        float gmag = sqrtf(gx * gx + gy * gy + gz * gz);
+        if (gmag > peak) peak = gmag;
+    }
+    return peak;
 }
 
 // ─── Setup ───────────────────────────────────────────────────
@@ -168,21 +190,33 @@ void loop() {
     samples_since_infer = 0;
 
     extract_features(buf_idx);
+    float motion_peak = motion_gyro_peak(buf_idx);
 
     int64_t t0 = esp_timer_get_time();
     float confidence = 0.0f;
     int predicted = rf_predict(feat_buf, &confidence);
     int64_t latency_us = esp_timer_get_time() - t0;
 
-    // Aksi smartboard: kirim hanya saat gesture non-idle berubah & lewat cooldown
-    int shown = (confidence >= CONF_THRESH) ? predicted : 0;
+    // Cek cooldown selesai → beep 1x "gesture ready"
     unsigned long now = millis();
+    if (cooldown_active && (now - last_gesture_ms >= OUTPUT_COOLDOWN_MS)) {
+        cooldown_active = false;
+        beep_n(1);  // sinyal "gesture ready"
+        Serial.println("[INFO] Cooldown selesai — gesture ready");
+    }
+
+    // Aksi smartboard: kirim hanya saat gesture non-idle berubah & lewat cooldown.
+    // Windows with too little physical motion (peak gyro magnitude below
+    // GYRO_MOTION_THRESHOLD) are forced to idle regardless of confidence —
+    // rejects slight/unintentional hand movement.
+    int shown = (confidence >= CONF_THRESH && motion_peak >= GYRO_MOTION_THRESHOLD) ? predicted : 0;
     if (shown != last_shown) {
         last_shown = shown;
-        if (shown != 0 && now - last_gesture_ms >= OUTPUT_COOLDOWN_MS) {
+        if (shown != 0 && !cooldown_active) {
             send_pred(MODEL_GESTURE_NAMES[shown], confidence, latency_us);
-            beep_n(shown);
+            beep_n(2);  // sinyal "gesture terbaca"
             last_gesture_ms = now;
+            cooldown_active = true;
         }
     }
 }

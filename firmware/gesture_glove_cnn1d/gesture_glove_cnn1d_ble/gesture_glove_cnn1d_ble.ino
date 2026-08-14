@@ -36,9 +36,16 @@
 #define NUM_AXES            6
 #define NUM_RAW_FEATURES    1500
 #define STEP_SIZE           125
+#define DEBOUNCE_MS         400
 #define TENSOR_ARENA_SIZE   (220 * 1024)
 #define CONF_THRESH         0.80
-#define OUTPUT_COOLDOWN_MS  1500
+#define OUTPUT_COOLDOWN_MS  5000
+// Minimum peak gyro magnitude (rad/s, MPU6050 native units) required within
+// a window before a non-idle prediction is accepted. Idle/small hand jitter
+// measures ~0.01-0.02 rad/s in this dataset; real flick/wave gestures are
+// ~3.6-9.3 rad/s. Raise this if slight movements still trigger false gestures,
+// lower it if intentional-but-gentle gestures get suppressed.
+#define GYRO_MOTION_THRESHOLD 1.0f
 
 #define NUS_SERVICE_UUID  "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 #define NUS_TX_UUID       "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -115,6 +122,7 @@ static int samples_since_infer = 0;
 static int last_shown = -1;
 static unsigned long last_gesture_ms = 0;
 static unsigned long last_sample_us = 0;
+static bool cooldown_active = false;
 
 // ─── Setup ───────────────────────────────────────────────────
 void setup() {
@@ -194,14 +202,21 @@ void loop() {
     if (!buf_full || samples_since_infer < STEP_SIZE) return;
     samples_since_infer = 0;
 
-    // Flatten 1500 raw values + normalize
+    // Flatten 1500 raw values + normalize. Also track peak gyro magnitude in
+    // the same pass, used below to gate out low-motion windows.
     int start = buf_idx;
+    float motion_peak = 0.0f;
     for (int i = 0; i < WINDOW_SIZE; i++) {
         int idx = (start + i) % WINDOW_SIZE;
         for (int a = 0; a < NUM_AXES; a++) {
             int fi = i * NUM_AXES + a;
             model_input[fi] = (imu_buf[idx * NUM_AXES + a] - scaler_mean[fi]) / scaler_scale[fi];
         }
+        float gx = imu_buf[idx * NUM_AXES + 3];
+        float gy = imu_buf[idx * NUM_AXES + 4];
+        float gz = imu_buf[idx * NUM_AXES + 5];
+        float gmag = sqrtf(gx * gx + gy * gy + gz * gz);
+        if (gmag > motion_peak) motion_peak = gmag;
     }
 
     // Quantize input
@@ -225,14 +240,25 @@ void loop() {
         if (p > max_prob) { max_prob = p; best = i; }
     }
 
-    int shown = (max_prob >= CONF_THRESH) ? best : 0;
+    // Cek cooldown selesai → beep 1x "gesture ready"
     unsigned long now = millis();
+    if (cooldown_active && (now - last_gesture_ms >= OUTPUT_COOLDOWN_MS)) {
+        cooldown_active = false;
+        beep_n(1);  // sinyal "gesture ready"
+        Serial.println("[INFO] Cooldown selesai — gesture ready");
+    }
+
+    // Windows with too little physical motion (peak gyro magnitude below
+    // GYRO_MOTION_THRESHOLD) are forced to idle regardless of confidence —
+    // rejects slight/unintentional hand movement.
+    int shown = (max_prob >= CONF_THRESH && motion_peak >= GYRO_MOTION_THRESHOLD) ? best : 0;
     if (shown != last_shown) {
         last_shown = shown;
-        if (shown != 0 && now - last_gesture_ms >= OUTPUT_COOLDOWN_MS) {
+        if (shown != 0 && !cooldown_active) {
             send_pred(MODEL_GESTURE_NAMES[shown], max_prob, latency_us);
-            beep_n(shown);
+            beep_n(2);  // sinyal "gesture terbaca"
             last_gesture_ms = now;
+            cooldown_active = true;
         }
     }
 }

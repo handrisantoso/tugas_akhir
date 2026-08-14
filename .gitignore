@@ -34,3 +34,6 @@ pc_bench/
 replay_all/
 Python/
 thesis_figures/
+
+# Thesis and Evaluation Scripts
+thesis_scripts/

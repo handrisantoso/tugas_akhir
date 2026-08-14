@@ -32,6 +32,12 @@
 // Min gap between two GESTURE triggers. Must exceed the inference interval
 // (STEP_SIZE / SAMPLE_RATE = 1.25 s) to actually gate, else it is a no-op.
 #define OUTPUT_COOLDOWN_MS  5000
+// Minimum peak gyro magnitude (rad/s, MPU6050 native units) required within
+// a window before a non-idle prediction is accepted. Idle/small hand jitter
+// measures ~0.01-0.02 rad/s in this dataset; real flick/wave gestures are
+// ~3.6-9.3 rad/s. Raise this if slight movements still trigger false gestures,
+// lower it if intentional-but-gentle gestures get suppressed.
+#define GYRO_MOTION_THRESHOLD 1.0f
 
 // ─── Buzzer helpers ──────────────────────────────────────────
 #define BEEP_DUR_MS   60
@@ -99,6 +105,20 @@ static inline void extract_features(int start) {
     }
 }
 
+// ─── Motion gate: peak gyro magnitude over the window ─────────
+// Used to reject low-motion windows (slight/unintentional movement) before
+// accepting a non-idle prediction, independent of model confidence.
+static inline float motion_gyro_peak(int start) {
+    float peak = 0.0f;
+    for (int i = 0; i < WINDOW_SIZE; i++) {
+        int idx = (start + i) % WINDOW_SIZE;
+        float gx = imu_buf[idx][3], gy = imu_buf[idx][4], gz = imu_buf[idx][5];
+        float gmag = sqrtf(gx * gx + gy * gy + gz * gz);
+        if (gmag > peak) peak = gmag;
+    }
+    return peak;
+}
+
 // ─── Setup ─────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
@@ -155,6 +175,7 @@ void loop() {
 
     // ── Feature extraction & normalization ──
     extract_features(buf_idx);
+    float motion_peak = motion_gyro_peak(buf_idx);
 
     // --- Inference timing (Model Only - comparable to PC benchmark) ---
     int64_t t0 = esp_timer_get_time();
@@ -191,8 +212,11 @@ void loop() {
     // Print only on a class CHANGE. Idle is always shown (no beep). A non-idle
     // gesture only fires if OUTPUT_COOLDOWN_MS has passed since the last gesture,
     // so one physical motion triggers once and quick repeats are suppressed.
-    // Low-confidence readings fall back to idle (class 0).
-    int shown = (confidence >= CONF_THRESH) ? predicted : 0;
+    // Low-confidence readings fall back to idle (class 0). Windows with too
+    // little physical motion (peak gyro magnitude below GYRO_MOTION_THRESHOLD)
+    // are also forced to idle, regardless of model confidence — this rejects
+    // slight/unintentional hand movement that the model might misclassify.
+    int shown = (confidence >= CONF_THRESH && motion_peak >= GYRO_MOTION_THRESHOLD) ? predicted : 0;
     unsigned long now = millis();
     if (shown != last_shown) {
         last_shown = shown;
@@ -202,7 +226,7 @@ void loop() {
         } else if (now - last_gesture_ms >= OUTPUT_COOLDOWN_MS) {
             Serial.printf("[PRED] %s %.2f %lld %ld\n",
                 MODEL_GESTURE_NAMES[shown], confidence, latency_us, ESP.getFreeHeap());
-            beep_n(shown);
+            beep_n(2);  // sinyal "gesture terbaca"
             last_gesture_ms = now;
         }
         // gesture within cooldown: suppressed (no print, no beep)
